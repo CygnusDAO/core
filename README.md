@@ -18,6 +18,12 @@
 
 # <h3> Unit tests
   
+  The unit tests serve the purpose of proving the above features and the security of Cygnus. 
+  
+  To run the tests on your local machine, first **make sure to fork Avalanche C-Chain** as all tests are done on the LP token Joe/AVAX from Traderjoe. We use the router to perform the tests also. The reason we did the tests this way was to replicate the dapp as close to real conditions as possible. 
+
+To fork the C-Chain, you can follow hardhat instructions (https://hardhat.org/hardhat-network/guides/mainnet-forking.html). After you can run all our tests in succession with `npx hardhat test`
+  
 **Borrow contracts control and depositing DAI:**
   
   ![unit1](https://user-images.githubusercontent.com/97303883/175661829-02299e20-a57c-4fa1-8fe0-0b7591c3e5d2.png)
