@@ -1,0 +1,7 @@
+{
+  "compile_force_framework": "hardhat",
+
+  "filter_paths": "contracts/cygnus-core/libraries|contracts/cygnus-periphery|contracts/cygnus-token|contracts/cygnus-vault|contracts/cygnus-oracle|scripts|artifacts",
+
+  "detectors_to_exclude": "similar-names, timestamp"
+}

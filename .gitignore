@@ -1,0 +1,20 @@
+# Node 
+node_modules/
+
+# Dotenv
+.env
+
+# Hardhat
+cache/
+artifacts/
+contracts/coverage
+
+# Coverage
+coverage/
+
+# Other contracts
+contracts/cygnus-periphery
+contracts/cygnus-oracle
+contracts/cygnus-token
+contracts/mock-contracts
+contracts/cygnus-vault
