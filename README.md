@@ -30,6 +30,6 @@
   
   ![unit3](https://user-images.githubusercontent.com/97303883/175661986-707b6b0b-bf24-4701-b7f2-933a6c27e285.png)
 
-**Liquidations and Auto-compounding masterchef rewards: **
+**Liquidations and Auto-compounding masterchef rewards:**
 
   ![unit2](https://user-images.githubusercontent.com/97303883/175662011-98bcef0b-2c38-44c0-ba90-6dcc2e9eae27.png)
