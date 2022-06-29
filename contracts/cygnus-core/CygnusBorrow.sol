@@ -151,11 +151,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         );
 
         if (borrowAmount > repayAmount) {
-            /// @custom:error Avoid shortfall
-            require(
-                ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows),
-                "Insufficient Liquidity"
-            );
+            /// @custom:error InsufficientLiquidity Avoid if borrower shortfall
+            if (!ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows)) {
+                revert CygnusBorrow__InsufficientLiquidity();
+            }
         }
 
         /// @custom:event Borrow

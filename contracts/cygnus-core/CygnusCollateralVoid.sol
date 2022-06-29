@@ -274,16 +274,18 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // 1. Withdraw all the rewards
         uint256 currentRewards = getRewardsPrivate();
 
-        // Return if we haven't accumulated rewards from rewarder contract
+        // If none accumulated return and do nothing
         if (currentRewards == 0) {
             return;
         }
 
+        uint256 eoaReward;
+
         // 2. If called manually send reward to user
         if (caller != address(0)) {
-            uint256 reward = currentRewards.mul(REINVEST_REWARD);
+            eoaReward = currentRewards.mul(REINVEST_REWARD);
 
-            IErc20(rewardsToken).safeTransfer(caller, reward);
+            IErc20(rewardsToken).safeTransfer(caller, eoaReward);
         }
 
         // Native token
@@ -294,10 +296,12 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         address tokenB;
 
+        // Check if rewards token is token0 or token1 from LP
         if (token0 == rewardsToken || token1 == rewardsToken) {
             (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
         } else {
-            swapExactTokensForTokens(rewardsToken, _nativeToken, currentRewards);
+            // Swap tokens
+            swapExactTokensForTokens(rewardsToken, _nativeToken, currentRewards - eoaReward);
 
             if (token0 == _nativeToken || token1 == _nativeToken) {
                 (tokenA, tokenB) = token0 == _nativeToken ? (token0, token1) : (token1, token0);
@@ -338,7 +342,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Syncs total rewards balance and total balance of this contract
+     *  @notice Syncs total total balance of this contract from our deposits in the masterchef
      *  @dev Overrides CygnusTerminal
      */
     function updateInternal() internal override(CygnusTerminal) {
@@ -376,16 +380,16 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             revert CygnusCollateralChef__VoidAlreadyInitialized(rewardsTokenVoid);
         }
 
-        // Initialize Router
+        // Store Router
         dexRouter = dexRouterVoid;
 
-        // Initialize Masterchef for this pool
+        // Store Masterchef for this pool
         rewarder = rewarderVoid;
 
-        // Assign pool ID
+        // Store pool ID
         pid = pidVoid;
 
-        // Assign the reward token
+        // Store rewardsToken
         rewardsToken = rewardsTokenVoid;
 
         // Swap fee for this dex

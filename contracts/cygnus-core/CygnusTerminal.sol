@@ -66,7 +66,9 @@ import { IMiniChef } from "./interfaces/IMiniChef.sol";
 /**
  *  @title  CygnusTerminal
  *  @author CygnusDAO
- *  @notice Contract used to mint Collateral and Borrow tokens and to set Factory and Admin rights
+ *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
+            to get the vault token (CygDAI or CygLP). Similar to UniswapV2Pair with some small edits, specifically
+            the mint/redeem functions are edited with the masterchef for the pools.
  */
 contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -194,11 +196,8 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @notice Internal check for admins only, checks factory for admin
      */
     function isCygnusAdmin() internal view {
-        // Get cygnus admin from Factory
-        address admin = ICygnusFactory(hangar18).admin();
-
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
-        if (_msgSender() != admin) {
+        if (_msgSender() != ICygnusFactory(hangar18).admin()) {
             revert CygnusTerminal__MsgSenderNotAdmin(_msgSender());
         }
     }
@@ -231,7 +230,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Get current balance balance
         uint256 mintAmount = IErc20(underlying).balanceOf(address(this));
 
-        // Mint collateral tokens
+        // Mint and deposit in masterchef if Void is activated
         if (voidActivated) {
             // Check for pools with deposit fees
             (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
@@ -245,7 +244,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
             // Get mint amount
             mintAmount = totalBalanceAfter - totalBalanceBefore;
         }
-        // Mint lending tokens
+        // Else just mint tokens without depositing in masterchef
         else {
             mintAmount = mintAmount - totalBalance;
         }
