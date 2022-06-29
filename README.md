@@ -6,7 +6,9 @@ This repository contains the smart contracts source code and markets configurati
 
 # **What is Cygnus?**
 
-Cygnus is a stablecoin lending and leveraged LP farming protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying DAI or borrowers by supplying their LP Tokens. Lenders are able to provide DAI in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow against it to farm greater rewards.
+Cygnus is a stablecoin lending and leveraged LP farming protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying DAI or as borrowers by supplying their LP Tokens. Lenders are able to provide DAI in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow against it to farm greater rewards.
+
+Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Chainlink price feeds. By using third party price reliable price feeds, the oracle calculates the [fair reserves](https://blog.alphaventuredao.io/fair-lp-token-pricing/) of each LP token, making it one of the most secure oracles in all of Decentralized Finance. 
 
 # <h3> Protocol Features
 
