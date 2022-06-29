@@ -34,7 +34,7 @@ module.exports = {
             chainId: 31337,
         },
         avalancheFujiTestnet: {
-            url: 'https://api.avax.network/ext/bc/C/rpc',
+            url: 'https://api.avax-test.network/ext/bc/C/rpc',
             chainId: 43113,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
             forking: {
