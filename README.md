@@ -10,7 +10,7 @@ Cygnus is a stablecoin lending and leveraged LP farming protocol. It is a non-cu
 
 Each lending pool is connected to a DEX (TraderJoe, Sushi, etc.). By depositing your LPs in Cygnus, rewards from the masterchef or any other liquidity mining program get reinvested automatically. Users also have the option to reinvest rewards manually if they wish to.
 
-Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the [fair reserves](https://blog.alphaventuredao.io/fair-lp-token-pricing/) of each LP token, making it one of the most secure oracles in all of Decentralized Finance. Anyone is free to use the Oracle for their own project, if any doubts please reach out to the team so we can guide you.
+Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the [fair reserves](https://blog.alphaventuredao.io/fair-lp-token-pricing/) of each LP token. Anyone is free to use the Oracle for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
 
 # <h3> Protocol Features
 
