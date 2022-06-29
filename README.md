@@ -12,10 +12,21 @@ Each lending pool is connected to a DEX (TraderJoe, Sushi, etc.). By depositing 
 
 Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the [fair reserves](https://blog.alphaventuredao.io/fair-lp-token-pricing/) of each LP token. Anyone is free to use the Oracle for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
 
-# <h3> Protocol Features
+# **Who is Cygnus for?**
+
+1) Liquidity Providers who wish to borrow against their LP Token. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow a stable value (DAI) against it. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit AVAX, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers.
+
+If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep farming with Cygnus.
+
+2) Stablecoin holders. By lending stablecoins to borrowers in specific farms, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. 
+
+Each lending pool in Cygnus is connected to a DEX. As borrowers can farm greater amounts and earn more through higher liquidity mining rewards or trading fees, lenders are compensated with a cut of the yield. This is why Cygnus can provide higher stablecoin yields than other borrowing/lending platforms.
+
+# **Protocol Features**
 
   ![image](https://user-images.githubusercontent.com/97303883/175662172-723323cb-1f04-46c5-afd6-66bc5ce84faf.png)
   
+# 
 # **Cygnus architecture**
 
 <h3> Overview </h3>
