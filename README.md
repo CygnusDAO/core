@@ -27,5 +27,5 @@ Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Ch
 # <h3> All contracts </h3>
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/97303883/175659223-2c0311b8-25d0-4d39-88e2-03576d14c77f.png" width="90%" />
+<img src="https://user-images.githubusercontent.com/97303883/176365633-56aab2ad-fc31-408d-a419-4f2b2d83df93.png" width="90%" />
 </p>
