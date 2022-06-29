@@ -19,7 +19,7 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
     /**
      *  @custom:error Emitted if there is a shortfall in the account's balances.
      */
-    error CygnusBorrow__InsufficientLiquidity(address);
+    error CygnusBorrow__InsufficientLiquidity();
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

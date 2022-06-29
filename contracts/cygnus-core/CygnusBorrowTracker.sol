@@ -13,9 +13,9 @@ import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 /**
- *  @title CygnusBorrowTracker
+ *  @title  CygnusBorrowTracker
  *  @notice Contract that accrues interest and tracks borrows for this pool
- *  @dev It is used by both Borrow and Collateral contracts.
+ *  @notice It is used by both Borrow and Collateral contracts.
  */
 contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, CygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -34,9 +34,9 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Container for borrow balance information
-     *  @member principal Total balance (with accrued interest) as of the most recent action.
-     *  @member interestIndex Global borrowIndex as of the most recent balance-changing action
+     *  @custom:struct BorrowSnapshot Container for individual user's borrow balance information
+     *  @custom:member principal Total balance (with accrued interest) as of the most recent action
+     *  @custom:member interestIndex Global borrowIndex as of the most recent balance-changing action
      */
     struct BorrowSnapshot {
         uint112 principal;
@@ -46,7 +46,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
     /**
      *  @notice Internal mapping of account addresses to outstanding borrow balances
      */
-    mapping(address => BorrowSnapshot) public borrowBalances;
+    mapping(address => BorrowSnapshot) internal borrowBalances;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -129,8 +129,10 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
     ) internal {
         address _cygnusBorrowTracker = cygnusBorrowTracker;
 
-        // If not initialized return (individual shuttles)
-        if (_cygnusBorrowTracker == address(0)) return;
+        // If not initialized return
+        if (_cygnusBorrowTracker == address(0)) {
+            return;
+        }
 
         // Pass to farming pool
         ICygnusFarmingPool(_cygnusBorrowTracker).trackBorrow(borrower, accountBorrows, borrowIndexStored);
@@ -167,7 +169,6 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // The current borrow index
         uint112 borrowIndexStored = borrowIndex;
 
-        // If borrow amount is higher, then this transaction is a borrow transaction.
         // Increase the borrower's account borrows and store it in snapshot
         if (borrowAmount > repayAmount) {
             // The borrowBalance and borrowIndex of the borrower
@@ -190,7 +191,6 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
 
             totalBorrows = uint128(totalBorrowsStored);
         }
-        // This transaction is a Repay transaction.
         // Decrease the borrower's account borrows and store it in the snapshot
         else {
             // Get borrowBalance and borrowIndex of borrower
@@ -199,19 +199,18 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
             // Calculate the actual amount to decrease
             uint256 decreaseAmount = repayAmount - borrowAmount;
 
-            // The new borrowers balance after this action.
-            // If the decrease amount is >= user's prior borrows, return 0, else return the difference.
+            // If the decrease amount is >= user's prior borrows, return 0, else return the difference
             accountBorrows = accountBorrowsPrior > decreaseAmount ? accountBorrowsPrior - decreaseAmount : 0;
 
             // Update the snapshot record of the borrower's principal their new balance
             borrowSnapshot.principal = uint112(accountBorrows);
 
-            // If their new account borrows is 0, this transaction repays the full loan.
+            // If their new account borrows is 0, this transaction repays the full loan
             if (accountBorrows == 0) {
                 // Update user's interest index to 0
                 borrowSnapshot.interestIndex = 0;
             } else {
-                // Not fully repaid, update the snapshot record of the borrower's index with current index.
+                // Not fully repaid, update the snapshot record of the borrower's index with current index
                 borrowSnapshot.interestIndex = borrowIndexStored;
             }
 
@@ -219,7 +218,6 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
             uint256 actualDecreaseAmount = accountBorrowsPrior - accountBorrows;
 
             // Total protocol borrows
-            // Gas savings
             totalBorrowsStored = totalBorrows;
 
             // Condition check to calculate protocols total borrows
@@ -260,21 +258,28 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // Time elapsed between present timestamp and last accrued period
         uint32 timeElapsed = currentTimestamp - accrualTimestampStored;
 
-        // Load values from storage
+        // ───── Load values from storage ─────
+
+        // Total borrows stored
         uint256 totalBorrowsStored = totalBorrows;
+
         // Protocol Reserves
         uint256 reservesStored = totalReserves;
+
         // Total balance of underlying held by this contract
         uint256 cashStored = totalBalance;
+
         // Current borrow index
         uint256 borrowIndexStored = borrowIndex;
+
+        // ─────────────────────────────────────
 
         // Return if no borrows
         if (totalBorrowsStored == 0) {
             return;
         }
 
-        // 1. Get BorrowRate
+        // 1. Get per-second BorrowRate
         uint256 borrowRateStored = getBorrowRate(cashStored, totalBorrowsStored, reservesStored);
 
         // 2. Multiply BorrowAPR by the time elapsed
@@ -292,15 +297,21 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mul(borrowIndex);
 
-        // Update new values to storage -> 2 memory slots with lastAccrualTimestamp
+        // ───── Update values to storage -> 2 memory slots with timestamp included ─────
+
         // Store total borrows
         totalBorrows = uint128(totalBorrowsStored);
+
         // Total reserves
         totalReserves = uint128(reservesStored);
+
         // Borrow rate
         borrowRate = uint112(borrowRateStored);
+
         // New borrow index
         borrowIndex = uint112(borrowIndexStored);
+
+        // ──────────────────────────────────────────────────────────────────────────────
 
         /// @custom:event AccrueInterest
         emit AccrueInterest(cashStored, interestAccumulated, borrowIndexStored, totalBorrowsStored, borrowRateStored);

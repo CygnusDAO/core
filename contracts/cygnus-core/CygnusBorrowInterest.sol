@@ -143,6 +143,7 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     /**
      *  @notice 👽
      *  @inheritdoc ICygnusBorrowInterest
+     *  @custom:security non-reentrant
      */
     function updateJumpRateModel(
         uint256 newBaseRatePerYear,

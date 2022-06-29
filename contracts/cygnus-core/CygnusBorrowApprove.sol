@@ -6,7 +6,7 @@ import { ICygnusBorrowApprove } from "./interfaces/ICygnusBorrowApprove.sol";
 import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
 /**
- *  @title CygnusBorrowApprove
+ *  @title  CygnusBorrowApprove
  *  @notice Contract for approving borrows and updating borrow allowances
  */
 contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {

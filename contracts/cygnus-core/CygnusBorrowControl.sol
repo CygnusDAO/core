@@ -9,7 +9,7 @@ import { CygnusTerminal } from "./CygnusTerminal.sol";
 import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
 
 /**
- *  @title CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
+ *  @title  CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
  *  @author CygnusDAO
  *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token
  */

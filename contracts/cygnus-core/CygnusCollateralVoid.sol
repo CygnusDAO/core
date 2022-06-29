@@ -94,7 +94,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override REINVEST_REWARD = 0.01e18;
+    uint256 public constant override REINVEST_REWARD = 0.025e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -124,7 +124,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @custom:modifier chargeVoid Reinvests rewards from masterchef/rewarder before depositing
      */
     modifier chargeVoid() {
-        reinvest();
+        checkVoid();
         _;
     }
 
@@ -157,6 +157,15 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     function checkEOA() private view {
         if ((_msgSender()).isContract()) {
             revert CygnusCollateralChef__OnlyAccountsAllowed(_msgSender());
+        }
+    }
+
+    /**
+     *  @notice Reinvests if void is activated
+     */
+    function checkVoid() private {
+        if (voidActivated) {
+            reinvest(address(0));
         }
     }
 
@@ -258,16 +267,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /**
      *  @notice Reinvests rewards token to buy more LP tokens and adds it back to position
-     *  @notice As a result the debt owned by borrowers diminishes on every reinvestment as their CygLP tokens
-     *          are now worth more. This decrease can be seen in the UI under `Debt Ratio` in the dashboard
+     *          As a result the debt owned by borrowers diminish on every reinvestment as their LP Token amount increase
      *  @custom:security non-reentrant
      */
-    function reinvest() private nonReentrant update {
-        // Ignore and return if not activated
-        if (!voidActivated) {
-            return;
-        }
-
+    function reinvest(address caller) private nonReentrant update {
         // 1. Withdraw all the rewards
         uint256 currentRewards = getRewardsPrivate();
 
@@ -276,9 +279,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             return;
         }
 
+        // 2. If called manually send reward to user
+        if (caller != address(0)) {
+            uint256 reward = currentRewards.mul(REINVEST_REWARD);
+
+            IErc20(rewardsToken).safeTransfer(caller, reward);
+        }
+
+        // Native token
         address _nativeToken = nativeToken;
 
-        // 2. Convert all the remaining rewards to token0 or token1
+        // 3. Convert all the remaining rewards to token0 or token1
         address tokenA;
 
         address tokenB;
@@ -297,7 +308,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             }
         }
 
-        // 3. Convert tokenA to LP Token underlyings
+        // 4. Convert tokenA to LP Token underlyings
         uint256 totalAmountA = contractBalanceOf(tokenA);
 
         assert(totalAmountA > 0);
@@ -317,7 +328,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Add liquidity
         uint256 liquidity = addLiquidity(tokenA, tokenB, totalAmountA - swapAmount, contractBalanceOf(tokenB));
 
-        // 4. Stake the LP Tokens
+        // 5. Stake the LP Tokens
         rewarder.deposit(pid, liquidity);
 
         /// @custom:event ReinvestRewards
@@ -360,7 +371,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 pidVoid,
         uint256 swapFeeFactorVoid
     ) external override nonReentrant cygnusAdmin {
-        /// @custom:error InvalidRewardsToken Avoid setting twice
+        /// @custom:error InvalidRewardsToken Avoid setting cygnus void twice
         if (rewardsToken != address(0)) {
             revert CygnusCollateralChef__VoidAlreadyInitialized(rewardsTokenVoid);
         }
@@ -400,6 +411,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusCollateralVoid
      */
     function reinvestRewards() external override onlyEOA {
-        reinvest();
+        reinvest(_msgSender());
     }
 }

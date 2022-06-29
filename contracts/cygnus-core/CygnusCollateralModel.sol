@@ -9,11 +9,10 @@ import { CygnusCollateralVoid } from "./CygnusCollateralVoid.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
-import { IDexPair } from "./interfaces/IDexPair.sol";
 import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
 
 /**
- *  @title CygnusCollateralModel Uses oracle to get price of LP Token and calculates collateral needed for a loan
+ *  @title  CygnusCollateralModel Uses oracle to get price of LP Token and calculates collateral needed for a loan
  *  @author CygnusDAO
  */
 contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {

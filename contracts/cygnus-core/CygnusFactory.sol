@@ -34,7 +34,7 @@ import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
 
 /**
- *  @title CygnusCollateralControl
+ *  @title  CygnusCollateralControl
  *  @author CygnusDAO
  *  @notice Factory contract for Cygnus Collateral and Borrow contracts
  */
@@ -226,7 +226,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @param lpTokenPair Address of the DEX' LP Token for this shuttle
      */
     function boardShuttle(address lpTokenPair) private {
-        /// @custom:error Avoid initializing two identical shuttles
+        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
         if (getShuttles[lpTokenPair].shuttleID != 0) {
             revert CygnusFactory__ShuttleAlreadyDeployed(lpTokenPair);
         }
@@ -275,7 +275,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
             address(collateralDeployer)
         );
 
-        /// @custom:error Avoid deploying same collateral twice
+        /// @custom:error CollateralAlreadyExists Avoid deploying same collateral twice
         if (getShuttles[lpTokenPair].cygnusDeneb != address(0)) {
             revert CygnusFactory__CollateralAlreadyExists(lpTokenPair);
         }
@@ -295,7 +295,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
-        // No way back now, initialize pool & oracle
+        // No way back now, initialize pool
+
         // Add collateral contract to record
         getShuttles[lpTokenPair].cygnusDeneb = _cygnusDeneb;
 

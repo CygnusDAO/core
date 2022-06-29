@@ -64,7 +64,7 @@ import { IErc20 } from "./interfaces/IErc20.sol";
 import { IMiniChef } from "./interfaces/IMiniChef.sol";
 
 /**
- *  @title CygnusTerminal
+ *  @title  CygnusTerminal
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens and to set Factory and Admin rights
  */

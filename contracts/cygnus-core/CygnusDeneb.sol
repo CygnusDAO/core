@@ -28,7 +28,7 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
 /**
- *  @title CygnusDeneb
+ *  @title  CygnusDeneb
  *  @notice This is the Collateral Deployer for Cygnus which starts the collateral arm of the lending pool
  */
 contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {

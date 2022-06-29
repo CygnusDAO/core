@@ -11,7 +11,7 @@ import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
 
 /**
- *  @title CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
+ *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
  *  @notice Initializes Collateral Arm. Passes name, symbol and decimals to CygnusTerminal for the CygLP Token
  */
@@ -144,7 +144,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         // Update price oracle
         cygnusNebulaOracle = newPriceOracle;
 
-        /// @custom:event newPriceOracle
+        /// @custom:event NewPriceOracle
         emit NewPriceOracle(_cygnusNebulaOracle, newPriceOracle);
     }
 
