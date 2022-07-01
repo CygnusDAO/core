@@ -24,23 +24,24 @@
      Structure of all Cygnus Contracts
 
      Contract                        ⠀Interface                                             
-        ├ 1. Libraries                   ├ 1. Errors                                               
-        ├ 2. Storage                 ⠀   ├ 3. Constant Functions                          ⠀        
-        │     ├ Private                  │     ├ Public                            ⠀       
-        │     ├ Internal                 │     └ External                        ⠀⠀⠀              
-        │     └ Public                   └ 4. Non-Constant Functions  
-        ├ 3. Constructor             ⠀         ├ Public
-        ├ 4. Modifiers               ⠀         └ External
-        ├ 5. Constant Functions      ⠀                     
-        │     ├ Private              
-        │     ├ Internal             
-        │     ├ Public               
-        │     └ External             
-        └ 6. Non-Constant Functions  
-              ├ Private              
-              ├ Internal             
-              ├ Public               
-              └ External                           
+        ├ 1. Libraries                   ├ 1. Custom Errors                                               
+        ├ 2. Storage                     ├ 2. Custom Events
+        │     ├ Private             ⠀    ├ 3. Constant Functions                          ⠀        
+        │     ├ Internal                 │     ├ Public                            ⠀       
+        │     └ Public                   │     └ External                        ⠀⠀⠀              
+        ├ 3. Constructor                 └ 4. Non-Constant Functions  
+        ├ 4. Modifiers              ⠀          ├ Public
+        ├ 5. Constant Functions     ⠀          └ External
+        │     ├ Private             ⠀                      
+        │     ├ Internal            
+        │     ├ Public              
+        │     └ External            
+        └ 6. Non-Constant Functions 
+              ├ Private             
+              ├ Internal            
+              ├ Public              
+              └ External            
+                       
 
 
     @dev: Should only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow 
