@@ -20,7 +20,7 @@ import { IErc20 } from "./interfaces/IErc20.sol";
 import { IRewarder, IMiniChef } from "./interfaces/IMiniChef.sol";
 
 /**
- *  @title  CygnusCollateralChef Assigns the masterchef/rewards contract (if any) to harvest and reinvest rewards
+ *  @title  CygnusCollateralVoid Assigns the masterchef/rewards contract (if any) to harvest and reinvest rewards
  *  @notice This contract is considered optional and default state is offline (bool `voidActivated`)
  *          It is the only contract in Cygnus that should be changed according to the LP Token the collateral
  *          consists of. Most functions are kept as private as they are only relevant to this contract and the
