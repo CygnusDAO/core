@@ -135,9 +135,9 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     address public override hangar18;
 
     /**
-     *  @notice Whether or not this shuttle is connected to a masterchef/rewards contract
+     *  @inheritdoc ICygnusTerminal
      */
-    bool public voidActivated;
+    bool public override voidActivated;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
