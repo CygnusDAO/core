@@ -14,13 +14,10 @@ Cygnus uses its own oracle which returns the price of 1 LP token in DAI using Ch
 
 # **Who is Cygnus for?**
 
-1) Liquidity Providers who wish to borrow against their LP Token. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow a stable value (DAI) against it. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit AVAX, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers.
+1) **Liquidity Providers**. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow a stable value (DAI) against it. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit AVAX, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, as such we are unlocking liquidity and efficiency in DeFi. For example, an LP can decide to deposit their liquidity with Cygnus. The smart contracts then deposit the liquidity in the DEX auto-compounding rewards constantly. The user borrows 80% of their collateral in DAI to increase their position in the pool. If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep farming with Cygnus.
 
-If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep farming with Cygnus.
-
-2) Stablecoin holders. By lending stablecoins to borrowers in specific farms, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. 
-
-Each lending pool in Cygnus is connected to a DEX. As borrowers can farm greater amounts and earn more through higher liquidity mining rewards or trading fees, lenders are compensated with a cut of the yield. This is why Cygnus can provide higher stablecoin yields than other borrowing/lending platforms.
+2) **Stablecoin holders.** 
+By lending stablecoins to borrowers in specific farms, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX. As borrowers can farm greater amounts and earn more through higher liquidity mining rewards or trading fees, lenders are compensated with a cut of the yield. This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
 
 # **Protocol Features**
 
