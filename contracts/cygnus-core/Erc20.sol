@@ -161,7 +161,7 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
     /// Requirements:
     ///
     /// - The beneficiary's balance and the total supply cannot overflow.
-    function mintInternal(address beneficiary, uint256 mintAmount) internal {
+    function mintInternal(address beneficiary, uint256 mintAmount) internal virtual {
         if (beneficiary == address(0)) {
             revert Erc20__MintZeroAddress();
         }

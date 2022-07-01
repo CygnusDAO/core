@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Unlicensed
 
 import "./PRBMath.sol";
+import "./IErc20.sol";
 
 /**
- *  @title CygnusChefHelper
+ *  @title VoidHelper
  *  @dev Provides functions for harvesting and reinvesting rewards (if any)
  */
 pragma solidity >=0.8.4;
 
-library ChefHelper {
+library VoidHelper {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -47,5 +48,31 @@ library ChefHelper {
         // bytes4(keccak256(bytes('approve(address,uint256)')));
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), "!safeApprove");
+    }
+
+    /**
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return This contract's balance
+     */
+    function contractBalanceOf(address token) internal view returns (uint256) {
+        return IErc20(token).balanceOf(address(this));
+    }
+
+    /**
+     *  @notice Grants allowance to the dex' router to handle our rewards
+     *  @param token The address of the token we are approving
+     *  @param amount The amount to approve
+     */
+    function approveDexRouter(
+        address token,
+        address router,
+        uint256 amount
+    ) internal {
+        if (IErc20(token).allowance(address(this), router) >= amount) {
+            return;
+        } else {
+            safeApprove(token, router, type(uint256).max);
+        }
     }
 }

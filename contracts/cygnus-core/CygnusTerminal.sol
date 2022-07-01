@@ -228,7 +228,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      */
     function mint(address minter) external override nonReentrant update returns (uint256 cygnusMintTokens) {
         // Get current balance balance
-        uint256 mintAmount = IErc20(underlying).balanceOf(address(this));
+        uint256 balance = IErc20(underlying).balanceOf(address(this));
 
         // Mint and deposit in masterchef if Void is activated
         if (voidActivated) {
@@ -236,21 +236,21 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
             (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
 
             // Deposit in rewader
-            rewarder.deposit(pid, mintAmount);
+            rewarder.deposit(pid, balance);
 
             // Check balance after deposit
             (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
 
             // Get mint amount
-            mintAmount = totalBalanceAfter - totalBalanceBefore;
+            balance = totalBalanceAfter - totalBalanceBefore;
         }
         // Else just mint tokens without depositing in masterchef
         else {
-            mintAmount = mintAmount - totalBalance;
+            balance = balance - totalBalance;
         }
 
         // (amount * scale) / exchangeRate
-        cygnusMintTokens = mintAmount.div(exchangeRate());
+        cygnusMintTokens = balance.div(exchangeRate());
 
         // Only for the very first deposit
         if (totalSupply == 0) {
@@ -270,7 +270,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         mintInternal(minter, cygnusMintTokens);
 
         /// @custom:event Mint
-        emit Mint(_msgSender(), minter, mintAmount, cygnusMintTokens);
+        emit Mint(_msgSender(), minter, balance, cygnusMintTokens);
     }
 
     /**

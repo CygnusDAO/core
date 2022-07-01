@@ -7,7 +7,7 @@ import { CygnusCollateralControl } from "./CygnusCollateralControl.sol";
 
 // Libraries
 import { Address } from "./libraries/Address.sol";
-import { ChefHelper } from "./libraries/ChefHelper.sol";
+import { VoidHelper } from "./libraries/VoidHelper.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
 
@@ -42,9 +42,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     using SafeErc20 for IErc20;
 
     /**
-     *  @custom:library ChefHelper Helper functions for interacting with dexes and handling rewards
+     *  @custom:library VoidHelper Helper functions for interacting with dexes and handling rewards
      */
-    using ChefHelper for address;
+    using VoidHelper for address;
 
     /**
      *  @custom:library Address Verify if msgSender is contract or EOA
@@ -143,12 +143,12 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks the `token` balance of this contract
-     *  @param token The token to view balance of
-     *  @return This contract's balance
+     *  @notice Reinvests if void is activated
      */
-    function contractBalanceOf(address token) private view returns (uint256) {
-        return IErc20(token).balanceOf(address(this));
+    function checkVoid() private {
+        if (voidActivated) {
+            reinvest(address(0));
+        }
     }
 
     /**
@@ -157,15 +157,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     function checkEOA() private view {
         if ((_msgSender()).isContract()) {
             revert CygnusCollateralChef__OnlyAccountsAllowed(_msgSender());
-        }
-    }
-
-    /**
-     *  @notice Reinvests if void is activated
-     */
-    function checkVoid() private {
-        if (voidActivated) {
-            reinvest(address(0));
         }
     }
 
@@ -192,20 +183,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Grants allowance to the dex' router to handle our rewards
-     *  @param token The address of the token we are approving
-     *  @param amount The amount to approve
-     */
-    function approveDexRouter(address token, uint256 amount) private {
-        if (IErc20(token).allowance(address(this), address(dexRouter)) >= amount) {
-            return;
-        } else {
-            token.safeApprove(address(dexRouter), type(uint256).max);
-        }
-    }
-
-    /**
-     *  @notice Swap tokens function used by Reinvest
+     *  @notice Swap tokens function used by Reinvest to turn reward token into more LP Tokens
      *  @param tokenIn address of the token we are swapping
      *  @param tokenOut Address of the token we are receiving
      *  @param amount Amount of TokenIn we are swapping
@@ -222,7 +200,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         path[1] = address(tokenOut);
 
         // Safe Approve router
-        approveDexRouter(tokenIn, amount);
+        VoidHelper.approveDexRouter(tokenIn, address(dexRouter), amount);
 
         // Swap tokens
         dexRouter.swapExactTokensForTokens(amount, 0, path, address(this), type(uint256).max);
@@ -243,26 +221,25 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 amountB
     ) private returns (uint256 liquidity) {
         // Approve token A
-        approveDexRouter(tokenA, amountA);
+        VoidHelper.approveDexRouter(tokenA, address(dexRouter), amountA);
 
         // Approve token B
-        approveDexRouter(tokenB, amountB);
+        VoidHelper.approveDexRouter(tokenB, address(dexRouter), amountB);
 
-        (
-            ,
-            ,
-            /* amountA */
-            /* amountB */
-            liquidity
-        ) = dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), type(uint256).max);
+        // prettier-ignore
+        (/* amountA */, /* amountB */, liquidity) = 
+          dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), type(uint256).max);
     }
 
     /**
      *  @notice Gets the rewards from the masterchef's rewarder contract for multiple tokens and converts to rewardToken
      */
     function getRewardsPrivate() private returns (uint256) {
+        // Withdraw from the masterchef by depositing 0 amount
         IMiniChef(rewarder).deposit(pid, 0);
-        return contractBalanceOf(rewardsToken);
+
+        // Return this contract's total rewards balance
+        return VoidHelper.contractBalanceOf(rewardsToken);
     }
 
     /**
@@ -270,7 +247,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *          As a result the debt owned by borrowers diminish on every reinvestment as their LP Token amount increase
      *  @custom:security non-reentrant
      */
-    function reinvest(address caller) private nonReentrant update {
+    function reinvest(address reinvestor) private nonReentrant update {
         // 1. Withdraw all the rewards
         uint256 currentRewards = getRewardsPrivate();
 
@@ -282,10 +259,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 eoaReward;
 
         // 2. If called manually send reward to user
-        if (caller != address(0)) {
+        if (reinvestor != address(0)) {
+            // Get the externally owned account reward
             eoaReward = currentRewards.mul(REINVEST_REWARD);
 
-            IErc20(rewardsToken).safeTransfer(caller, eoaReward);
+            // Transfer the reward for reinvesting
+            IErc20(rewardsToken).safeTransfer(reinvestor, eoaReward);
+
+            emit Transfer(address(this), reinvestor, eoaReward);
         }
 
         // Native token
@@ -300,21 +281,23 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         if (token0 == rewardsToken || token1 == rewardsToken) {
             (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
         } else {
-            // Swap tokens
+            // Swap token reward token to native token
             swapExactTokensForTokens(rewardsToken, _nativeToken, currentRewards - eoaReward);
 
+            // Check if token0 or token1 is native token
             if (token0 == _nativeToken || token1 == _nativeToken) {
                 (tokenA, tokenB) = token0 == _nativeToken ? (token0, token1) : (token1, token0);
             } else {
-                swapExactTokensForTokens(_nativeToken, token0, contractBalanceOf(_nativeToken));
+                swapExactTokensForTokens(_nativeToken, token0, VoidHelper.contractBalanceOf(_nativeToken));
 
                 (tokenA, tokenB) = (token0, token1);
             }
         }
 
         // 4. Convert tokenA to LP Token underlyings
-        uint256 totalAmountA = contractBalanceOf(tokenA);
+        uint256 totalAmountA = VoidHelper.contractBalanceOf(tokenA);
 
+        // Contract should always have balance
         assert(totalAmountA > 0);
 
         // prettier-ignore
@@ -324,13 +307,18 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 reservesA = tokenA == token0 ? reserves1 : reserves2;
 
         // Get optimal swap amount for token A
-        uint256 swapAmount = ChefHelper.optimalDepositA(totalAmountA, reservesA, swapFeeFactor);
+        uint256 swapAmount = VoidHelper.optimalDepositA(totalAmountA, reservesA, swapFeeFactor);
 
         // Swap
         swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
         // Add liquidity
-        uint256 liquidity = addLiquidity(tokenA, tokenB, totalAmountA - swapAmount, contractBalanceOf(tokenB));
+        uint256 liquidity = addLiquidity(
+            tokenA,
+            tokenB,
+            totalAmountA - swapAmount,
+            VoidHelper.contractBalanceOf(tokenB)
+        );
 
         // 5. Stake the LP Tokens
         rewarder.deposit(pid, liquidity);

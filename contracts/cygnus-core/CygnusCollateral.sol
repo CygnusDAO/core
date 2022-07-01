@@ -157,7 +157,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             balances[vegaTokenManager] += denebFee;
 
             /// @custom:event SeizeCollateral
-            emit SeizeCollateral(borrower, liquidator, denebAmount);
+            emit SeizeCollateral(borrower, vegaTokenManager, denebAmount);
         }
     }
 
@@ -170,7 +170,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         address redeemer,
         uint256 redeemAmount,
         bytes calldata data
-    ) external override nonReentrant {
+    ) external override nonReentrant update {
         /// @custom:error ValueExceedsBalance Avoid redeeming more than there is in the pool.
         if (redeemAmount > totalBalance) {
             revert CygnusCollateral__ValueExceedsBalance(totalBalance);
