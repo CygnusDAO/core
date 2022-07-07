@@ -18,7 +18,7 @@ library CygnusPoolAddress {
      *  @notice Used by Router and CygnusFactory to deploy shuttles
      */
     bytes32 internal constant COLLATERAL_INIT_CODE_HASH =
-        0x7daa31d3ac2e77d7f5e17badfd4958f222c8ff415bdbb6207191371e7b224c48;
+        0xd5eb25ec6412e75f06df44e7186617b646269b2e641d353f439a3cc5590d3f07;
 
     /**
      *  IMPORTANT: UPDATE WITH LATEST CODE HASH

@@ -13,7 +13,7 @@ import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
  *  @author CygnusDAO
  *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token
  */
-contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygnusDAI", 18) {
+contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygDAI", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -101,10 +101,11 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Borrow arm of the pool and passes to CygnusTerminal the Cygnus borrow token
-     *  @custom:security non-reentrant
+     *  @notice Constructs the Borrow arm of the pool. It assigns the factory, the underlying asset (DAI) and the
+     *          collateral contract for this borrow token. Aside from this is assigns the custom interest rate model
+     *          from the deployment: base rate, multiplier and the kink utilization rate.
      */
-    constructor() nonReentrant {
+    constructor() {
         // Get factory, underlying and collateral addressand interest rate parameters for this shuttle
         (hangar18, underlying, collateral, baseRatePerYear, multiplierPerYear, kink) = ICygnusAlbireo(_msgSender())
             .borrowParameters();
@@ -112,7 +113,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         // Match initial exchange rate
         exchangeRateStored = INITIAL_EXCHANGE_RATE;
 
-        // Open Cygnus borrow pools for deposits
+        // Assurance
         totalSupply = 0;
     }
 

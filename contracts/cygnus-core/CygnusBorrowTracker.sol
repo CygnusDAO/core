@@ -258,7 +258,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // Time elapsed between present timestamp and last accrued period
         uint32 timeElapsed = currentTimestamp - accrualTimestampStored;
 
-        // ───── Load values from storage ─────
+        // ──────────────────── Load values from storage ─────────────────────────
 
         // Total borrows stored
         uint256 totalBorrowsStored = totalBorrows;
@@ -272,7 +272,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // Current borrow index
         uint256 borrowIndexStored = borrowIndex;
 
-        // ─────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────
 
         // Return if no borrows
         if (totalBorrowsStored == 0) {

@@ -28,13 +28,21 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusBorrow } from "./CygnusBorrow.sol";
 
 /**
- *  @title CygnusAlbireo The Borrow Deployer contract which starts the borrow arm of the lending pool
+ *  @title CygnusAlbireo The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys
+ *                       the borrow contract with the corresponding Cygnus collateral contract address. We pass
+ *                       structs to avoid having to set constructors in the core contracts, being able to calculate
+ *                       addresses of lending pools with CREATE2
+ *  @author CygnusDAO
+ *  @notice Borrow Deployer V1
  */
 contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+            2. STORAGE
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @dev Values get deleted after deploying a new contract so these should always return 0
      *  @custom:struct BorrowParameters Important parameters for the borrow contracts
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
@@ -52,10 +60,16 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
         uint256 kinkUtilizationRate;
     }
 
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
     /**
      *  @inheritdoc ICygnusAlbireo
      */
     BorrowParameters public override borrowParameters;
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+            6. NON-CONSTANT FUNCTIONS
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -64,7 +78,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      */
     function deployAlbireo(
         address underlying,
-        address collateral,
+        address collateralContract,
         uint256 baseRatePerYear,
         uint256 farmApy,
         uint256 kinkUtilizationRate
@@ -73,14 +87,14 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
         borrowParameters = BorrowParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusDeneb: collateral,
+            cygnusDeneb: collateralContract,
             baseRatePerYear: baseRatePerYear,
             farmApy: farmApy,
             kinkUtilizationRate: kinkUtilizationRate
         });
 
         // Create Borrow contract
-        albireo = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateral, _msgSender())) }());
+        albireo = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateralContract, _msgSender())) }());
 
         // Delete and refund some gas
         delete borrowParameters;

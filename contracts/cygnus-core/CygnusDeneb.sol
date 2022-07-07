@@ -28,18 +28,21 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
 /**
- *  @title  CygnusDeneb
- *  @notice This is the Collateral Deployer for Cygnus which starts the collateral arm of the lending pool
+ *  @title CygnusDeneb The Collateral Deployer which starts the collateral arm of the lending pool. It deploys
+ *                     the collateral contract with the corresponding Cygnus borrow contract address. We pass
+ *                     structs to avoid having to set constructors in the core contracts, being able to calculate
+ *                     addresses of lending pools with CREATE2
+ *  @author CygnusDAO
+ *  @notice Collateral Deployer V1
  */
 contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-            6. NON-CONSTANT FUNCTIONS
+            2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Passing the struct parameters to the collateral contract avoids setting constructor
      *  @custom:struct CollateralParameters Important parameters for the collateral contracts
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
@@ -51,17 +54,23 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
         address cygnusAlbireo;
     }
 
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
     /**
      *  @inheritdoc ICygnusDeneb
      */
     CollateralParameters public override collateralParameters;
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+            6. NON-CONSTANT FUNCTIONS
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusDeneb
      */
-    function deployDeneb(address underlying, address borrowable)
+    function deployDeneb(address underlying, address borrowContract)
         external
         override
         nonReentrant
@@ -71,7 +80,7 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
         collateralParameters = CollateralParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusAlbireo: borrowable
+            cygnusAlbireo: borrowContract
         });
 
         // Create Collateral contract

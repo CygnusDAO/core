@@ -15,7 +15,7 @@ import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
  *  @author CygnusDAO
  *  @notice Initializes Collateral Arm. Passes name, symbol and decimals to CygnusTerminal for the CygLP Token
  */
-contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygnusLP", 18) {
+contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -83,17 +83,18 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Collateral arm of the pool and assigns important addresses
-     *  @custom:security non-reentrant
+     *  @notice Constructs the Collateral arm of the pool. It assigns the Factory, the underlying LP Token and the
+     *          borrow contract for this collateral. It also assigns the Oracle to be used for the collateral model
+     *          contract, which is taken from the most current one in the factory.
      */
-    constructor() nonReentrant {
+    constructor() {
         // Get important addresses from collateral deployer
         (hangar18, underlying, cygnusDai) = ICygnusDeneb(_msgSender()).collateralParameters();
 
         // Assign price oracle from factory
         cygnusNebulaOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();
 
-        // Go long and prosper =)
+        // Assurance
         totalSupply = 0;
     }
 

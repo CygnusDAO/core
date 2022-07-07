@@ -61,6 +61,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             if (newReserves == 0) {
                 return _exchangeRate;
             }
+
             // Mint new reserves and update the exchange rate
             address vegaTokenManager = ICygnusFactory(hangar18).vegaTokenManager();
 

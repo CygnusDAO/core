@@ -59,19 +59,19 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         // Collateral Deposited * LP Token price
         uint256 collateralInDai = amountCollateral.mul(lpTokenPrice);
 
-        // Adjust with this shuttle's debt ratio
-        uint256 adjustedCollateral = collateralInDai.mul(debtRatio);
+        // Adjust to max debt ratio for this shuttle
+        uint256 adjustedCollateralInDai = collateralInDai.mul(debtRatio);
 
-        // COLLATERAL NEEDED
+        // Collateral needed for the borrowed amount
         uint256 collateralNeededInDai = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // If account has collateral available to borrow against, return liquidity and 0 shortfall
-        if (adjustedCollateral >= collateralNeededInDai) {
-            return (adjustedCollateral - collateralNeededInDai, 0);
+        if (adjustedCollateralInDai >= collateralNeededInDai) {
+            return (adjustedCollateralInDai - collateralNeededInDai, 0);
         }
         // else, return 0 liquidity and the account's shortfall
         else {
-            return (0, collateralNeededInDai - adjustedCollateral);
+            return (0, collateralNeededInDai - adjustedCollateralInDai);
         }
     }
 
