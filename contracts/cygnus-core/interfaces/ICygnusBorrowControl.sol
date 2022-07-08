@@ -15,12 +15,12 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /**
      *  @custom:error ParameterNotInRange Emitted when trying to update a borrow parameter outside of range allowed
      */
-    error CygnusBorrowControl__ParameterNotInRange(uint256);
+    error CygnusBorrowControl__ParameterNotInRange(uint256 minRange, uint256 maxRange, uint256 value);
 
     /**
      *  @custom:error BorrowTrackerAlreadySet Emitted when updating the borrow tracker is the zero address
      */
-    error CygnusBorrowControl__BorrowTrackerAlreadySet(address);
+    error CygnusBorrowControl__BorrowTrackerAlreadySet(address currentTracker, address newTracker);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

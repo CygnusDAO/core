@@ -13,24 +13,24 @@ interface ICygnusCollateral is ICygnusCollateralModel {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error ValueExceedsBalance Emitted when the value of unlock is above user's total balance.
-     */
-    error CygnusCollateral__ValueExceedsBalance(uint256 totalBalance);
-
-    /**
      *  @custom:error InsufficientLiquidity Emitted when the user doesn't have enough liquidity for a transfer.
      */
-    error CygnusCollateral__InsufficientLiquidity(uint256);
+    error CygnusCollateral__InsufficientLiquidity(address from, address to, uint256 value);
+
+    /**
+     *  @custom:error ValueExceedsBalance Emitted when the value of unlock is above user's total balance
+     */
+    error CygnusCollateral__ValueExceedsBalance(uint256 redeemValue, uint256 redeemBalance);
 
     /**
      *  @custom:error NotBorrowable Emitted for liquidation when msg.sender is not borrowable.
      */
-    error CygnusCollateral__NotBorrowable(address);
+    error CygnusCollateral__MsgSenderNotBorrowable(address sender, address borrowable);
 
     /**
      *  @custom:error NotLiquidatable Emitted when there is no shortfall
      */
-    error CygnusCollateral__NotLiquidatable(uint256 shortfall);
+    error CygnusCollateral__NotLiquidatable(uint256 userLiquidity, uint256 userShortfall);
 
     /**
      *  @custom:error LiquiditingSelf Emitted when liquidator is borrower

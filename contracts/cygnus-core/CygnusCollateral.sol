@@ -44,9 +44,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /**
      *  @notice Checks whether user has enough liquidity and calls safe internal transfer at CygnusTerminal
      *  @notice Overrides Erc20
-     *  @param from Address of collateral
-     *  @param to Address of borrower
-     *  @param value Value amount to transfer
      */
     function transferInternal(
         address from,
@@ -55,7 +52,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     ) internal override(Erc20) {
         /// @custom:error CygnusCollateral__InsufficientLiquidity Avoid transfer if there's shortfall
         if (!tokensUnlocked(from, value)) {
-            revert CygnusCollateral__InsufficientLiquidity(value);
+            revert CygnusCollateral__InsufficientLiquidity({ from: from, to: to, value: value });
         }
 
         // Safe internal transfer
@@ -106,17 +103,16 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         if (_msgSender() == borrower) {
             revert CygnusCollateral__LiquidatingSelf(borrower);
         }
-        // @custom:error NotBorrowable Avoid calling this unless it is from borrowable contracts
+        // @custom:error NotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         else if (_msgSender() != cygnusDai) {
-            revert CygnusCollateral__NotBorrowable(_msgSender());
+            revert CygnusCollateral__MsgSenderNotBorrowable({ sender: _msgSender(), borrowable: cygnusDai });
         }
 
-        // prettier-ignore
-        (/* Liquidity */, uint256 shortfall) = getAccountLiquidity(borrower);
+        (uint256 liquidity, uint256 shortfall) = getAccountLiquidity(borrower);
 
-        // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state.
+        // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state
         if (shortfall <= 0) {
-            revert CygnusCollateral__NotLiquidatable(shortfall);
+            revert CygnusCollateral__NotLiquidatable({ userLiquidity: liquidity, userShortfall: 0 });
         }
 
         uint256 denebPrice;
@@ -173,7 +169,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     ) external override nonReentrant update {
         /// @custom:error ValueExceedsBalance Avoid redeeming more than there is in the pool.
         if (redeemAmount > totalBalance) {
-            revert CygnusCollateral__ValueExceedsBalance(totalBalance);
+            revert CygnusCollateral__ValueExceedsBalance({ redeemValue: redeemAmount, redeemBalance: totalBalance });
         }
 
         // Optimistically transfer funds

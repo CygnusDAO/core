@@ -12,14 +12,14 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
     /**
-     *  @custom:error PriceTokenBInvalid Emitted when price of Token B <= 100
+     *  @custom:error PriceTokenBInvalid Emitted when the borrower is the zero address
      */
-    error CygnusCollateralModel__BorrowerCantBeAddressZero(address);
+    error CygnusCollateralModel__BorrowerCantBeAddressZero(address sender, address origin);
 
     /**
      *  @custom:error BorrowableInvalid Emitted when borrowable is not one of the pool's allowed borrow tokens.
      */
-    error CygnusCollateralModel__BorrowableInvalid(address cygnusBorrow);
+    error CygnusCollateralModel__BorrowableInvalid(address invalidBorrowable, address validBorrowable);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

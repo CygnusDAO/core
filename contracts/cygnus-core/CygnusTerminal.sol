@@ -197,9 +197,11 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @notice Internal check for admins only, checks factory for admin
      */
     function isCygnusAdmin() internal view {
+        address admin = ICygnusFactory(hangar18).admin();
+
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
-        if (_msgSender() != ICygnusFactory(hangar18).admin()) {
-            revert CygnusTerminal__MsgSenderNotAdmin(_msgSender());
+        if (_msgSender() != admin) {
+            revert CygnusTerminal__MsgSenderNotAdmin({ caller: _msgSender(), factoryAdmin: admin });
         }
     }
 
@@ -287,11 +289,11 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
         /// @custom:error CantBurnZero Avoid redeem unless is positive amount
         if (redeemAmount <= 0) {
-            revert CygnusTerminal__CantBurnZero(redeemAmount);
+            revert CygnusTerminal__CantRedeemZero(redeemAmount);
         }
-        /// @custom:error BurnAmountInvalid Avoid redeem more than pool balance
+        /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
         else if (redeemAmount > totalBalance) {
-            revert CygnusTerminal__BurnAmountInvalid(totalBalance);
+            revert CygnusTerminal__RedeemAmountInvalid({ invalidAmount: redeemAmount, contractBalance: totalBalance });
         }
 
         // Burn initial amount and emit Transfer event

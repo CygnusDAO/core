@@ -94,7 +94,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public constant override KINK_MULTIPLIER_MAX = 10;
+    uint256 public constant override KINK_MULTIPLIER_MAX = 20;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. CONSTRUCTOR
@@ -136,7 +136,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     ) internal pure {
         /// @custom:error Avoid outside range
         if (parameter < min || parameter > max) {
-            revert CygnusBorrowControl__ParameterNotInRange(parameter);
+            revert CygnusBorrowControl__ParameterNotInRange({ minRange: min, maxRange: max, value: parameter });
         }
     }
 
@@ -161,7 +161,10 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     function setCygnusBorrowTracker(address newBorrowTracker) external override cygnusAdmin nonReentrant {
         /// @custom:error BorrowTrackerAlreadySet Avoid Duplicate
         if (newBorrowTracker == cygnusBorrowTracker) {
-            revert CygnusBorrowControl__BorrowTrackerAlreadySet(newBorrowTracker);
+            revert CygnusBorrowControl__BorrowTrackerAlreadySet({
+                currentTracker: cygnusBorrowTracker,
+                newTracker: newBorrowTracker
+            });
         }
 
         // Old borrow tracker
@@ -170,7 +173,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         // Checks admin before, assign borrow tracker
         cygnusBorrowTracker = newBorrowTracker;
 
-        /// @custom:event NewBorrowTracker
+        /// @custom:event NewCygnusBorrowTracker
         emit NewCygnusBorrowTracker(oldBorrowTracker, newBorrowTracker);
     }
 
@@ -218,12 +221,16 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @custom:security non-reentrant
      */
     function setKinkMultiplier(uint256 newKinkMultiplier) external override cygnusAdmin nonReentrant {
+        // Check if parameter is within range allowed
         validRange(0, KINK_MULTIPLIER_MAX, newKinkMultiplier);
 
+        // Old kink multiplier
         uint256 oldKinkMultiplier = kinkMultiplier;
 
+        // Update kink multiplier
         kinkMultiplier = newKinkMultiplier;
 
+        /// @custom:event NewKinkMultiplier
         emit NewKinkMultiplier(oldKinkMultiplier, newKinkMultiplier);
     }
 }

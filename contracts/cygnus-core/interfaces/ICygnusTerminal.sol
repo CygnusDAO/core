@@ -14,11 +14,6 @@ interface ICygnusTerminal is IErc20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error FactoryAlreadyInitialized Emitted when attempting to set already initialized factory
-     */
-    error CygnusTerminal__FactoryAlreadyInitialized(address);
-
-    /**
      *  @custom:error CantMintZero Emitted when attempting to mint zero amount of tokens
      */
     error CygnusTerminal__CantMintZero(uint256);
@@ -26,17 +21,17 @@ interface ICygnusTerminal is IErc20Permit {
     /**
      *  @custom:error CantBurnZero Emitted when attempting to redeem zero amount of tokens
      */
-    error CygnusTerminal__CantBurnZero(uint256);
+    error CygnusTerminal__CantRedeemZero(uint256);
 
     /**
      *  @custom:error BurnAmountInvalid Emitted when attempting to redeem over amount of tokens
      */
-    error CygnusTerminal__BurnAmountInvalid(uint256);
+    error CygnusTerminal__RedeemAmountInvalid(uint256 invalidAmount, uint256 contractBalance);
 
     /**
      *  @custom:error MsgSenderNotAdmin Emitted when attempting to call Admin-only functions
      */
-    error CygnusTerminal__MsgSenderNotAdmin(address);
+    error CygnusTerminal__MsgSenderNotAdmin(address caller, address factoryAdmin);
 
     /**
      *  @custom:error MsgSenderNotFactory Emitted when attempting to call Factory-only functions
@@ -96,8 +91,8 @@ interface ICygnusTerminal is IErc20Permit {
     function hangar18() external returns (address);
 
     /**
+     *  @notice Trick compiler for nonpayable function
      *  @return exchangeRate The ratio at which 1 pool token can be redeemed for underlying amount
-     *  @notice Trick compiler nonpayable function
      */
     function exchangeRate() external returns (uint256);
 
@@ -105,6 +100,7 @@ interface ICygnusTerminal is IErc20Permit {
      *  @return Whether or not CollateralVoid contract is activated and collateral is linked to DEX rewarder
      */
     function voidActivated() external returns (bool);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

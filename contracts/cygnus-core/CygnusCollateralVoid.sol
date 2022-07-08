@@ -22,9 +22,9 @@ import { IRewarder, IMiniChef } from "./interfaces/IMiniChef.sol";
 /**
  *  @title  CygnusCollateralVoid Assigns the masterchef/rewards contract (if any) to harvest and reinvest rewards
  *  @notice This contract is considered optional and default state is offline (bool `voidActivated`)
- *          It is the only contract in Cygnus that should be changed according to the LP Token the collateral
- *          consists of. Most functions are kept as private as they are only relevant to this contract and the
- *          rest of the contracts are indifferent to this
+ *          It is the only contract in Cygnus that should be changed according to the LP Token's masterchef/rewarder
+ *          Most functions are kept as private as they are only relevant to this contract and the rest of the contracts
+ *          are indifferent to this.
  */
 contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -57,10 +57,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /*  ────────────────────────────────────────────── Private ───────────────────────────────────────────────  */
 
-    //  Keep private as these are picked up by LP Token and Cygnus factory in construct
-
     /**
-     *  @notice Address of the chain's native token (WETH/nativeToken/WMATIC/etc.)
+     *  @notice Address of the chain's native token
      */
     address private immutable nativeToken;
 
@@ -155,8 +153,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Reverts if it is not considered a EOA
      */
     function checkEOA() private view {
+        /// @custom:error OnlyAccountsAllowed Avoid if not EOA
         if ((_msgSender()).isContract()) {
-            revert CygnusCollateralChef__OnlyAccountsAllowed(_msgSender());
+            revert CygnusCollateralChef__OnlyAccountsAllowed({ sender: _msgSender(), origin: tx.origin });
         }
     }
 
@@ -266,6 +265,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             // Transfer the reward for reinvesting
             IErc20(rewardsToken).safeTransfer(reinvestor, eoaReward);
 
+            /// @custom:event Transfer
             emit Transfer(address(this), reinvestor, eoaReward);
         }
 
@@ -301,10 +301,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         assert(totalAmountA > 0);
 
         // prettier-ignore
-        (uint256 reserves1, uint256 reserves2, /* BlockTimestamp */) = IDexPair(underlying).getReserves();
+        (uint256 reserves0, uint256 reserves1, /* BlockTimestamp */) = IDexPair(underlying).getReserves();
 
         // Assign reservesA
-        uint256 reservesA = tokenA == token0 ? reserves1 : reserves2;
+        uint256 reservesA = tokenA == token0 ? reserves0 : reserves1;
 
         // Get optimal swap amount for token A
         uint256 swapAmount = VoidHelper.optimalDepositA(totalAmountA, reservesA, swapFeeFactor);
@@ -323,7 +323,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // 5. Stake the LP Tokens
         rewarder.deposit(pid, liquidity);
 
-        /// @custom:event ReinvestRewards
+        /// @custom:event RechargeVoid
         emit RechargeVoid(address(this), _msgSender(), currentRewards, liquidity);
     }
 
@@ -365,7 +365,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     ) external override nonReentrant cygnusAdmin {
         /// @custom:error InvalidRewardsToken Avoid setting cygnus void twice
         if (rewardsToken != address(0)) {
-            revert CygnusCollateralChef__VoidAlreadyInitialized(rewardsTokenVoid);
+            revert CygnusCollateralChef__VoidAlreadyInitialized({ tokenReward: rewardsTokenVoid });
         }
 
         // Store Router

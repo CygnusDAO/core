@@ -229,6 +229,48 @@ contract ChainlinkNebulaOracle is IChainlinkNebulaOracle, Context, ReentrancyGua
         lpTokenPrice = lpTokenPriceUSD.div(adjustedDaiPrice);
     }
 
+    /**
+     *  @inheritdoc IChainlinkNebulaOracle
+     */
+    function assetPricesDai(address lpTokenPair)
+        external
+        view
+        override
+        returns (uint256 tokenPriceA, uint256 tokenPriceB)
+    {
+        // Load to memory
+        ChainlinkNebula memory cygnusNebula = getNebula[lpTokenPair];
+
+        /// custom:error PairNotInitialized Avoid getting price unless lpTokenPair's price is being tracked
+        if (!cygnusNebula.initialized) {
+            revert ChainlinkNebulaOracle__PairNotInitialized(lpTokenPair);
+        }
+
+        // Chainlink price feed for this lpTokens token0
+        (, int256 priceA, , , ) = cygnusNebula.priceFeedA.latestRoundData();
+
+        // Chainlink price feed for this lpTokens token1
+        (, int256 priceB, , , ) = cygnusNebula.priceFeedB.latestRoundData();
+
+        // Chainlink price feed for denomination token, in cygnus' case DAI
+        (, int256 latestDaiPrice, , , ) = dai.latestRoundData();
+
+        // Adjust price Token A to 18 decimals
+        uint256 adjustedPriceA = uint256(priceA) * 10**(decimals - cygnusNebula.priceFeedA.decimals());
+
+        // Adjust price Token B to 18 decimals
+        uint256 adjustedPriceB = uint256(priceB) * 10**(decimals - cygnusNebula.priceFeedB.decimals());
+
+        // Adjust dai price to 18 decimals
+        uint256 adjustedDaiPrice = uint256(latestDaiPrice) * 10**(decimals - dai.decimals());
+
+        // Return token0's price in DAI
+        tokenPriceA = adjustedPriceA.div(adjustedDaiPrice);
+
+        // Return token1's price in DAI
+        tokenPriceB = adjustedPriceB.div(adjustedDaiPrice);
+    }
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

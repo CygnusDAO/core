@@ -115,7 +115,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     ) internal pure {
         /// @custom:error ParameterNotInRange Avoid outside range
         if (parameter < min || parameter > max) {
-            revert CygnusCollateralControl__ParameterNotInRange(parameter);
+            revert CygnusCollateralControl__ParameterNotInRange({ minRange: min, maxRange: max, value: parameter });
         }
     }
 
@@ -135,8 +135,11 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         IChainlinkNebulaOracle newPriceOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();
 
         /// @custom:error CygnusNebulaDuplicate Avoid new oracle being the same as the old oracle
-        if (address(newPriceOracle) == address(cygnusNebulaOracle)) {
-            revert CygnusCollateralControl__CygnusNebulaDuplicate(address(newPriceOracle));
+        if (address(cygnusNebulaOracle) == address(newPriceOracle)) {
+            revert CygnusCollateralControl__CygnusOracleAlreadySet({
+                currentOracle: address(cygnusNebulaOracle),
+                newOracle: address(newPriceOracle)
+            });
         }
 
         // Assign oracle for event

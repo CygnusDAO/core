@@ -178,6 +178,15 @@ interface IChainlinkNebulaOracle {
      */
     function lpTokenPriceDai(address lpTokenPair) external view returns (uint256 lpTokenPrice);
 
+    /**
+     *  @notice Gets the latest price of the LP Token's token0 and token1 denominated in DAI
+     *  @notice Used by Cygnus Altair contract to calculate optimal amount of leverage
+     *  @param lpTokenPair The address of the LP Token
+     *  @return tokenPriceA The price of the LP Token's token0 denominated in DAI
+     *  @return tokenPriceB The price of the LP Token's token1 denominated in DAI
+     */
+    function assetPricesDai(address lpTokenPair) external view returns (uint256 tokenPriceA, uint256 tokenPriceB);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

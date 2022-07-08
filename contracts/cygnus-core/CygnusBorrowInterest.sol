@@ -59,6 +59,7 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
      *  @notice Constructs the Interest Rate model
      */
     constructor() {
+        /// Update the interest rate model from the parameters passed and stored through CygnusBorrowControl
         updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, kink);
     }
 
@@ -69,8 +70,7 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This should only be accessible from the child contract BorrowTracker as it updates totalBalance
-     *  @dev In case the Admins modify it with `updateJumpRateModel` the totalbalances do not get updated
+     *  @dev This should only be accessible from the child contract CygnusBorrowTracker
      *  @param cash Total unused funds in this pool
      *  @param borrows Total amount of borrowed funds in this pool
      *  @param reserves Total amount the protocol keeps as reserves in this pool
@@ -102,8 +102,8 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Updates the parameters of the interest rate model and writes to storage.
-     *  @dev Does necessary checks internally. Reverts in case of failing checks.
+     *  @notice Updates the parameters of the interest rate model and writes to storage
+     *  @dev Does necessary checks internally. Reverts in case of failing checks
      *  @param baseRatePerYear_ The approximate target base APR, as a mantissa (scaled by 1e18).
      *  @param multiplierPerYear_ The rate of increase in interest rate wrt utilization (scaled by 1e18).
      *  @param kink_ The utilization point at which the jump multiplier is applied.
@@ -113,16 +113,16 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         uint256 multiplierPerYear_,
         uint256 kink_
     ) private {
-        // Internal parameter check for BaseRate to not exceed maximum allowed (10%).
+        // Internal parameter check for BaseRate to not exceed maximum allowed
         validRange(0, BASE_RATE_MAX, baseRatePerYear);
 
-        // Internal parameter check for the Kink point to not be below minimum or above maximum allowed.
+        // Internal parameter check for the Kink point to not be below minimum or above maximum allowed
         validRange(KINK_RATE_MIN, KINK_RATE_MAX, kink_);
 
         // Calculate using kinkMultiplier
         uint256 jumpMultiplierPerYear_ = multiplierPerYear_ * kinkMultiplier;
 
-        // Update jump multiplier
+        // Update jump multiplier to storage
         jumpMultiplierPerYear = jumpMultiplierPerYear_;
 
         // Calculate the Base Rate per second and update to storage

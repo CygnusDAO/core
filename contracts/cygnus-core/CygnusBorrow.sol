@@ -7,10 +7,10 @@ import { CygnusBorrowTracker } from "./CygnusBorrowTracker.sol";
 
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
-import { ICygnusCallee } from "./interfaces/ICygnusCallee.sol";
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
 import { IErc20 } from "./interfaces/IErc20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
+import { ICygnusCallee } from "./interfaces/ICygnusCallee.sol";
 
 // Libraries
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
@@ -86,7 +86,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
      *  @inheritdoc ICygnusBorrow
      */
     function exchangeRate() public override(ICygnusBorrow, ICygnusTerminal) accrue returns (uint256) {
-        // Save an SLOAD if non zero
+        // Save SLOAD if non zero
         uint256 _totalSupply = totalSupply;
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
@@ -108,7 +108,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This low level function should only be called from `Altair` contract only.
+     *  @dev This low level function should only be called from `Altair` contract only
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
@@ -120,9 +120,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     ) external override nonReentrant update accrue {
         uint256 totalBalanceStored = totalBalance;
 
-        /// @custom:error BorrowExceedsTotalBalance Avoid if there's not enough cash
+        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than shuttle's balance
         if (borrowAmount > totalBalanceStored) {
-            revert CygnusBorrow__BorrowExceedsTotalBalance(totalBalanceStored);
+            revert CygnusBorrow__BorrowExceedsTotalBalance({
+                invalidBorrowAmount: borrowAmount,
+                contractBalance: totalBalanceStored
+            });
         }
 
         // Internally update the account's borrow approvals (balance - borrow amount)
@@ -138,23 +141,28 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             ICygnusCallee(receiver).cygnusBorrow(_msgSender(), borrower, borrowAmount, data);
         }
 
-        // Get total balance of the underlying asset.
+        // Get total balance of the underlying asset
         uint256 balance = IErc20(underlying).balanceOf(address(this));
 
-        // Calculate the user's amount outstanding.
+        // Calculate the user's amount outstanding
         uint256 repayAmount = (balance + borrowAmount) - totalBalanceStored;
 
-        // Update borrows internally.
+        // Update borrows internally
         (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) = updateBorrowInternal(
             borrower,
             borrowAmount,
             repayAmount
         );
 
+        // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {
-            /// @custom:error InsufficientLiquidity Avoid if borrower shortfall
+            /// @custom:error InsufficientLiquidity Avoid if borrowing `borrowAmount` puts borrower in shortfall
             if (!ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows)) {
-                revert CygnusBorrow__InsufficientLiquidity();
+                revert CygnusBorrow__InsufficientLiquidity({
+                    cygnusCollateral: collateral,
+                    borrower: borrower,
+                    borrowerBalance: accountBorrows
+                });
             }
         }
 
@@ -190,8 +198,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         // Borrow balance
         uint256 borrowerBalance = getBorrowBalance(borrower);
 
+        // Get amount liquidator is repaying
         uint256 repayAmount = balance - totalBalance;
 
+        // Avoid repaying more than borrower's borrow balance
         uint256 actualRepayAmount = borrowerBalance < repayAmount ? borrowerBalance : repayAmount;
 
         // Amount to seize

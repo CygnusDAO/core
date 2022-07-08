@@ -18,17 +18,12 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     /**
      *  @custom:error ParameterNotInRange Emitted when updating a collateral parameter outside of the range allowed
      */
-    error CygnusCollateralControl__ParameterNotInRange(uint256 parameter);
+    error CygnusCollateralControl__ParameterNotInRange(uint256 minRange, uint256 maxRange, uint256 value);
 
     /**
-     *  @custom:error OracleCantBeZeroAddress Emitted when oracle address is invalid
+     *  @custom:error CygnusOracleAlreadySet Emitted when the new oracle address is the same as the current oracle
      */
-    error CygnusCollateralControl__OracleCantBeZeroAddress(IChainlinkNebulaOracle newPriceOracle);
-
-    /**
-     *  @custom:error CygnusNebulaDuplicate Emitted when the new oracle address is the same as the current oracle
-     */
-    error CygnusCollateralControl__CygnusNebulaDuplicate(address);
+    error CygnusCollateralControl__CygnusOracleAlreadySet(address currentOracle, address newOracle);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════  
             2. CUSTOM EVENTS

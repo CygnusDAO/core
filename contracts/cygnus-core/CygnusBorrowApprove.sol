@@ -7,7 +7,7 @@ import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
 /**
  *  @title  CygnusBorrowApprove
- *  @notice Contract for approving borrows and updating borrow allowances
+ *  @notice Contract for approving borrows for the borrow arm of the lending pool and updating borrow allowances
  */
 contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -68,19 +68,19 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
 
         /// custom:error Avoid self
         if (owner == spender) {
-            revert CygnusBorrowApprove__OwnerIsSpender(owner, spender);
+            revert CygnusBorrowApprove__OwnerIsSpender({ owner: owner, spender: spender });
         }
         /// @custom:error OwnerZeroAddress Avoid the owner being the zero address
         else if (owner == address(0)) {
-            revert CygnusBorrowApprove__OwnerZeroAddress(owner);
+            revert CygnusBorrowApprove__OwnerZeroAddress({ owner: owner, spender: spender });
         }
         /// @custom:error SpenderZeroAddress Avoid the spender being the zero address
         else if (spender == address(0)) {
-            revert CygnusBorrowApprove__SpenderZeroAddress(spender);
+            revert CygnusBorrowApprove__SpenderZeroAddress({ owner: owner, spender: spender });
         }
         /// custom:error BorrowNotAllowed Avoid borrowing more than allowwed
         else if (currentAllowance < amount) {
-            revert CygnusBorrowApprove__BorrowNotAllowed(currentAllowance);
+            revert CygnusBorrowApprove__BorrowNotAllowed({ borrowAllowance: currentAllowance, borrowAmount: amount });
         }
 
         // Updates the borrow allowance in the next function call
@@ -113,15 +113,18 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     ) external override {
         /// @custom:error OwnerZeroAddress Avoid owner being the zero address
         if (owner == address(0)) {
-            revert CygnusBorrowApprove__OwnerZeroAddress(owner);
+            revert CygnusBorrowApprove__OwnerZeroAddress({ owner: owner, spender: spender });
         }
         /// @custom:error SpenderZeroAddress Avoid spender being the zero address
         else if (spender == address(0)) {
-            revert CygnusBorrowApprove__SpenderZeroAddress(spender);
+            revert CygnusBorrowApprove__SpenderZeroAddress({ owner: owner, spender: spender });
         }
         /// @custom:error PermitExpired Avoid transacting past deadline
-        else if (deadline < block.timestamp) {
-            revert CygnusBorrowApprove__PermitExpired(deadline);
+        else if (deadline < getBlockTimestamp()) {
+            revert CygnusBorrowApprove__PermitExpired({
+                transactDeadline: deadline,
+                currentTimestamp: getBlockTimestamp()
+            });
         }
 
         // It's safe to use unchecked here because the nonce cannot realistically overflow, ever.
@@ -142,8 +145,8 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
             revert CygnusBorrowApprove__RecoveredOwnerZeroAddress(recoveredOwner);
         }
         /// @custom:error InvalidSignature Avoid invalid signature
-        if (recoveredOwner != owner) {
-            revert CygnusBorrowApprove__InvalidSignature(v, r, s);
+        else if (recoveredOwner != owner) {
+            revert CygnusBorrowApprove__InvalidSignature({ v: v, r: r, s: s });
         }
 
         // Finally approve internally

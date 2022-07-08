@@ -12,14 +12,14 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error Emitted when the borrow amount is higher than total balance
+     *  @custom:error BorrowExceedsTotalBalance Emitted when the borrow amount is higher than total balance
      */
-    error CygnusBorrow__BorrowExceedsTotalBalance(uint256);
+    error CygnusBorrow__BorrowExceedsTotalBalance(uint256 invalidBorrowAmount, uint256 contractBalance);
 
     /**
-     *  @custom:error Emitted if there is a shortfall in the account's balances.
+     *  @custom:error InsufficientLiquidity Emitted if there is borrowe has insufficient liquidity for this borrow
      */
-    error CygnusBorrow__InsufficientLiquidity();
+    error CygnusBorrow__InsufficientLiquidity(address cygnusCollateral, address borrower, uint256 borrowerBalance);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

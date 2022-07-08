@@ -21,12 +21,12 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
     /**
      *  @custom:error InvalidRewardsToken The rewards token can't be the zero address
      */
-    error CygnusCollateralChef__VoidAlreadyInitialized(address);
+    error CygnusCollateralChef__VoidAlreadyInitialized(address tokenReward);
 
     /**
      *  @custom:error OnlyAccountsAllowed Avoid contracts
      */
-    error CygnusCollateralChef__OnlyAccountsAllowed(address);
+    error CygnusCollateralChef__OnlyAccountsAllowed(address sender, address origin);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

@@ -32,35 +32,36 @@ interface ICygnusBorrowTracker is ICygnusBorrowInterest, ICygnusBorrowApprove {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @notice The current total DAI reserves stored for this lending pool.
+     *  @return totalReserves The current total DAI reserves stored for this lending pool
      */
     function totalReserves() external view returns (uint128);
 
     /**
-     *  @notice Total borrows in the lending pool.
+     *  @return totalBorrows Total borrows stored in the lending pool
      */
     function totalBorrows() external view returns (uint128);
 
     /**
-     *  @notice Initial borrow index of the market equivalent to 1e18.
+     *  @return borrowIndex Borrow index stored of this lending pool, starts at 1e18
      */
     function borrowIndex() external view returns (uint112);
 
     /**
-     *  @notice The current borrow rate stored for the lending pool.
+     *  @return borrowRate The current per-second borrow rate stored for this lending pool. To get the borrow APY
+     *          we must annualize this (i.e. borrowRate * SECONDS_PER_YEAR)
      */
     function borrowRate() external view returns (uint112);
 
     /**
-     *  @notice block.timestamp of the last accrual.
+     *  @return lastAccrualTimestamp The unix timestamp stored of the last interest rate accrual
      */
     function lastAccrualTimestamp() external view returns (uint32);
 
     /**
-     *  @notice This public view function is used to get the borrow balance of users based on stored data.
-     *  @dev It is used by CygnusCollateral and CygnusCollateralModel contracts.
-     *  @param borrower The address whose balance should be calculated.
-     *  @return balance The account's stored borrow balance or 0 if borrower's interest index is zero.
+     *  @notice This public view function is used to get the borrow balance of users based on stored data
+     *  @dev It is used by CygnusCollateral and CygnusCollateralModel contracts
+     *  @param borrower The address whose balance should be calculated
+     *  @return balance The account's outstanding borrow balance or 0 if borrower's interest index is zero
      */
     function getBorrowBalance(address borrower) external view returns (uint256 balance);
 
@@ -71,7 +72,13 @@ interface ICygnusBorrowTracker is ICygnusBorrowInterest, ICygnusBorrowApprove {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Accrues interest rate and updates borrow rate and total cash.
+     *  @notice Applies interest accruals to borrows and reserves (uses 2 memory slots with blockTimeStamp)
      */
     function accrueInterest() external;
+
+    /**
+     *  @notice Tracks borrows of each user for farming rewards and passes the borrow data to the farming pool
+     *  @param borrower Address of borrower
+     */
+    function trackBorrow(address borrower) external;
 }

@@ -18,7 +18,7 @@ library CygnusPoolAddress {
      *  @notice Used by Router and CygnusFactory to deploy shuttles
      */
     bytes32 internal constant COLLATERAL_INIT_CODE_HASH =
-        0xd5eb25ec6412e75f06df44e7186617b646269b2e641d353f439a3cc5590d3f07;
+        0x6a0e359c4e645cf451f401ce4c2b66f67565877ae474483f64426d4c62840a0b;
 
     /**
      *  IMPORTANT: UPDATE WITH LATEST CODE HASH
@@ -27,7 +27,7 @@ library CygnusPoolAddress {
      *  @notice Used by Router and CygnusFactory to deploy shuttles
      */
     bytes32 internal constant BORROW_INIT_CODE_HASH =
-        0xc4418794c3ef45c3c81f4db23dc097ff3270f9327543e91212c9eca590479f5d;
+        0x83dfb73801a9e9bfef34c1b7264e7edee2f7eb8c8aea8cf5c2bdf40624444164;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CONSTANT FUNCTIONS

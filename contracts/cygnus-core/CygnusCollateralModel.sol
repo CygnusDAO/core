@@ -65,13 +65,16 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         // Collateral needed for the borrowed amount
         uint256 collateralNeededInDai = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
-        // If account has collateral available to borrow against, return liquidity and 0 shortfall
-        if (adjustedCollateralInDai >= collateralNeededInDai) {
-            return (adjustedCollateralInDai - collateralNeededInDai, 0);
-        }
-        // else, return 0 liquidity and the account's shortfall
-        else {
-            return (0, collateralNeededInDai - adjustedCollateralInDai);
+        // Never underflows
+        unchecked {
+            // If account has collateral available to borrow against, return liquidity and 0 shortfall
+            if (adjustedCollateralInDai >= collateralNeededInDai) {
+                return (adjustedCollateralInDai - collateralNeededInDai, 0);
+            }
+            // else, return 0 liquidity and the account's shortfall
+            else {
+                return (0, collateralNeededInDai - adjustedCollateralInDai);
+            }
         }
     }
 
@@ -88,7 +91,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
-            revert CygnusCollateralModel__BorrowerCantBeAddressZero(borrower);
+            revert CygnusCollateralModel__BorrowerCantBeAddressZero({ sender: borrower, origin: tx.origin });
         }
 
         // User's Token A borrow balance
@@ -160,7 +163,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
 
         /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
         if (borrowableToken != cygnusDai) {
-            revert CygnusCollateralModel__BorrowableInvalid(borrowableToken);
+            revert CygnusCollateralModel__BorrowableInvalid({
+                invalidBorrowable: borrowableToken,
+                validBorrowable: cygnusDai
+            });
         }
 
         // Amount of borrowable token A
