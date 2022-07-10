@@ -26,7 +26,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
     /**
      *  @custom:error OnlyAccountsAllowed Avoid contracts
      */
-    error CygnusCollateralChef__OnlyAccountsAllowed(address sender, address origin);
+    error CygnusCollateralChef__OnlyEOAAllowed(address sender, address origin);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

@@ -86,31 +86,6 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    ICygnusDeneb public immutable override collateralDeployer;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
-    ICygnusAlbireo public immutable override borrowDeployer;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
-    address public immutable override dai;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
-    address public immutable override nativeToken;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
-    IChainlinkNebulaOracle public override cygnusNebulaOracle; // Price oracle
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
     address public override admin;
 
     /**
@@ -127,6 +102,31 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @inheritdoc ICygnusFactory
      */
     address public override pendingVegaTokenManager;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    address public immutable override dai;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    address public immutable override nativeToken;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    ICygnusDeneb public immutable override collateralDeployer;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    ICygnusAlbireo public immutable override borrowDeployer;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    IChainlinkNebulaOracle public override cygnusNebulaOracle; // Price oracle
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR

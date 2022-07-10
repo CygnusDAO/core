@@ -6,7 +6,6 @@ import { ICygnusCollateralVoid } from "./interfaces/ICygnusCollateralVoid.sol";
 import { CygnusCollateralControl } from "./CygnusCollateralControl.sol";
 
 // Libraries
-import { Address } from "./libraries/Address.sol";
 import { VoidHelper } from "./libraries/VoidHelper.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
@@ -45,11 +44,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @custom:library VoidHelper Helper functions for interacting with dexes and handling rewards
      */
     using VoidHelper for address;
-
-    /**
-     *  @custom:library Address Verify if msgSender is contract or EOA
-     */
-    using Address for address;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
@@ -153,9 +147,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Reverts if it is not considered a EOA
      */
     function checkEOA() private view {
-        /// @custom:error OnlyAccountsAllowed Avoid if not EOA
-        if ((_msgSender()).isContract()) {
-            revert CygnusCollateralChef__OnlyAccountsAllowed({ sender: _msgSender(), origin: tx.origin });
+        /// @custom:error OnlyAccountsAllowed Avoid if not called by EOA
+        // solhint-disable-next-line
+        if (_msgSender() != tx.origin) {
+            // solhint-disable-next-line
+            revert CygnusCollateralChef__OnlyEOAAllowed({ sender: _msgSender(), origin: tx.origin });
         }
     }
 
@@ -295,6 +291,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         }
 
         // 4. Convert tokenA to LP Token underlyings
+        // Get the balance of tokenA held by this contract
         uint256 totalAmountA = VoidHelper.contractBalanceOf(tokenA);
 
         // Contract should always have balance
@@ -403,6 +400,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusCollateralVoid
      */
     function reinvestRewards() external override onlyEOA {
+        // Reinvest rewards and send bounty to msg sender
         reinvest(_msgSender());
     }
 }

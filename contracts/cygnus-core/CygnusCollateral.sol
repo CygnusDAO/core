@@ -167,7 +167,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         uint256 redeemAmount,
         bytes calldata data
     ) external override nonReentrant update {
-        /// @custom:error ValueExceedsBalance Avoid redeeming more than there is in the pool.
+        /// @custom:error ValueExceedsBalance Avoid redeeming more than there is in the pool
         if (redeemAmount > totalBalance) {
             revert CygnusCollateral__ValueExceedsBalance({ redeemValue: redeemAmount, redeemBalance: totalBalance });
         }
@@ -191,7 +191,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             revert CygnusCollateral__InsufficientRedeemAmount(denebTokens);
         }
 
-        // burn tokens and emit a `Burn` event.
+        // Burn tokens and emit a Transfer event
         burnInternal(address(this), denebTokens);
 
         /// @custom:event RedeemCollateral
