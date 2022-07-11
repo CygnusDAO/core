@@ -141,7 +141,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
         const reserves = await LPTokenUsdcAvax.getReserves();
 
         // Update manually or throws errors, usdc
-        const totalSupply = 0.708906;
+        const totalSupply = 0.696213;
 
         // usdc adjust
         const usdcReserves = Number((BigInt(reserves._reserve0) * BigInt(10 ** (18 - 6))) / BigInt(1e18));
@@ -163,11 +163,11 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
      * UPDATE TO CURRENT PRICE to do fair price and normal price calculations against the on-chain price the oracle returns
      *
      */
-    const joePrice = 0.223017;
+    const joePrice = 0.256483;
 
-    const avaxPrice = 17.25;
+    const avaxPrice = 19.71;
 
-    const ethPrice = 1104.62;
+    const ethPrice = 1231.36;
 
     const usdcPrice = 1;
 
@@ -182,7 +182,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
 
         cygnusOracle = await CygnusOracle.deploy(daiAggregator);
 
-        console.log('Nebula Oracle:', cygnusOracle.address);
+        //console.log('Nebula Oracle:', cygnusOracle.address);
     });
 
     describe('Default oracle state', function () {

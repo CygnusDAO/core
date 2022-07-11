@@ -1,3 +1,6 @@
+// THIS SHOULD BE TESTED WTIH MOCK CONTRACT TO ASSIGN 2000 TEST TOKENS ON THE TERMINAL CONSTRUCTOR
+// If testing the whole repo remove this contract from the test folder
+
 // Node
 // Hardhat
 const chai = require('chai');

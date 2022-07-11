@@ -24,7 +24,7 @@ chai.use(solidity);
  *  - Default oracle and oracle updates
  *
  */
-describe('CygnusCollateralControl', function () {
+describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
     /*  ─────────────────────────────────────────── constants ──────────────────────────────────────────────  */
 
     // Max digit in a uint256
@@ -127,7 +127,7 @@ describe('CygnusCollateralControl', function () {
             nebula.address,
         );
 
-        console.log(factory.address);
+        //console.log(factory.address);
 
         // Deploy joe/avax shuttle
         const Shuttle = await factory.deployShuttle(
@@ -140,13 +140,13 @@ describe('CygnusCollateralControl', function () {
         // Get the shuttle obj
         shuttle = await factory.getShuttles(joeAvaxLPAddress);
 
-        console.log(shuttle);
+        //console.log(shuttle);
 
         const MockC = await ethers.getContractFactory('MockCygnusCollateral');
 
         collateral = await MockC.deploy(factory.address, joeAvaxLPAddress, shuttle.cygnusAlbireo);
 
-        console.log(collateral.address);
+        //console.log(collateral.address);
     });
 
     /* ════════════════════════════ DEFAULT STATE ════════════════════════════ */

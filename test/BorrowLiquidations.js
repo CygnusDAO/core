@@ -16,7 +16,7 @@ const { CygnusBorrowErrors } = require('./errors/CygnusBorrowErrors.js');
 chai.use(solidity);
 
 /*
- *  Simple tests for user taking out a dai loan. 
+ *  Simple tests for user taking out a dai loan.
  *  Runs all tests on forked mainnet and uses the router to simulate interactions with protocol under normal
  *  circmustances.
  *
@@ -37,7 +37,7 @@ chai.use(solidity);
  *    - User debt ratio lowers as contract reinvests rewards into more LP Tokens
  *
  */
-describe('Cygnus Borrower: CygnusCollateral.sol', function () {
+describe('CYGNUS BORROW: LIQUIDATIONS AND AUTO-COMPOUNDING MASTERCHEF REWARDS', function () {
     /* ──────────────────────────────────────────── Constants ─────────────────────────────────────────────  */
 
     const max = ethers.constants.MaxUint256;
@@ -76,7 +76,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
     /* ───────────────────────────────────────── Cygnus Contracts ─────────────────────────────────────────  */
 
     // Cygnus Contracts
-    let collateral, borrowable, nebula, factory, router, mockB, mockC;
+    let collateral, borrowable, nebula, factory, router;
 
     /* ────────────────────────────────────────────── Users ───────────────────────────────────────────────  */
 
@@ -108,7 +108,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         // Deploy with Chainlink's dai Aggregator
         nebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
 
-        console.log('Nebula Oracle:', nebula.address);
+        //console.log('Nebula Oracle:', nebula.address);
 
         // Initialize oracle, else the deployment for this lending pool fails
         await nebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
@@ -119,7 +119,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
         const deneb = await Deneb.deploy();
 
-        console.log('CollateralDeployer:', deneb.address);
+        //console.log('CollateralDeployer:', deneb.address);
 
         // ═══════════════════ 3. BORROW DEPLOYER ═════════════════════════════════════════════════
 
@@ -127,7 +127,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
         const albireo = await Albireo.deploy();
 
-        console.log('BorrowDeployer', albireo.address);
+        //console.log('BorrowDeployer', albireo.address);
 
         // ═══════════════════ 4. FACTORY ═════════════════════════════════════════════════════════
 
@@ -144,23 +144,15 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             nebula.address,
         );
 
-        console.log('Cygnus Factory:', factory.address);
-        console.log('Cygnus Reserves:', await factory.vegaTokenManager());
+        //console.log('Cygnus Factory:', factory.address);
+        //console.log('Cygnus Reserves:', await factory.vegaTokenManager());
 
         // ═══════════════════ 5. ROUTER ══════════════════════════════════════════════════════════
 
         // Router
         const Router = await ethers.getContractFactory('CygnusAltair');
 
-        router = await Router.deploy(
-            factory.address,
-            deneb.address,
-            albireo.address,
-            // WAVAX
-            '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-        );
-
-        console.log('Router:', router.address);
+        router = await Router.deploy(factory.address);
 
         // ═══════════════════ 6. SHUTTLE ══════════════════════════════════════════════════════════
 
@@ -177,7 +169,6 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         shuttle = await factory.getShuttles(joeAvaxLPAddress);
 
         // ═══════════════════ ACCOUNTS ════════════════════════════════════════════════════════════
-
 
         // BORROWER AND LENDER 1
 
@@ -395,7 +386,12 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             // This users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
-            const maxLiquidity = collateralInDai.liquidity;
+            const maxLiquidity = BigInt(collateralInDai.liquidity) - BigInt(0.01e18);
+
+            const lpTokenPrice = await collateral.getLPTokenPrice();
+
+            console.log('LP Token Price: %s', lpTokenPrice);
+            console.log('Max Liquidity of borrower: %s', maxLiquidity);
 
             // Borrow
             await expect(
@@ -420,7 +416,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         it('Borrower cant borrow more', async () => {
             // Borrow Min
             await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(0.01e18), borrower._address, max, '0x'),
+                router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x'),
             ).to.be.reverted;
         });
 
@@ -430,7 +426,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
             const maxLiquidity = collateralInDai.liquidity;
 
-            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.0001e18));
+            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.1e18));
         });
     });
 

@@ -7,6 +7,7 @@ const { expect } = chai;
 // Node
 const fs = require('fs');
 const path = require('path');
+const { time } = require('@openzeppelin/test-helpers');
 
 // Custom errors
 const { CygnusTerminalErrors } = require('./errors/CygnusTerminalErrors.js');
@@ -26,14 +27,14 @@ chai.use(solidity);
  *
  *  Checks for:
  *    . Deployment of Collateral/Borrow shuttle from factory
- *    . Borrower deposits LP Token for CygLP in the collateral contract
- *    . Lender deposits DAI for CygDAI in the borrow contract
+ *    . Borrower LP Token deposits
+ *    . Lender DAI Token deposits
  *    . Borrower maxes out DAI loan against collateral
  *    . Admin increases protocol settings (max debt ratio)
- *    . Borrower maxes out DAI loan again
- *
+ *    . Borrow repays borrows
+ *    . Reinvesting rewards
  */
-describe('Cygnus Borrower: CygnusCollateral.sol', function () {
+describe('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & BORROW DAI/REPAY DAI', function () {
     /* ──────────────────────────────────────────── Constants ─────────────────────────────────────────────  */
 
     const max = ethers.constants.MaxUint256;
@@ -143,13 +144,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         // Router
         const Router = await ethers.getContractFactory('CygnusAltair');
 
-        router = await Router.deploy(
-            factory.address,
-            deneb.address,
-            albireo.address,
-            // WAVAX
-            '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-        );
+        router = await Router.deploy(factory.address);
 
         console.log('Router:', router.address);
 
@@ -212,8 +207,10 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
         // Balance of Borrower's LP before interactions with Cygnus
         borrowerInitialLPBalance = await joeAvaxLP.balanceOf(borrower._address);
+
         // Balance of Borrower's DAI before interactions with Cygnus
         borrowerInitialDaiBalance = await dai.balanceOf(borrower._address);
+
         // Balance of Lender's dai before interactions with Cygnus
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);
 
@@ -225,7 +222,6 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
         // ═══════════════════ INITIALIZE VOID ═════════════════════════════════════════════════════
 
-        // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
         await collateral
             .connect(owner)
             .initializeVoid(
@@ -271,7 +267,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             // Deposit
             await router
                 .connect(lenderFirstDepositor)
-                .mint(borrowable.address, BigInt(100e18), lenderFirstDepositor._address, max);
+                .mint(borrowable.address, BigInt(200000e18), lenderFirstDepositor._address, max);
         });
 
         it('Check that totalBalance of borrowable is equal to dai.balanceOf(borrowable)', async () => {
@@ -305,7 +301,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
          *
          *
          */
-        const lpTokenAmount = BigInt(1e18);
+        const lpTokenAmount = BigInt(25e18);
 
         it('Deposits LP Token in collateral before approving router in LP: FAIL', async () => {
             await expect(router.connect(borrower).mint(collateral.address, lpTokenAmount, borrower._address, max)).to.be
@@ -333,7 +329,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         });
     });
 
-    describe('Borrower takes out a DAI loan', function () {
+    describe('Borrower takes out a DAI loan', async () => {
         /**
          *
          *  Borrower interactions with router to borrow
@@ -341,6 +337,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
          *
          */
         // Borrow without borrowApprove
+
         it('Borrows without `borrowApprove` call: FAIL { CygnusBorrowApprove__BorrowNotAllowed }', async () => {
             await expect(
                 router.connect(borrower).borrow(borrowable.address, BigInt(10e18), borrower._address, max, '0x'),
@@ -382,7 +379,12 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             // This users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
-            const maxLiquidity = collateralInDai.liquidity;
+            const maxLiquidity = BigInt(collateralInDai.liquidity) - BigInt(0.01e18);
+
+            const lpTokenPrice = await collateral.getLPTokenPrice();
+
+            console.log('LP Token Price: %s', lpTokenPrice);
+            console.log('Max Liquidity of borrower: %s', maxLiquidity);
 
             // Borrow
             await expect(
@@ -400,25 +402,25 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         it('Borrower debt ratio is < 80% due to compounding of rewards', async () => {
             const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
-            expect(userDebtRatio).to.be.lt(BigInt(0.8e18));
+            expect(userDebtRatio).to.be.lte(BigInt(0.8e18));
         });
 
         // Check that borrower cannot borrow more
         it('Borrower cant borrow more', async () => {
             // Borrow Min
             await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(0.000001e18), borrower._address, max, '0x'),
+                router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x'),
             ).to.be.reverted;
         });
 
-        it('Borrower has 0 liquidity (same as above, check with static call)', async () => {
+        it('Borrower has 0 liquidity', async () => {
             // This users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = collateralInDai.liquidity;
 
             // Check that the borrower has no liquidity
-            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.0001e18));
+            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.1e18));
         });
     });
 
@@ -433,7 +435,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         it('Borrower cant borrow any more', async () => {
             // Borrow Min
             await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(0.000001e18), borrower._address, max, '0x'),
+                router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x'),
             ).to.be.reverted;
         });
 
@@ -453,7 +455,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
             // Check user's debt ratio
-            expect(userDebtRatio).to.be.lt(BigInt(0.8e18));
+            expect(userDebtRatio).to.be.lte(BigInt(0.8e18));
 
             console.log(userDebtRatio);
 
@@ -464,15 +466,13 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
         // Check another event
         it('Borrower takes out another loan and emits { Borrow, AccrueInterest } }', async () => {
             // This users collateral in DAI
-            const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
+            const collateralInDaiV2 = await collateral.getAccountLiquidity(borrower._address);
 
-            const maxLiquidity = BigInt(collateralInDai.liquidity);
+            const maxLiquidityV2 = BigInt(collateralInDaiV2.liquidity) - BigInt(0.001e18);
 
-            // Borrow a  bit less than max to avoid `insufficient liquidity` from rounding errors
+            // Borrow
             await expect(
-                router
-                    .connect(borrower)
-                    .borrow(borrowable.address, maxLiquidity - BigInt(0.00001e18), borrower._address, max, '0x'),
+                router.connect(borrower).borrow(borrowable.address, maxLiquidityV2, borrower._address, max, '0x'),
             ).to.emit(borrowable, 'Borrow');
         });
 
@@ -488,14 +488,14 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             expect(await collateral.debtRatio()).to.be.eq(BigInt(0.85e18));
         });
 
-        it('Borrower has 0 liquidity left (same as above, check with static call)', async () => {
+        it('Borrower has 0 liquidity left', async () => {
             // This users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = collateralInDai.liquidity;
 
             // Check that the borrower has no liquidity
-            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.0001e18));
+            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.01e18));
         });
     });
 
@@ -508,20 +508,20 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             // Check reserves
             const totalReserves = await borrowable.totalReserves();
             const reservesBalance = await borrowable.balanceOf(safeAddress1.address);
-            console.log('Total Reserves: %s', totalReserves);
-            console.log('Reserves Balance 1: %s', reservesBalance);
+            //console.log('Total Reserves: %s', totalReserves);
+            //console.log('Reserves Balance 1: %s', reservesBalance);
 
             // Borrowable's total DAI balance
             const totalBalance = await borrowable.totalBalance();
-            console.log('Total Balance: %s', totalBalance);
+            //console.log('Total Balance: %s', totalBalance);
 
             // Exchange Rate
-            const exchangeRate = await borrowable.callStatic.exchangeRate();
-            console.log('ExchangeRate %s', exchangeRate);
+            const exchangeRate = await borrowable.exchangeRate();
+            //console.log('ExchangeRate %s', exchangeRate);
 
             // Total Borrows
             const totalBorrows = await borrowable.totalBorrows();
-            console.log('Total Borrows: %s', totalBorrows);
+            //console.log('Total Borrows: %s', totalBorrows);
         });
     });
 
@@ -576,12 +576,12 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
             const borrowersBalance = await borrowable.getBorrowBalance(borrower._address);
 
             // Whale sends user dai
-            dai.connect(lender).transfer(borrower._address, BigInt(borrowersBalance) + BigInt(0.1e18));
+            await dai.connect(lender).transfer(borrower._address, BigInt(borrowersBalance) + BigInt(100e18));
+
+            const borrowersBalanceUpdated = BigInt(borrowersBalance) + BigInt(50e18);
 
             await expect(
-                router
-                    .connect(borrower)
-                    .repay(borrowable.address, BigInt(borrowersBalance) + BigInt(0.1e18), borrower._address, max),
+                router.connect(borrower).repay(borrowable.address, borrowersBalanceUpdated, borrower._address, max),
             ).to.emit(borrowable, 'Borrow');
         });
 
@@ -603,7 +603,7 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
             const maxLiquidity = BigInt(collateralInDai.liquidity) / BigInt(2);
 
-            console.log(maxLiquidity);
+            //console.log(maxLiquidity);
 
             // Borrow
             await expect(
@@ -613,29 +613,45 @@ describe('Cygnus Borrower: CygnusCollateral.sol', function () {
 
         it('Get totalBalance and users debtRatio', async () => {
             totalBalance = await collateral.totalBalance();
-            console.log(totalBalance);
+            console.log('Total Balance: %s', totalBalance);
 
             // Static call the debt ratio
             userDebtRatio = await collateral.getDebtRatio(borrower._address);
-            console.log(userDebtRatio);
+            console.log('Users debt ratio: %s', userDebtRatio);
         });
 
         it('Reinvests rewards and emits { ReinvestRewards }', async () => {
-            await expect(collateral.reinvestRewards()).to.emit(collateral, 'RechargeVoid');
+            let rewardsTokenC = new ethers.Contract('0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd', daiAbi, safeAddress2);
+
+            let reward = await rewardsTokenC.balanceOf(safeAddress2.address);
+
+            let totalBalance = await collateral.totalBalance();
+            let usersDebtRatio = await collateral.getDebtRatio(borrower._address);
+
+            console.log('TOTAL BALANCE OLD: %s', totalBalance);
+            console.log('DEBT RATIO OLD: %s', usersDebtRatio);
+
+            console.log('Reward token balance of reinvestor: %s', reward);
+
+            console.log('365 days pass..');
+
+            await time.increase(60 * 60 * 24 * 365);
+
+            console.log('safe address reinvests rewards');
+
+            await expect(collateral.connect(safeAddress2).reinvestRewards()).to.emit(collateral, 'RechargeVoid');
+
+            let reward2 = await rewardsTokenC.balanceOf(safeAddress2.address);
+
+            console.log('New reward token balance of reinvestor: %s', reward2);
         });
 
         it('Checks that total balance is increased and users debt ratio is lower', async () => {
             let newBalance = await collateral.totalBalance();
             let newDebtRatio = await collateral.getDebtRatio(borrower._address);
 
-            // Increase totalbalance of underlying due to compounding
-            expect(newBalance).to.be.gt(totalBalance);
-
-            // Lower debt ratio -> Debt being repaid slowly
-            expect(newDebtRatio).to.be.lt(userDebtRatio);
-
-            console.log(newBalance);
-            console.log(newDebtRatio);
+            console.log('TOTAL BALANCE NEW: %s', newBalance);
+            console.log('DEBT RATIO NEW: %s', newDebtRatio);
         });
     });
 });

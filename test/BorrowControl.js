@@ -24,7 +24,7 @@ chai.use(solidity);
  *  - Reserves manager contract
  *
  */
-describe('CygnusBorrowControl', function () {
+describe('CYGNUS BORROW: ADMIN CONTROLS', function () {
     /*  ───────────────────────────────────────────── Ethers ───────────────────────────────────────────────  */
 
     // Max digit in a uint256

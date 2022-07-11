@@ -19,7 +19,7 @@ chai.use(solidity);
  * Run all tests with forked avalanche mainnet.
  *
  */
-context('CygnusCollateral - Deposit and Redeem LP', function () {
+context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
     /* ──────────────────────────────────────────── Constants ─────────────────────────────────────────────  */
 
     // Max digit in a uint256
@@ -100,7 +100,7 @@ context('CygnusCollateral - Deposit and Redeem LP', function () {
         // Deploy with Chainlink's dai Aggregator
         nebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
 
-        console.log('Nebula Oracle:', nebula.address);
+        //console.log('Nebula Oracle:', nebula.address);
 
         // Initialize oracle, else the deployment for this lending pool fails
         await nebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
@@ -111,7 +111,7 @@ context('CygnusCollateral - Deposit and Redeem LP', function () {
 
         const deneb = await Deneb.deploy();
 
-        console.log('CollateralDeployer:', deneb.address);
+        //console.log('CollateralDeployer:', deneb.address);
 
         // ════════════ Borrowable Deployer ═══════════════════════════════════════════════════
 
@@ -119,7 +119,7 @@ context('CygnusCollateral - Deposit and Redeem LP', function () {
 
         const albireo = await Albireo.deploy();
 
-        console.log('BorrowDeployer', albireo.address);
+        //console.log('BorrowDeployer', albireo.address);
 
         // ══════════════════ Factory ═════════════════════════════════════════════════════════
 
@@ -138,22 +138,16 @@ context('CygnusCollateral - Deposit and Redeem LP', function () {
             nebula.address,
         );
 
-        console.log('Cygnus Factory:', factory.address);
+        //console.log('Cygnus Factory:', factory.address);
 
         // ═══════════════════ Router ════════════════════════════════════════════════════════
 
         // Router
         const Router = await ethers.getContractFactory('CygnusAltair');
 
-        router = await Router.deploy(
-            factory.address,
-            deneb.address,
-            albireo.address,
-            // WAVAX
-            '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-        );
+        router = await Router.deploy(factory.address);
 
-        console.log('Router:', router.address);
+        //console.log('Router:', router.address);
 
         // ══════════════════ Shuttle ════════════════════════════════════════════════════════
 
