@@ -28,12 +28,12 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
 /**
- *  @title CygnusDeneb The Collateral Deployer which starts the collateral arm of the lending pool. It deploys
- *                     the collateral contract with the corresponding Cygnus borrow contract address. We pass
- *                     structs to avoid having to set constructors in the core contracts, being able to calculate
- *                     addresses of lending pools with CREATE2
+ *  @title  CygnusDeneb Contract that deploys the Cygnus Collateral arm of the lending pool
  *  @author CygnusDAO
- *  @notice Collateral Deployer V1
+ *  @notice The Collateral Deployer which starts the collateral arm of the lending pool. It deploys the collateral 
+ *          contract with the corresponding Cygnus borrow contract address, the factory and the underlying LP Token. 
+ *          We pass structs to avoid having to set constructors in the core contracts, being able to calculate
+ *          addresses of lending pools with CREATE2
  */
 contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════

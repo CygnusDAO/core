@@ -188,14 +188,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         address tokenOut,
         uint256 amount
     ) private {
+        // Create the path to swap from tokenIn to tokenOut
         address[] memory path = new address[](2);
 
+        // Assign tokenIn to path 0
         path[0] = address(tokenIn);
 
+        // Assign tokenOut to path 1
         path[1] = address(tokenOut);
 
         // Safe Approve router
-        VoidHelper.approveDexRouter(tokenIn, address(dexRouter), amount);
+        tokenIn.approveDexRouter(address(dexRouter), amount);
 
         // Swap tokens
         dexRouter.swapExactTokensForTokens(amount, 0, path, address(this), type(uint256).max);
@@ -216,10 +219,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 amountB
     ) private returns (uint256 liquidity) {
         // Approve token A
-        VoidHelper.approveDexRouter(tokenA, address(dexRouter), amountA);
+        tokenA.approveDexRouter(address(dexRouter), amountA);
 
         // Approve token B
-        VoidHelper.approveDexRouter(tokenB, address(dexRouter), amountB);
+        tokenB.approveDexRouter(address(dexRouter), amountB);
 
         // prettier-ignore
         (/* amountA */, /* amountB */, liquidity) = 
@@ -234,7 +237,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         IMiniChef(rewarder).deposit(pid, 0);
 
         // Return this contract's total rewards balance
-        return VoidHelper.contractBalanceOf(rewardsToken);
+        return rewardsToken.contractBalanceOf();
     }
 
     /**
@@ -265,9 +268,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             emit Transfer(address(this), reinvestor, eoaReward);
         }
 
-        // Native token
-        address _nativeToken = nativeToken;
-
         // 3. Convert all the remaining rewards to token0 or token1
         address tokenA;
 
@@ -278,21 +278,23 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
         } else {
             // Swap token reward token to native token
-            swapExactTokensForTokens(rewardsToken, _nativeToken, currentRewards - eoaReward);
+            swapExactTokensForTokens(rewardsToken, nativeToken, currentRewards - eoaReward);
 
             // Check if token0 or token1 is native token
-            if (token0 == _nativeToken || token1 == _nativeToken) {
-                (tokenA, tokenB) = token0 == _nativeToken ? (token0, token1) : (token1, token0);
+            if (token0 == nativeToken || token1 == nativeToken) {
+                (tokenA, tokenB) = token0 == nativeToken ? (token0, token1) : (token1, token0);
             } else {
-                swapExactTokensForTokens(_nativeToken, token0, VoidHelper.contractBalanceOf(_nativeToken));
+                // Swap native token to token0
+                swapExactTokensForTokens(nativeToken, token0, nativeToken.contractBalanceOf());
 
+                // Assign tokenA and tokenB to token0 and token1 respectively
                 (tokenA, tokenB) = (token0, token1);
             }
         }
 
         // 4. Convert tokenA to LP Token underlyings
         // Get the balance of tokenA held by this contract
-        uint256 totalAmountA = VoidHelper.contractBalanceOf(tokenA);
+        uint256 totalAmountA = tokenA.contractBalanceOf();
 
         // Contract should always have balance
         assert(totalAmountA > 0);
@@ -300,22 +302,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // prettier-ignore
         (uint256 reserves0, uint256 reserves1, /* BlockTimestamp */) = IDexPair(underlying).getReserves();
 
-        // Assign reservesA
+        // Get reserves of tokenA for optimal deposit
         uint256 reservesA = tokenA == token0 ? reserves0 : reserves1;
 
         // Get optimal swap amount for token A
         uint256 swapAmount = VoidHelper.optimalDepositA(totalAmountA, reservesA, swapFeeFactor);
 
-        // Swap
+        // Swap optimal amount to tokenA to tokenB for liquidity deposit
         swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
         // Add liquidity
-        uint256 liquidity = addLiquidity(
-            tokenA,
-            tokenB,
-            totalAmountA - swapAmount,
-            VoidHelper.contractBalanceOf(tokenB)
-        );
+        uint256 liquidity = addLiquidity(tokenA, tokenB, totalAmountA - swapAmount, tokenB.contractBalanceOf());
 
         // 5. Stake the LP Tokens
         rewarder.deposit(pid, liquidity);

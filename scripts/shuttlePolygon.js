@@ -5,11 +5,25 @@ const fs = require('fs');
 const path = require('path');
 const { time } = require('@openzeppelin/test-helpers');
 
+// POLYGON SCRIPT FOR LENDING POOL
+
+/*
+ *  Deploys a lending pool on Polygon. We use the LP Token Matic/Eth from sushiswap as an example and 
+ *  the corresponding masterchef and pool Id: https://polygonscan.com/token/0xc4e595acDD7d12feC385E5dA5D43160e8A0bAC0E
+ *
+ *  The steps to deploy a lending pool is as follows:
+ *
+ *     1. Deploy oracle and initialize the LP Token pair we want to get the price of
+ *     2. Deploy the `collateral deployer` contract which deploys collaterals for Cygnus
+ *     3. Deploy the `borrow deployer` contract which deploys the borrow contracts for Cygnus
+ *     4. Deploy the factory with the above addresses
+ *     5. Deploy the router for ease of use with contracts
+ *     6. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
+ *     7. Initialize CygnusCollateralVoid
+ */
 async function deploy() {
     // Constants
     const max = ethers.constants.MaxUint256;
-
-    const addressZero = ethers.constants.AddressZero;
 
     // Signer and reservesManager
     const [owner, reservesManager] = await ethers.getSigners();
@@ -19,23 +33,24 @@ async function deploy() {
     // Matic/Eth LP Token
     const maticEthLPAddress = '0xc4e595acDD7d12feC385E5dA5D43160e8A0bAC0E';
 
-    // Native
-    const native = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
-
-    // DAI Contract
-    const daiAddress = '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063';
-
-    // LP Token ABI
+    // LP Token ABI and DAI Abi
     const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
 
+    // DAI Contract on Polygon
+    const daiAddress = '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063';
+
+    // Dai ABI
     const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
+
+    // Native MATIC
+    const native = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
 
     // ═══════════════════ 1. ORACLE ════════════════════════════════════════════════════════════════════════
 
     // Oracle
     const Nebula = await ethers.getContractFactory('ChainlinkNebulaOracle');
 
-    // Deploy with DAI denomination --> CHAINLINK's DAI AGGREGATOR
+    // Deploy with CHAINLINK'S DAI AGGREGATOR on Polygon
     const nebula = await Nebula.deploy('0x4746DeC9e833A82EC7C2C1356372CcF2cfcD2F3D');
 
     console.log('Nebula Oracle:', nebula.address);
@@ -139,16 +154,6 @@ async function deploy() {
         params: ['0x085ff264ee5cea5f54acdd82188fbe1923d62c8d'],
     });
 
-    const borrowerFirstDepositor = await ethers.provider.getSigner('0x085ff264ee5cea5f54acdd82188fbe1923d62c8d');
-
-    // Lender: DAI Whale
-    await network.provider.request({
-        method: 'hardhat_impersonateAccount',
-        params: ['0x06959153b974d0d5fdfd87d561db6d8d4fa0bb0b'],
-    });
-
-    const lenderFirstDepositor = await ethers.provider.getSigner('0x06959153b974d0d5fdfd87d561db6d8d4fa0bb0b');
-
     // ═════════════════════ CONTRACTS ══════════════════════════════════════════════════════════════════════
 
     // Connect with borrower
@@ -157,11 +162,13 @@ async function deploy() {
     // Connect with lender
     const DAI = new ethers.Contract(daiAddress, daiAbi, lender);
 
+    // Get deployed collateral contract
     let collateral = await ethers.getContractAt('CygnusCollateral', shuttle.cygnusDeneb, borrower);
 
+    // Get deployed borrowable contract
     let borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.cygnusAlbireo, lender);
 
-    // ═════════════════════ INITIALIZE MINICHEF ════════════════════════════════════════════════════════════
+    // ═════════════════════ INITIALIZE CYGNUSVOID ══════════════════════════════════════════════════════════
 
     // Initialize with: SUSHI ROUTER / MiniChefV2 / SUSHI / 0 pool id / swapfee
     await collateral
@@ -174,13 +181,14 @@ async function deploy() {
             997,
         );
 
-    /***********************************************************
+    /********************************************************************************************************
    
     
-                            INTERACTIONS
+     CYGNUS INTERACTIONS - Connect to the router and test mint functions for borrow and collateral contracts,
+                           and borrow 1 DAI
     
      
-     ***********************************************************/
+     ********************************************************************************************************/
 
     // Approve router in LP
     await maticEthLP.connect(borrower).approve(router.address, max);
@@ -198,17 +206,22 @@ async function deploy() {
     await borrowable.connect(borrower).borrowApprove(router.address, max);
 
     // Borrow
-    await router.connect(borrower).borrow(borrowable.address, BigInt(0.01e18), borrower._address, max, '0x');
+    await router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x');
 
-    // Check that we have dai
-    const x = await DAI.balanceOf(borrower._address);
+    // Check that user has Dai
+    let borrowersDaiBalance = await DAI.balanceOf(borrower._address);
 
-    console.log(x);
+    console.log('Borrowers DAI Balance: %s', borrowersDaiBalance);
+
+    console.log('Total Balance of collateral before reinvesting: %s', await collateral.totalBalance());
+
+    console.log('----------------------- 10 Days pass -----------------------');
+
+    await time.increase(60 * 60 * 24 * 10);
+
+    await collateral.connect(borrower).reinvestRewards();
+
+    console.log('Total Balance of collateral after reinvesting: %s', await collateral.totalBalance());
 }
 
 deploy();
-/*
-module.exports = {
-    deploy,
-};
-*/

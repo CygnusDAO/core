@@ -41,8 +41,6 @@
               ├ Internal            
               ├ Public              
               └ External            
-                       
-
 
     @dev: Should only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow 
     and all errors are handled with the new `custom errors` feature among other small things...                  */
@@ -197,6 +195,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @notice Internal check for admins only, checks factory for admin
      */
     function isCygnusAdmin() internal view {
+        // Current admin from the factory
         address admin = ICygnusFactory(hangar18).admin();
 
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
@@ -230,7 +229,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @custom:security non-reentrant
      */
     function mint(address minter) external override nonReentrant update returns (uint256 cygnusMintTokens) {
-        // Get current balance balance
+        // Get current balance
         uint256 balance = IErc20(underlying).balanceOf(address(this));
 
         // Mint and deposit in masterchef if Void is activated
@@ -282,6 +281,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @custom:security non-reentrant
      */
     function redeem(address holder) external override nonReentrant update returns (uint256 redeemAmount) {
+        // Get current balance
         uint256 cygnusRedeemTokens = balanceOf(address(this));
 
         // Get the initial amount * exchange rate / scale

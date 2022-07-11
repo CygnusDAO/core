@@ -29,8 +29,6 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // Used to accrue interests per second
-
     /**
      *  @inheritdoc ICygnusBorrowInterest
      */
@@ -87,9 +85,11 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         if (util <= kink) {
             return util.mul(multiplierPerSecond) + baseRatePerSecond;
         }
+
         // else return normal rate + kink rate
         uint256 normalRate = kink.mul(multiplierPerSecond) + baseRatePerSecond;
 
+        // Get the excess utilization rate
         uint256 excessUtil = util - kink;
 
         return excessUtil.mul(jumpMultiplierPerSecond) + normalRate;

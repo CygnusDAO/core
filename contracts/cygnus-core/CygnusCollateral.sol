@@ -16,6 +16,7 @@ import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 // Libraries
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import { VoidHelper } from "./libraries/VoidHelper.sol";
 
 /**
  *  @title CygnusCollateral Main Collateral contract handles transfers and seizings of collateral

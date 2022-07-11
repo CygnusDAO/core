@@ -13,7 +13,12 @@ import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
- *  @notice Initializes Collateral Arm. Passes name, symbol and decimals to CygnusTerminal for the CygLP Token
+ *  @notice Initializes Collateral Arm. Passes name, symbol and decimals to CygnusTerminal for the CygLP Token.
+ *          This contract should be the only contract the Admin has control of (apart from initializing Void), 
+ *          specifically to set liquidation fees for the protocol, liquidation incentives for the liquidators, 
+ *          updating the oracle for this contract from the factory and the max debt ratio for this shuttle. 
+ *          The constructor assigns the factory address, the initial oracle, the underlying LP Token and cygnusDai 
+ *          (the Cygnus borrow contract for this collateral).
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

@@ -4,10 +4,25 @@ const ethers = hre.ethers;
 const fs = require('fs');
 const path = require('path');
 
+// AVALANCHE SCRIPT FOR LENDING POOL
+
+/*
+ *  Deploys a lending pool on Avalanche. We use the LP Token Joe/Avax from Traderjoe as an example and 
+ *  the corresponding masterchef and pool Id: https://snowtrace.com/token/0x454E67025631C065d3cFAD6d71E6892f74487a15
+ *
+ *  The steps to deploy a lending pool is as follows:
+ *
+ *     1. Deploy oracle and initialize the LP Token pair we want to get the price of
+ *     2. Deploy the `collateral deployer` contract which deploys collaterals for Cygnus
+ *     3. Deploy the `borrow deployer` contract which deploys the borrow contracts for Cygnus
+ *     4. Deploy the factory with the above addresses
+ *     5. Deploy the router for ease of use with contracts
+ *     6. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
+ *     7. Initialize CygnusCollateralVoid
+ */
 async function deploy() {
     // Constants
     const max = ethers.constants.MaxUint256;
-    const addressZero = ethers.constants.AddressZero;
 
     // Signer and reservesManager
     const [owner, reservesManager] = await ethers.getSigners();
@@ -16,19 +31,24 @@ async function deploy() {
 
     // JOE/AVAX LP Token
     const joeAvaxLPAddress = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
-    // Native AVAX
-    const native = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
-    // DAI Contract
-    const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
 
     // LP Token and DAI ABI
     const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
+
+    // DAI Contract on Avalanche
+    const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
+
+    // DAI ABI
     const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
+
+    // Native AVAX
+    const native = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
 
     // ═══════════════════ 1. ORACLE ════════════════════════════════════════════════════════════════════════
 
     // Oracle
     const Nebula = await ethers.getContractFactory('ChainlinkNebulaOracle');
+
     // Deploy with DAI denomination --> CHAINLINK's DAI AGGREGATOR
     const nebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
 
@@ -44,19 +64,24 @@ async function deploy() {
     // ═══════════════════ 2. COLLATERAL DEPLOYER ═══════════════════════════════════════════════════════════
 
     const Deneb = await ethers.getContractFactory('CygnusDeneb');
+
     const deneb = await Deneb.deploy();
+
     console.log('CollateralDeployer:', deneb.address);
 
     // ═══════════════════ 3. BORROWABLE DEPLOYER ═══════════════════════════════════════════════════════════
 
     const Albireo = await ethers.getContractFactory('CygnusAlbireo');
+
     const albireo = await Albireo.deploy();
+
     console.log('BorrowDeployer', albireo.address);
 
     // ═══════════════════ 4. FACTORY ═══════════════════════════════════════════════════════════════════════
 
     // Factory
     const Factory = await ethers.getContractFactory('CygnusFactory');
+
     const factory = await Factory.deploy(
         owner.address,
         reservesManager.address,
@@ -66,29 +91,32 @@ async function deploy() {
         albireo.address,
         nebula.address,
     );
+
     console.log('Cygnus Factory:', factory.address);
 
     // ═══════════════════ 5. ROUTER ════════════════════════════════════════════════════════════════════════
 
     // Router
     const Router = await ethers.getContractFactory('CygnusAltair');
-    const router = await Router.deploy(
-        factory.address,
-        deneb.address,
-        albireo.address,
-        native,
-    );
+
+    const router = await Router.deploy(factory.address);
+
     console.log('Router:', router.address);
 
     // ═══════════════════ SHUTTLE ══════════════════════════════════════════════════════════════════════════
 
     // Pool customs
     const baseRate = BigInt(0.08e18);
+
     const kink = BigInt(0.75e18);
+
     const multi = BigInt(0.15e18);
-    // Shuttle with LP Token https://polygonscan.com/token/0xc4e595acDD7d12feC385E5dA5D43160e8A0bAC0E
+
+    // Shuttle with LP Token 
     await factory.deployShuttle(joeAvaxLPAddress, baseRate, multi, kink);
+
     const shuttle = await factory.getShuttles(joeAvaxLPAddress);
+
     console.log(shuttle);
 
     // ═══════════════════ IMPERSONATE ACCOUNTS ═════════════════════════════════════════════════════════════
@@ -115,10 +143,14 @@ async function deploy() {
 
     // Connect with borrower
     const joeAvaxLP = new ethers.Contract(joeAvaxLPAddress, lpTokenAbi, borrower);
+
     // Connect with lender
     const DAI = new ethers.Contract(daiAddress, daiAbi, lender);
 
+    // Get deployed collateral contract
     const collateral = await ethers.getContractAt('CygnusCollateral', shuttle.cygnusDeneb, borrower);
+
+    // Get deployed borrow contract
     const borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.cygnusAlbireo, lender);
 
     // ═════════════════════ INITIALIZE MINICHEF ════════════════════════════════════════════════════════════
@@ -134,36 +166,48 @@ async function deploy() {
             997,
         );
 
-    /***********************************************************
+    /********************************************************************************************************
    
     
-                            INTERACTIONS
+     CYGNUS INTERACTIONS - Connect to the router and test mint functions for borrow and collateral contracts,
+                           and borrow 1 DAI
     
      
-     ***********************************************************/
+     ********************************************************************************************************/
 
-    // Approve router in LP
+
+    // Borrower mints collateral
+
     await joeAvaxLP.connect(borrower).approve(router.address, max);
 
-    // Mint CygLP
     await router.connect(borrower).mint(collateral.address, BigInt(1e18), borrower._address, max);
 
-    // Approve router in DAI
+    // Lender mints borrowable
+ 
     await DAI.connect(lender).approve(router.address, max);
 
-    // Mint CygDAI
     await router.connect(lender).mint(borrowable.address, BigInt(10e18), lender._address, max);
 
-    // Approve borrow
+    // Borrower borrows 1 DAI
+
     await borrowable.connect(borrower).borrowApprove(router.address, max);
 
-    // Borrow
-    await router.connect(borrower).borrow(borrowable.address, BigInt(0.01e18), borrower._address, max, '0x');
+    await router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x');
 
-    // Check that we have dai
-    const x = await DAI.balanceOf(borrower._address);
+    // Check that user has Dai
+    let borrowersDaiBalance = await DAI.balanceOf(borrower._address);
 
-    console.log(x);
+    console.log('Borrowers DAI Balance: %s', borrowersDaiBalance);
+
+    console.log('Total Balance of collateral before reinvesting: %s', await collateral.totalBalance());
+
+    console.log('----------------------- 10 Days pass -----------------------');
+
+    await time.increase(60 * 60 * 24 * 10);
+
+    await collateral.connect(borrower).reinvestRewards();
+
+    console.log('Total Balance of collateral after reinvesting: %s', await collateral.totalBalance());
 }
 
 deploy();

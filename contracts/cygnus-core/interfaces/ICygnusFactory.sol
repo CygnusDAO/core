@@ -222,8 +222,8 @@ interface ICygnusFactory {
      *  @notice Initializes both Borrow arms and the collateral arm
      *  @param lpTokenPair The address of the underlying LP Token this pool is for
      *  @param baseRate The interest rate model's base rate this shuttle uses
-     *  @param multiplier The multiplier this shuttle uses for calculating the interest rate
-     *  @param kink The point at which the jump rate takes effect
+     *  @param farmApy The multiplier this shuttle uses for calculating the interest rate
+     *  @param kinkUtilizationRate The point at which the jump rate takes effect
      *  @return _cygnusAlbireo The address of the Cygnus borrow contract for this pool
      *  @return _cygnusDeneb The address of the Cygnus collateral contract for both borrow tokens
      *  @custom:error non-reentrant
@@ -231,8 +231,8 @@ interface ICygnusFactory {
     function deployShuttle(
         address lpTokenPair,
         uint256 baseRate,
-        uint256 multiplier,
-        uint256 kink
+        uint256 farmApy,
+        uint256 kinkUtilizationRate
     ) external returns (address _cygnusAlbireo, address _cygnusDeneb);
 
     /**

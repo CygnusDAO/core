@@ -15,11 +15,14 @@ import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 import { IDexPair } from "./interfaces/IDexPair.sol";
 
 /**
- *  @title  ChainlinkNebulaOracle
+ *  @title  ChainlinkNebulaOracle Main oracle used by Cygnus Collateral contracts
  *  @author CygnusDAO
- *  @notice Oracle used by Cygnus that returns the price of 1 LP Token in DAI. In case need
- *          different implementation just update the denomination variable `dai` with another price feed
- *  @notice Implementation of fair lp token pricing using Chainlink price feeds
+ *  @notice Oracle used by Cygnus that returns the price of 1 LP Token in DAI. To see if an LP Token is being tracked
+ *          by this oracle, we can use the address of the LP Token in `getNebula`. It avoids using reserves of each
+ *          LP Token to calculate the price directly, and instead uses the GM of the reserves. The price of token0
+ *          and token1 from the LP is fetched from Chainlink to get the most up to date price. 
+ *          In case need different implementation just update the denomination variable `dai` with another price feed
+ *          This is an implementation of the fair lp token pricing using Chainlink price feeds:
  *          https://blog.alphaventuredao.io/fair-lp-token-pricing/
  */
 contract ChainlinkNebulaOracle is IChainlinkNebulaOracle, Context, ReentrancyGuard {
@@ -39,8 +42,7 @@ contract ChainlinkNebulaOracle is IChainlinkNebulaOracle, Context, ReentrancyGua
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice returns the struct record of each oracle used by Cygnus
-     *  @custom:struct Official record of all Chainlink oracles used by Cygnus
+     *  @custom:struct ChainlinkNebula Official record of all Chainlink oracles used by Cygnus
      *  @custom:member initialized Whether an LP Token is being tracked or not
      *  @custom:member oracleId The ID of the LP Token tracked by the oracle
      *  @custom:member underlying The address of the LP Token
@@ -152,6 +154,7 @@ contract ChainlinkNebulaOracle is IChainlinkNebulaOracle, Context, ReentrancyGua
      *  @inheritdoc IChainlinkNebulaOracle
      */
     function nebulaSize() public view override returns (uint24) {
+        // Return how many LP Tokens this contract is tracking
         return uint24(allNebulas.length);
     }
 

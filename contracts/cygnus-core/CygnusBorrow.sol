@@ -154,10 +154,13 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             repayAmount
         );
 
+        // Check if user can borrow and updates collateral totalBalance
+        bool userCanBorrow = ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows);
+
         // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {
-            /// @custom:error InsufficientLiquidity Avoid if borrowing `borrowAmount` puts borrower in shortfall
-            if (!ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows)) {
+            /// @custom:error InsufficientLiquidity Avoid if borrower has insufficient liquidity for this `borrowAmount`
+            if (!userCanBorrow) {
                 revert CygnusBorrow__InsufficientLiquidity({
                     cygnusCollateral: collateral,
                     borrower: borrower,

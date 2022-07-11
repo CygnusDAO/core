@@ -11,7 +11,10 @@ import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
  *  @author CygnusDAO
- *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token
+ *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token. The 
+ *          This contract should be the only contract the Cygnus admin has control of, specifically to set the borrow tracker
+ *          which tracks individual borrows to reward users in any token (if there is any incentive), set the reserve factor,
+ *          the kink utilization rate and the kink multiplier.
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygDAI", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

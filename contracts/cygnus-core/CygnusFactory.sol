@@ -260,8 +260,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     function deployShuttle(
         address lpTokenPair,
         uint256 baseRate,
-        uint256 multiplier,
-        uint256 kink
+        uint256 farmApy,
+        uint256 kinkUtilizationRate
     ) external override nonReentrant cygnusAdmin returns (address _cygnusAlbireo, address _cygnusDeneb) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
 
@@ -283,7 +283,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
         // Deploy first borrow token
-        _cygnusAlbireo = borrowDeployer.deployAlbireo(dai, _collateral, baseRate, multiplier, kink);
+        _cygnusAlbireo = borrowDeployer.deployAlbireo(dai, _collateral, baseRate, farmApy, kinkUtilizationRate);
 
         // Deploy collateral
         _cygnusDeneb = collateralDeployer.deployDeneb(lpTokenPair, _cygnusAlbireo);
