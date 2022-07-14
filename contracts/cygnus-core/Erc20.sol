@@ -197,11 +197,9 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
         }
 
         uint256 senderBalance = balances[sender];
-
         if (senderBalance < amount) {
             revert Erc20__InsufficientBalance(senderBalance, amount);
         }
-
         unchecked {
             balances[sender] = senderBalance - amount;
         }

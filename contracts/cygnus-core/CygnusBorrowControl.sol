@@ -94,7 +94,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *          from the deployment: base rate, multiplier and the kink utilization rate.
      */
     constructor() {
-        // Get factory, underlying and collateral addressand interest rate parameters for this shuttle
+        // Get factory, underlying and collateral address and interest rate parameters for this shuttle
         // prettier-ignore
         (hangar18, underlying, collateral, /*base*/, /*multi*/, /*kink*/) = ICygnusAlbireo(_msgSender())
             .borrowParameters();

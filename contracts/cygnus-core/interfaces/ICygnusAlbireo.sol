@@ -17,7 +17,7 @@ interface ICygnusAlbireo {
      *  @return cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      *  @return baseRatePerYear The base rate per year for this shuttle
      *  @return farmApy The farm APY for this LP Token
-     *  @return kinkMultiplier The multiplier applied to the farmApy once kink util is reached
+     *  @return kinkMultiplier The increase to farmApy once kink utilization is reached
      */
     function borrowParameters()
         external
@@ -36,7 +36,7 @@ interface ICygnusAlbireo {
      *  @param cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      *  @param baseRatePerYear The base rate per year for this shuttle
      *  @param farmApy The farm APY for this LP Token
-     *  @param kinkMultiplier The multiplier applied to the farmApy once kink util is reached
+     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
      *  @return albireo The address of the new borrow contract
      */
     function deployAlbireo(

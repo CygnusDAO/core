@@ -75,12 +75,12 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     // ────────────── Important Addresses ─────────────
 
     /**
-     *  @return Address of the collateral contract
+     *  @return collateral Address of the collateral contract
      */
     function collateral() external view returns (address);
 
     /**
-     *  @return Address of the borrow tracker.
+     *  @return cygnusBorrowTracker Address of the borrow tracker.
      */
     function cygnusBorrowTracker() external view returns (address);
 
@@ -92,44 +92,44 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     function exchangeRateStored() external view returns (uint256);
 
     /**
-     *  @return Current utilization point at which the jump multiplier is applied in this lending pool
+     *  @return kinkUtilizationRate Current utilization point at which the jump multiplier is applied
      */
     function kinkUtilizationRate() external view returns (uint256);
 
     /**
-     *  @return Percentage of interest that is routed to this market's Reserve Pool
+     *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
      */
     function reserveFactor() external view returns (uint256);
 
     /**
-     *  @return The multiplier that is applied to the interest rate once util > kink
+     *  @return kinkMultiplier The multiplier that is applied to the interest rate once util > kink
      */
     function kinkMultiplier() external view returns (uint256);
 
     // ──────────── Min/Max rates allowed ─────────────
 
     /**
-     *  @return Maximum base interest rate allowed (20%).
+     *  @return BASE_RATE_MAX Maximum base interest rate allowed (20%)
      */
     function BASE_RATE_MAX() external pure returns (uint256);
 
     /**
-     *  @return Minimum kink utilization point allowed, equivalent to 50%
+     *  @return KINK_UTILIZATION_RATE_MIN Minimum kink utilization point allowed, equivalent to 50%
      */
     function KINK_UTILIZATION_RATE_MIN() external pure returns (uint256);
 
     /**
-     *  @return Maximum Kink point allowed, equivalent to 95%
+     *  @return KINK_UTILIZATION_RATE_MAX Maximum Kink point allowed, equivalent to 95%
      */
     function KINK_UTILIZATION_RATE_MAX() external pure returns (uint256);
 
     /**
-     *  @return The maximum reserve factor allowed, equivalent to 50%
+     *  @return RESERVE_FACTOR_MAX The maximum reserve factor allowed, equivalent to 50%
      */
     function RESERVE_FACTOR_MAX() external pure returns (uint256);
 
     /**
-     *  @return The maximum kink multiplier than can be applied to this shuttle
+     *  @return KINK_MULTIPLIER_MAX The maximum kink multiplier than can be applied to this shuttle
      */
     function KINK_MULTIPLIER_MAX() external pure returns (uint256);
 

@@ -269,7 +269,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         boardShuttle(lpTokenPair);
 
         // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
-        address collateral = CygnusPoolAddress.getCollateralContract(
+        address collateralCalc = CygnusPoolAddress.getCollateralContract(
             lpTokenPair,
             address(this),
             address(collateralDeployer)
@@ -283,14 +283,17 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
         // Deploy first borrow token
-        cygnusAlbireo = borrowDeployer.deployAlbireo(dai, collateral, baseRate, farmApy, kinkMultiplier);
+        cygnusAlbireo = borrowDeployer.deployAlbireo(dai, collateralCalc, baseRate, farmApy, kinkMultiplier);
 
         // Deploy collateral
         cygnusDeneb = collateralDeployer.deployDeneb(lpTokenPair, cygnusAlbireo);
 
         /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
-        if (cygnusDeneb != collateral) {
-            revert CygnusFactory__CollateralAddressMismatch(cygnusDeneb);
+        if (cygnusDeneb != collateralCalc) {
+            revert CygnusFactory__CollateralAddressMismatch({
+                calculatedCollateral: collateralCalc,
+                deployedCollateral: cygnusDeneb
+            });
         }
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────

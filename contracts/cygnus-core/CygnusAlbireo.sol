@@ -49,7 +49,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      *  @custom:member cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      &  @custom:member baseRatePerYear The base rate per year for this shuttle
      *  @custom:member farmApy The farm APY for this LP Token
-     *  @custom:member kinkMultiplier The multiplier applied to the farmApy once kink util is reached
+     *  @custom:member kinkUtilizationRate The kink utilization rate for this pool
      */
     struct BorrowParameters {
         address factory;

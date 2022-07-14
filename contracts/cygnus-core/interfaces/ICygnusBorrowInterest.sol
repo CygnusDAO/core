@@ -15,10 +15,10 @@ interface ICygnusBorrowInterest is ICygnusBorrowControl {
     /**
      *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
      *  @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     *  @param kinkMultiplier The multiplier applied to the multiplier once kink util is reached
+     *  @param kinkMultiplier_ The increase to farmApy once kink utilization is reached
      *  custom:event Emitted when a new interest rate is set
      */
-    event NewInterestRateParameters(uint256 baseRatePerYear, uint256 multiplierPerYear, uint256 kinkMultiplier);
+    event NewInterestRateParameters(uint256 baseRatePerYear, uint256 multiplierPerYear, uint256 kinkMultiplier_);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -50,7 +50,7 @@ interface ICygnusBorrowInterest is ICygnusBorrowControl {
      *  @notice Internal function to update the parameters of the interest rate model
      *  @param newBaseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
      *  @param newMultiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     *  @param newKink The multiplier applied to the multiplier once kink util is reached
+     *  @param newKink The increase to farmApy once kink utilization is reached
      */
     function updateJumpRateModel(
         uint256 newBaseRatePerYear,

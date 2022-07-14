@@ -154,7 +154,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             balances[vegaTokenManager] += denebFee;
 
             /// @custom:event SeizeCollateral
-            emit SeizeCollateral(borrower, vegaTokenManager, denebFee);
+            emit SeizeCollateral(borrower, vegaTokenManager, denebAmount);
         }
     }
 
@@ -184,11 +184,11 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         // Total balance of deneb tokens in this contract
         uint256 denebTokens = balanceOf(address(this));
 
-        // Calculate user's redeem (amount * scale / exch) + round up
-        uint256 declaredDenebTokens = redeemAmount.div(exchangeRate()) + 1;
+        // Calculate user's redeem (amount * scale / exch)
+        uint256 redeemableDeneb = redeemAmount.div(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if there's less tokens than declared
-        if (denebTokens < declaredDenebTokens) {
+        if (denebTokens < redeemableDeneb) {
             revert CygnusCollateral__InsufficientRedeemAmount(denebTokens);
         }
 

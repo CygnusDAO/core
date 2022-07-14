@@ -30,7 +30,7 @@ interface ICygnusFactory {
     /**
      *  @custom:error CollateralAddressMismatch Emitted when predicted collateral address doesn't match with deployed
      */
-    error CygnusFactory__CollateralAddressMismatch(address);
+    error CygnusFactory__CollateralAddressMismatch(address calculatedCollateral, address deployedCollateral);
 
     /**
      *  @custom:error CygnusAdminOnly Emitted when caller is not Admin
@@ -223,7 +223,7 @@ interface ICygnusFactory {
      *  @param lpTokenPair The address of the underlying LP Token this pool is for
      *  @param baseRate The interest rate model's base rate this shuttle uses
      *  @param farmApy The multiplier this shuttle uses for calculating the interest rate
-     *  @param kinkMultiplier The point at which the jump rate takes effect
+     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
      *  @return cygnusAlbireo The address of the Cygnus borrow contract for this pool
      *  @return cygnusDeneb The address of the Cygnus collateral contract for both borrow tokens
      *  @custom:error non-reentrant

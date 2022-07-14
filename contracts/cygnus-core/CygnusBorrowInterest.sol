@@ -112,9 +112,9 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     /**
      *  @notice Updates the parameters of the interest rate model and writes to storage
      *  @dev Does necessary checks internally. Reverts in case of failing checks
-     *  @param baseRatePerYear_ The approximate target base APR, as a mantissa (scaled by 1e18).
-     *  @param multiplierPerYear_ The rate of increase in interest rate wrt utilization (scaled by 1e18).
-     *  @param kinkMultiplier_ The utilization point at which the jump multiplier is applied.
+     *  @param baseRatePerYear_ The approximate target base APR, as a mantissa (scaled by 1e18)
+     *  @param multiplierPerYear_ The rate of increase in interest rate wrt utilization (scaled by 1e18)
+     *  @param kinkMultiplier_ The increase to farmApy once kink utilization is reached
      */
     function updateJumpRateModelInternal(
         uint256 baseRatePerYear_,
