@@ -254,9 +254,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             return;
         }
 
+        // 2. If called manually send reward to user
         uint256 eoaReward;
 
-        // 2. If called manually send reward to user
         if (reinvestor != address(0)) {
             // Get the externally owned account reward
             eoaReward = currentRewards.mul(REINVEST_REWARD);

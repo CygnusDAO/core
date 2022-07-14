@@ -11,10 +11,10 @@ import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
  *  @author CygnusDAO
- *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token. The 
- *          This contract should be the only contract the Cygnus admin has control of, specifically to set the borrow tracker
- *          which tracks individual borrows to reward users in any token (if there is any incentive), set the reserve factor,
- *          the kink utilization rate and the kink multiplier.
+ *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token. The
+ *          This contract should be the only contract the Cygnus admin has control of, specifically to set the borrow
+ *          tracker which tracks individual borrows to reward users in any token (if there is any incentive), set the
+ *          reserve factor, the kink utilization rate and the kink multiplier.
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygDAI", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -45,54 +45,39 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override multiplierPerYear;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override baseRatePerYear;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override jumpMultiplierPerYear;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override kink;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
     uint256 public override reserveFactor = 0.05e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override kinkMultiplier = 2;
+    uint256 public override kinkUtilizationRate = 0.80e18;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public override kinkMultiplier;
 
     // ──────────────────── Min/Max this pool allows  ────────────────────
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public constant override BASE_RATE_MAX = 0.15e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override KINK_RATE_MIN = 0.50e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override KINK_RATE_MAX = 0.95e18;
+    uint256 public constant override BASE_RATE_MAX = 0.20e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
     uint256 public constant override RESERVE_FACTOR_MAX = 0.20e18;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public constant override KINK_UTILIZATION_RATE_MIN = 0.50e18;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public constant override KINK_UTILIZATION_RATE_MAX = 0.95e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -110,7 +95,8 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     constructor() {
         // Get factory, underlying and collateral addressand interest rate parameters for this shuttle
-        (hangar18, underlying, collateral, baseRatePerYear, multiplierPerYear, kink) = ICygnusAlbireo(_msgSender())
+        // prettier-ignore
+        (hangar18, underlying, collateral, /*base*/, /*multi*/, /*kink*/) = ICygnusAlbireo(_msgSender())
             .borrowParameters();
 
         // Match initial exchange rate
@@ -206,34 +192,15 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     function setKinkUtilizationRate(uint256 newKinkUtilizationRate) external override cygnusAdmin nonReentrant {
         // Check if parameter is within range allowed
-        validRange(KINK_RATE_MIN, KINK_RATE_MAX, newKinkUtilizationRate);
+        validRange(KINK_UTILIZATION_RATE_MIN, KINK_UTILIZATION_RATE_MAX, newKinkUtilizationRate);
 
         // Old kink utilization rate
-        uint256 oldKinkUtilizationRate = kink;
+        uint256 oldKinkUtilizationRate = kinkUtilizationRate;
 
         // Update kink utilization rate
-        kink = newKinkUtilizationRate;
+        kinkUtilizationRate = newKinkUtilizationRate;
 
         /// @custom:event NewKinkUtilizationRate
         emit NewKinkUtilizationRate(oldKinkUtilizationRate, newKinkUtilizationRate);
-    }
-
-    /**
-     *  @notice 👽
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant
-     */
-    function setKinkMultiplier(uint256 newKinkMultiplier) external override cygnusAdmin nonReentrant {
-        // Check if parameter is within range allowed
-        validRange(0, KINK_MULTIPLIER_MAX, newKinkMultiplier);
-
-        // Old kink multiplier
-        uint256 oldKinkMultiplier = kinkMultiplier;
-
-        // Update kink multiplier
-        kinkMultiplier = newKinkMultiplier;
-
-        /// @custom:event NewKinkMultiplier
-        emit NewKinkMultiplier(oldKinkMultiplier, newKinkMultiplier);
     }
 }

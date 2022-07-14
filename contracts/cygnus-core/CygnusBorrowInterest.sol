@@ -5,8 +5,11 @@ pragma solidity >=0.8.4;
 import { ICygnusBorrowInterest } from "./interfaces/ICygnusBorrowInterest.sol";
 import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
+// Interfaces
+import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
+
 // Libraries
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 /**
  *  @title  CygnusBorrowInterest Interest rate model contract for Cygnus
@@ -57,8 +60,12 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
      *  @notice Constructs the Interest Rate model
      */
     constructor() {
+        // prettier-ignore
+        (/* factory */, /* underlying */ , /* collateral */, uint256 baseRate, uint256 multiplier, uint256 kink) = 
+          ICygnusAlbireo(_msgSender()).borrowParameters();
+
         /// Update the interest rate model from the parameters passed and stored through CygnusBorrowControl
-        updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, kink);
+        updateJumpRateModelInternal(baseRate, multiplier, kink);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -82,16 +89,17 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         uint256 util = borrows.div((cash + borrows) - reserves);
 
         // If utilization <= kink return normal rate
-        if (util <= kink) {
+        if (util <= kinkUtilizationRate) {
             return util.mul(multiplierPerSecond) + baseRatePerSecond;
         }
 
         // else return normal rate + kink rate
-        uint256 normalRate = kink.mul(multiplierPerSecond) + baseRatePerSecond;
+        uint256 normalRate = kinkUtilizationRate.mul(multiplierPerSecond) + baseRatePerSecond;
 
         // Get the excess utilization rate
-        uint256 excessUtil = util - kink;
+        uint256 excessUtil = util - kinkUtilizationRate;
 
+        // Return per second borrow rate
         return excessUtil.mul(jumpMultiplierPerSecond) + normalRate;
     }
 
@@ -106,36 +114,35 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
      *  @dev Does necessary checks internally. Reverts in case of failing checks
      *  @param baseRatePerYear_ The approximate target base APR, as a mantissa (scaled by 1e18).
      *  @param multiplierPerYear_ The rate of increase in interest rate wrt utilization (scaled by 1e18).
-     *  @param kink_ The utilization point at which the jump multiplier is applied.
+     *  @param kinkMultiplier_ The utilization point at which the jump multiplier is applied.
      */
     function updateJumpRateModelInternal(
         uint256 baseRatePerYear_,
         uint256 multiplierPerYear_,
-        uint256 kink_
+        uint256 kinkMultiplier_
     ) private {
         // Internal parameter check for BaseRate to not exceed maximum allowed
-        validRange(0, BASE_RATE_MAX, baseRatePerYear);
+        validRange(0, BASE_RATE_MAX, baseRatePerYear_);
 
         // Internal parameter check for the Kink point to not be below minimum or above maximum allowed
-        validRange(KINK_RATE_MIN, KINK_RATE_MAX, kink_);
+        validRange(1, KINK_MULTIPLIER_MAX, kinkMultiplier_);
 
-        // Calculate using kinkMultiplier
-        uint256 jumpMultiplierPerYear_ = multiplierPerYear_ * kinkMultiplier;
-
-        // Update jump multiplier to storage
-        jumpMultiplierPerYear = jumpMultiplierPerYear_;
+        // Update kink multiplier
+        kinkMultiplier = kinkMultiplier_;
 
         // Calculate the Base Rate per second and update to storage
         baseRatePerSecond = baseRatePerYear_ / SECONDS_PER_YEAR;
 
         // Calculate the Farm Multiplier per second and update to storage
-        multiplierPerSecond = multiplierPerYear_.div(SECONDS_PER_YEAR * kink_);
+        multiplierPerSecond = multiplierPerYear_.div(SECONDS_PER_YEAR * kinkUtilizationRate);
 
         // Calculate the Jump Multiplier per second and update to storage
-        jumpMultiplierPerSecond = jumpMultiplierPerYear_ / SECONDS_PER_YEAR;
+        jumpMultiplierPerSecond = PRBMath.mulDiv(multiplierPerYear_, kinkMultiplier_, SECONDS_PER_YEAR).div(
+            kinkUtilizationRate
+        );
 
         /// @custom:event NewInterestParameter
-        emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, jumpMultiplierPerYear_, kink_);
+        emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_);
     }
 
     /*  ───────────────────────────────────────────── External ────────────────────────────────────────────────  */
@@ -148,17 +155,9 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     function updateJumpRateModel(
         uint256 newBaseRatePerYear,
         uint256 newMultiplierPerYear,
-        uint256 newKinkRate
+        uint256 newKinkMultiplier
     ) external override nonReentrant cygnusAdmin {
-        // Store baserate per year
-        baseRatePerYear = newBaseRatePerYear;
-
-        // Store multiplier per year
-        multiplierPerYear = newMultiplierPerYear;
-
-        // Update kink utilization
-        kink = newKinkRate;
-
-        updateJumpRateModelInternal(newBaseRatePerYear, newMultiplierPerYear, newKinkRate);
+        // Update Per second rates
+        updateJumpRateModelInternal(newBaseRatePerYear, newMultiplierPerYear, newKinkMultiplier);
     }
 }

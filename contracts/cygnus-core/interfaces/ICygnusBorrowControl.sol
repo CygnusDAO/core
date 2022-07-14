@@ -92,24 +92,9 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     function exchangeRateStored() external view returns (uint256);
 
     /**
-     *  @return multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     */
-    function multiplierPerYear() external view returns (uint256);
-
-    /**
-     *  @return baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
-     */
-    function baseRatePerYear() external view returns (uint256);
-
-    /**
-     *  @return jumpMultiplierPerYear The multiplierPerSecond after hitting a specified utilization point
-     */
-    function jumpMultiplierPerYear() external view returns (uint256);
-
-    /**
      *  @return Current utilization point at which the jump multiplier is applied in this lending pool
      */
-    function kink() external view returns (uint256);
+    function kinkUtilizationRate() external view returns (uint256);
 
     /**
      *  @return Percentage of interest that is routed to this market's Reserve Pool
@@ -131,12 +116,12 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /**
      *  @return Minimum kink utilization point allowed, equivalent to 50%
      */
-    function KINK_RATE_MAX() external pure returns (uint256);
+    function KINK_UTILIZATION_RATE_MIN() external pure returns (uint256);
 
     /**
-     *  @return Maximum kink utilization point allowed, equivalent to 95%
+     *  @return Maximum Kink point allowed, equivalent to 95%
      */
-    function KINK_RATE_MIN() external pure returns (uint256);
+    function KINK_UTILIZATION_RATE_MAX() external pure returns (uint256);
 
     /**
      *  @return The maximum reserve factor allowed, equivalent to 50%
@@ -177,12 +162,4 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @custom:security non-reentrant
      */
     function setReserveFactor(uint256 newReserveFactor) external;
-
-    /**
-     *  @notice 👽
-     *  @notice Updates the multiplier that is applied to the interest rate model once util > kink
-     *  @param newKinkMultiplier The new kink multiplier for this shuttle
-     *  @custom:security non-reentrant
-     */
-    function setKinkMultiplier(uint256 newKinkMultiplier) external;
 }

@@ -316,7 +316,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mul(borrowIndex);
 
-        // ──────────────────── Store values to storage ─────────────────────────
+        // ─── Store values to storage: 2 memory slots with lastAccrualTime ─────
 
         // Store total borrows
         totalBorrows = uint128(totalBorrowsStored);

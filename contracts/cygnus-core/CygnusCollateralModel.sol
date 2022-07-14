@@ -117,9 +117,9 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getLPTokenPrice() public view override returns (uint256 lpTokenPrice) {
+    function getLPTokenPrice() public view override returns (uint256) {
         // Get the price of 1 amount of the underlying in DAI
-        lpTokenPrice = cygnusNebulaOracle.lpTokenPriceDai(underlying);
+        return cygnusNebulaOracle.lpTokenPriceDai(underlying);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -127,7 +127,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getDebtRatio(address borrower) external view override returns (uint256 borrowersDebtRatio) {
+    function getDebtRatio(address borrower) external view override returns (uint256) {
         // Get the borrower's deposited collateral
         uint256 amountCollateral = balanceOf(borrower).mul(exchangeRate());
 
@@ -141,7 +141,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Account for 0 collateral to avoid divide by 0
-        borrowersDebtRatio = collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai);
+        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════

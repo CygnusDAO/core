@@ -67,7 +67,7 @@ import { IMiniChef } from "./interfaces/IMiniChef.sol";
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
             to get the vault token (CygDAI or CygLP). Similar to UniswapV2Pair with some small edits, specifically
-            the mint/redeem functions are edited with the masterchef for the pools.
+            the mint/redeem functions are edited with the masterchef for the pools
  */
 contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -280,7 +280,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(address holder) external override nonReentrant update returns (uint256 redeemAmount) {
+    function redeem(address redeemer) external override nonReentrant update returns (uint256 redeemAmount) {
         // Get current balance
         uint256 cygnusRedeemTokens = balanceOf(address(this));
 
@@ -304,10 +304,10 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         }
 
         // Optimistically transfer redeemed tokens
-        IErc20(underlying).safeTransfer(holder, redeemAmount);
+        IErc20(underlying).safeTransfer(redeemer, redeemAmount);
 
         /// @custom:event Redeem
-        emit Redeem(_msgSender(), holder, redeemAmount, cygnusRedeemTokens);
+        emit Redeem(_msgSender(), redeemer, redeemAmount, cygnusRedeemTokens);
     }
 
     /**

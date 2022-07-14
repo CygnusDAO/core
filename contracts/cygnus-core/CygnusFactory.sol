@@ -261,15 +261,15 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         address lpTokenPair,
         uint256 baseRate,
         uint256 farmApy,
-        uint256 kinkUtilizationRate
-    ) external override nonReentrant cygnusAdmin returns (address _cygnusAlbireo, address _cygnusDeneb) {
+        uint256 kinkMultiplier
+    ) external override nonReentrant cygnusAdmin returns (address cygnusAlbireo, address cygnusDeneb) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
 
         // Check if exists, if not, add this shuttle ID (address[].length)
         boardShuttle(lpTokenPair);
 
         // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
-        address _collateral = CygnusPoolAddress.getCollateralContract(
+        address collateral = CygnusPoolAddress.getCollateralContract(
             lpTokenPair,
             address(this),
             address(collateralDeployer)
@@ -283,14 +283,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
         // Deploy first borrow token
-        _cygnusAlbireo = borrowDeployer.deployAlbireo(dai, _collateral, baseRate, farmApy, kinkUtilizationRate);
+        cygnusAlbireo = borrowDeployer.deployAlbireo(dai, collateral, baseRate, farmApy, kinkMultiplier);
 
         // Deploy collateral
-        _cygnusDeneb = collateralDeployer.deployDeneb(lpTokenPair, _cygnusAlbireo);
+        cygnusDeneb = collateralDeployer.deployDeneb(lpTokenPair, cygnusAlbireo);
 
         /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
-        if (_cygnusDeneb != _collateral) {
-            revert CygnusFactory__CollateralAddressMismatch(_cygnusDeneb);
+        if (cygnusDeneb != collateral) {
+            revert CygnusFactory__CollateralAddressMismatch(cygnusDeneb);
         }
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
@@ -298,10 +298,10 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // No way back now, initialize pool
 
         // Add collateral contract to record
-        getShuttles[lpTokenPair].cygnusDeneb = _cygnusDeneb;
+        getShuttles[lpTokenPair].cygnusDeneb = cygnusDeneb;
 
         // Add cygnus borrow contract to record
-        getShuttles[lpTokenPair].cygnusAlbireo = _cygnusAlbireo;
+        getShuttles[lpTokenPair].cygnusAlbireo = cygnusAlbireo;
 
         // Add the address of the underlying albireo contract
         getShuttles[lpTokenPair].borrowToken = dai;
@@ -318,7 +318,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         getShuttles[lpTokenPair].isInitialized = true;
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(lpTokenPair, allShuttles.length, _cygnusDeneb, _cygnusAlbireo, dai);
+        emit NewShuttleLaunched(lpTokenPair, allShuttles.length, cygnusDeneb, cygnusAlbireo, dai);
     }
 
     /**

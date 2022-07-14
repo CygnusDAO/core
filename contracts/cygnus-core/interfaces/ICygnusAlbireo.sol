@@ -17,7 +17,7 @@ interface ICygnusAlbireo {
      *  @return cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      *  @return baseRatePerYear The base rate per year for this shuttle
      *  @return farmApy The farm APY for this LP Token
-     *  @return kinkUtilizationRate The kink utilization rate for this pool
+     *  @return kinkMultiplier The multiplier applied to the farmApy once kink util is reached
      */
     function borrowParameters()
         external
@@ -27,7 +27,7 @@ interface ICygnusAlbireo {
             address cygnusDeneb,
             uint256 baseRatePerYear,
             uint256 farmApy,
-            uint256 kinkUtilizationRate
+            uint256 kinkMultiplier
         );
 
     /**
@@ -36,7 +36,7 @@ interface ICygnusAlbireo {
      *  @param cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      *  @param baseRatePerYear The base rate per year for this shuttle
      *  @param farmApy The farm APY for this LP Token
-     *  @param kinkUtilizationRate The kink utilization rate for this pool
+     *  @param kinkMultiplier The multiplier applied to the farmApy once kink util is reached
      *  @return albireo The address of the new borrow contract
      */
     function deployAlbireo(
@@ -44,6 +44,6 @@ interface ICygnusAlbireo {
         address cygnusDeneb,
         uint256 baseRatePerYear,
         uint256 farmApy,
-        uint256 kinkUtilizationRate
+        uint256 kinkMultiplier
     ) external returns (address albireo);
 }

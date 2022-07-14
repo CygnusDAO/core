@@ -30,9 +30,9 @@ import { CygnusBorrow } from "./CygnusBorrow.sol";
 /**
  *  @title  CygnusAlbireo Contract that deploys the Cygnus Borrow arm of the lending pool
  *  @author CygnusDAO
- *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys  
+ *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys
  *          the borrow contract with the corresponding Cygnus collateral contract address. We pass
- *          structs to avoid having to set constructors in the core contracts, being able to calculate*
+ *          structs to avoid having to set constructors in the core contracts, being able to calculate
  *          addresses of lending pools with CREATE2
  */
 contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
@@ -49,7 +49,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      *  @custom:member cygnusDeneb The address of the Cygnus collateral contract for this borrow token
      &  @custom:member baseRatePerYear The base rate per year for this shuttle
      *  @custom:member farmApy The farm APY for this LP Token
-     *  @custom:member kinkUtilizationRate The kink utilization rate for this pool
+     *  @custom:member kinkMultiplier The multiplier applied to the farmApy once kink util is reached
      */
     struct BorrowParameters {
         address factory;
@@ -57,7 +57,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
         address cygnusDeneb;
         uint256 baseRatePerYear;
         uint256 farmApy;
-        uint256 kinkUtilizationRate;
+        uint256 kinkMultiplier;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -81,7 +81,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
         address collateralContract,
         uint256 baseRatePerYear,
         uint256 farmApy,
-        uint256 kinkUtilizationRate
+        uint256 kinkMultiplier
     ) external override nonReentrant returns (address albireo) {
         // Assign important addresses to pass to borrow contracts
         borrowParameters = BorrowParameters({
@@ -90,7 +90,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
             cygnusDeneb: collateralContract,
             baseRatePerYear: baseRatePerYear,
             farmApy: farmApy,
-            kinkUtilizationRate: kinkUtilizationRate
+            kinkMultiplier: kinkMultiplier
         });
 
         // Create Borrow contract
