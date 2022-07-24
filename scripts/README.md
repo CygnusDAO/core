@@ -1,6 +1,6 @@
 # **Scripts to quickly test a shuttle**
 
-These are simple scripts which simulate a complete interaction with Cygnus using the CygnusAltairX router.
+These are simple scripts which simulate a complete interaction with Cygnus using the CygnusAltairX router. We use the `shuttleAvalanche` script for example with the LP Token of JOE/AVAX: https://snowtrace.com/token/0x454E67025631C065d3cFAD6d71E6892f74487a15
 
 1) We deploy oracle, orbiters, factory (set orbiters) and deploy router
 1) Lender deposits 25,000 DAI
