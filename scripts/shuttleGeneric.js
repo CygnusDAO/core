@@ -6,7 +6,9 @@ const path = require('path');
 
 const { time } = require('@openzeppelin/test-helpers');
 
-// AVALANCHE SCRIPT FOR LENDING POOL
+// Script to deploy and do quick deposit, leverage, deleverage and redeem checks
+// This script deploys generic shuttles, meaning any LP token pair that does not have a masterchef/rewarder contract behind it
+// This would be used for uniswapv2 pools for example
 
 /*
  *  Deploys a lending pool on Avalanche. We use the LP Token Joe/Avax from Traderjoe as an example and
@@ -15,12 +17,12 @@ const { time } = require('@openzeppelin/test-helpers');
  *  The steps to deploy a lending pool is as follows:
  *
  *     1. Deploy oracle and initialize the LP Token pair we want to get the price of
- *     2. Deploy the `collateral deployer` contract which deploys collaterals for Cygnus
- *     3. Deploy the `borrow deployer` contract which deploys the borrow contracts for Cygnus
- *     4. Deploy the factory with the above addresses
- *     5. Deploy the router for ease of use with contracts
- *     6. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
- *     7. Initialize CygnusCollateralVoid
+ *     2. Deploy the Collateral `CygnusDeneb` - Contract that deploys collaterals
+ *     3. Deploy the borrow orbiter `CygnusAlbireo` - Contract that deploys borrow contracts
+ *     4. Deploy the factory with native chain token, address of dai, admin and reserves manager
+ *     5. Initialize orbiters in the factory for each dex we want to deploy to
+ *     6. Deploy the router for ease of use with contracts
+ *     7. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
  */
 async function deploy() {
     // Constants
@@ -236,7 +238,7 @@ async function deploy() {
     // Borrower 4x leverage (borrows DAI equivalent to 3 LP Tokens)
     await router
         .connect(borrower)
-        .leverage(collateral.address, BigInt(oneLPToken) * BigInt(2), borrower._address, max, '0x');
+        .leverage(collateral.address, BigInt(oneLPToken) * BigInt(4), borrower._address, max, '0x');
 
     const borrowBalanceAfter = await borrowable.getBorrowBalance(borrower._address);
 

@@ -21,15 +21,15 @@ library VoidHelper {
     function optimalDepositA(
         uint256 amountA,
         uint256 reservesA,
-        uint256 _swapFeeFactor
+        uint256 dexFee
     ) internal pure returns (uint256) {
-        uint256 a = (1000 + _swapFeeFactor) * reservesA;
+        uint256 a = (1000 + dexFee) * reservesA;
 
-        uint256 b = amountA * 1000 * reservesA * 4 * _swapFeeFactor;
+        uint256 b = amountA * 1000 * reservesA * 4 * dexFee;
 
         uint256 c = PRBMath.sqrt(a * a + b);
 
-        uint256 d = 2 * _swapFeeFactor;
+        uint256 d = 2 * dexFee;
 
         return (c - a) / d;
     }

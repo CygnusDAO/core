@@ -337,7 +337,7 @@
           "type": "bytes"
         }
       ],
-      "name": "deleverage",
+      "name": "deleverage_OM0",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -383,7 +383,7 @@
           "type": "bytes"
         }
       ],
-      "name": "leverage",
+      "name": "leverage_adl",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

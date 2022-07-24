@@ -841,6 +841,44 @@
     },
     {
       "inputs": [],
+      "name": "getCygnusVoid",
+      "outputs": [
+        {
+          "internalType": "contract IMiniChef",
+          "name": "rewarder_",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "pid_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "voidActivated_",
+          "type": "bool"
+        },
+        {
+          "internalType": "address",
+          "name": "rewardsToken_",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "dexSwapFee_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "contract IDexRouter02",
+          "name": "dexRouter_",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "hangar18",
       "outputs": [
         {
@@ -1234,44 +1272,6 @@
           "internalType": "string",
           "name": "",
           "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "voidInfo",
-      "outputs": [
-        {
-          "internalType": "contract IMiniChef",
-          "name": "rewarder_",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "pid_",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "voidActivated_",
-          "type": "bool"
-        },
-        {
-          "internalType": "address",
-          "name": "rewardsToken_",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "dexSwapFee_",
-          "type": "uint256"
-        },
-        {
-          "internalType": "contract IDexRouter02",
-          "name": "dexRouter_",
-          "type": "address"
         }
       ],
       "stateMutability": "view",

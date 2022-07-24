@@ -152,7 +152,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function voidInfo()
+    function getCygnusVoid()
         external
         view
         override
@@ -276,7 +276,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Else return our balance held in the masterchef
         else {
             // prettier-ignore
-            (totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
+            (uint256 _totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
+
+            // Update total balance held by this contract
+            totalBalance = _totalBalance;
 
             /// @custom:event Sync
             emit Sync(totalBalance);

@@ -82,7 +82,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @return dexSwapFee_ The fee the dex charges for swaps (divided by 1000 ie Uniswap charges 0.3%, swap fee is 997)
      *  @return dexRouter_ The address of the dex' router used to swap between tokens
      */
-    function voidInfo()
+    function getCygnusVoid()
         external
         view
         returns (

@@ -15,19 +15,20 @@ const { time } = require('@openzeppelin/test-helpers');
  *  The steps to deploy a lending pool is as follows:
  *
  *     1. Deploy oracle and initialize the LP Token pair we want to get the price of
- *     2. Deploy the `collateral deployer` contract which deploys collaterals for Cygnus
- *     3. Deploy the `borrow deployer` contract which deploys the borrow contracts for Cygnus
- *     4. Deploy the factory with the above addresses
- *     5. Deploy the router for ease of use with contracts
- *     6. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
- *     7. Initialize CygnusCollateralVoid
+ *     2. Deploy the Collateral `CygnusDeneb` - Contract that deploys collaterals
+ *     3. Deploy the borrow orbiter `CygnusAlbireo` - Contract that deploys borrow contracts
+ *     4. Deploy the factory with native chain token, address of dai, admin and reserves manager
+ *     5. Initialize orbiters in the factory for each dex we want to deploy to
+ *     6. Deploy the router for ease of use with contracts
+ *     7. Deploy Shuttle from the factory with the address of the LP Token we want to create a lending pool with
+ *     8. Initialize CygnusCollateralVoid
  */
 async function deploy() {
     // Constants
     const max = ethers.constants.MaxUint256;
 
     // Signer and reservesManager
-    const [owner, reservesManager] = await ethers.getSigners();
+    const [owner, reservesManager, reinvestor] = await ethers.getSigners();
 
     // LP Token ABI
     const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
@@ -173,11 +174,15 @@ async function deploy() {
     /********************************************************************************************************
    
     
-     CYGNUS INTERACTIONS - Connect to the router and test mint functions for borrow and collateral contracts,
-                           and borrow 1 DAI
+     CYGNUS INTERACTIONS - Connect to the router and test mint functions for borrow and collateral contracts.
+                         - Increase debt ratio to 100% and keep liquidation incentive to 5% to do a max leverage
+                           
     
      
      ********************************************************************************************************/
+
+    // Increase debt ratio to 100%, the maximum amount
+    await collateral.connect(owner).setDebtRatio(BigInt(1e18));
 
     console.log(
         'LP Balance of borrower before interacting with Cygnus: %s',
@@ -191,16 +196,16 @@ async function deploy() {
 
     console.log('---- Borrower deposits 1 LP token of joe/Avax into Cygnus ----');
 
-    // Borrower: Deposits 1 LP Token
+    // Price of 1 LP Token of joe/avax in DAI
+    const oneLPToken = await collateral.getLPTokenPrice();
+
+    // Borrower: Deposits 100 LP Token = ~740 usd
     await LPTOKEN.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(1e18), borrower._address, max);
+    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
 
     // Lender: Deposits 1000 dai
     await DAI.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(1000e18), lender._address, max);
-
-    // Price of 1 LP Token of joe/avax in DAI
-    const oneLPToken = await collateral.getLPTokenPrice();
+    await router.connect(lender).mint(borrowable.address, BigInt(25000e18), lender._address, max);
 
     console.log('----------------------------------------------------------------------------------------------');
 
@@ -227,11 +232,11 @@ async function deploy() {
 
     console.log('LENDER: CygDAI balance of lender: %s', cygDAIBalanceBeforeL / 1e18);
 
-    console.log('BORROWER: CygLP balance of borrower before leverage: %s', cygLPBalanceBeforeL / 1e18);
+    console.log('BORROWER: CygLP balance of borrower before leverage: %s CYG-LP', cygLPBalanceBeforeL / 1e18);
 
-    console.log('PROTOCOL: totalBalance of borrowable before leverage: %s', albireoBalanceBeforeL / 1e18);
+    console.log('PROTOCOL: totalBalance of borrowable before leverage: %s DAI', albireoBalanceBeforeL / 1e18);
 
-    console.log('PROTOCOL: totalBalance of collateral before leverage: %s', cygLPTotalBalanceBeforeL / 1e18);
+    console.log('PROTOCOL: totalBalance of collateral before leverage: %s LP TOKENS', cygLPTotalBalanceBeforeL / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
 
@@ -242,22 +247,24 @@ async function deploy() {
     // Borrower: Approve borrow
     await borrowable.connect(borrower).borrowApprove(router.address, max);
 
-    // Borrower 4x leverage (borrows DAI equivalent to 3 LP Tokens)
+    // Borrower 9x leverage (borrows DAI equivalent to 800 LP Tokens)
     await router
         .connect(borrower)
-        .leverage(collateral.address, BigInt(oneLPToken) * BigInt(3), borrower._address, max, '0x');
+        .leverage_adl(collateral.address, BigInt(oneLPToken) * BigInt(800), borrower._address, max, '0x');
 
     const borrowBalanceAfter = await borrowable.getBorrowBalance(borrower._address);
 
-    console.log('PROTOCOL: outstanding borrow balance of borrower: %s', borrowBalanceAfter / 1e18);
+    console.log('PROTOCOL: outstanding borrow balance of borrower: %s DAI', borrowBalanceAfter / 1e18);
+
+    console.log('BORROWER: Debt ratio after leverage x9: %s', await collateral.getDebtRatio(borrower._address));
 
     const denebBalanceAfterL = await collateral.balanceOf(borrower._address);
 
-    console.log('BORROWER: cygdeneb balance of borrower after leverage: %s', denebBalanceAfterL / 1e18);
+    console.log('BORROWER: CYG-LP balance of borrower after leverage: %s CYG-LP', denebBalanceAfterL / 1e18);
 
     const albireoBalanceAfterL = await borrowable.totalBalance();
 
-    console.log('PROTOCOL: totalBalance of borrowable after leverage: %s', albireoBalanceAfterL / 1e18);
+    console.log('PROTOCOL: totalBalance of borrowable after leverage: %s DAI', albireoBalanceAfterL / 1e18);
 
     const totalBalanceC = await collateral.totalBalance();
 
@@ -269,19 +276,37 @@ async function deploy() {
 
     console.log('----------------------------------------------------------------------------------------------');
 
+    // Create
+    const REWARDTOKEN = new ethers.Contract(rewardToken, daiAbi, owner);
+
+    const reinvestorBalance = await REWARDTOKEN.balanceOf(reinvestor.address);
+
     const balanceBeforeReinvest = await collateral.totalBalance();
 
-    console.log('PROTOCOL: totalBalance of collateral after leverage: %s LP TOKENS', balanceBeforeReinvest / 1e18);
+    console.log('PROTOCOL: totalBalance of collateral before reinvesting: %s LP TOKENS', balanceBeforeReinvest / 1e18);
 
+    console.log(
+        'PROTOCOL: totalBalance of rewards token of the reinvestor before reinvesting: %s JOE',
+        reinvestorBalance / 1e18,
+    );
+
+    // Increase 7 days
     await time.increase(60 * 60 * 24 * 7);
 
-    console.log('7 Days pass.......');
+    console.log('7 Days pass...');
 
-    await collateral.connect(lender).reinvestRewards_y7b();
+    await collateral.connect(reinvestor).reinvestRewards_y7b();
+
+    const reinvestorBalanceAfter = await REWARDTOKEN.balanceOf(reinvestor.address);
 
     const balanceAfterReinvest = await collateral.totalBalance();
 
-    console.log('PROTOCOL: totalBalance of collateral after leverage: %s LP TOKENS', balanceAfterReinvest / 1e18);
+    console.log('PROTOCOL: totalBalance of collateral after reinvesting: %s LP TOKENS', balanceAfterReinvest / 1e18);
+
+    console.log(
+        'PROTOCOL: balance of rewards token of the reinvestor after reinvesting: %s JOE',
+        reinvestorBalanceAfter / 1e18,
+    );
 
     console.log('----------------------------------------------------------------------------------------------');
 
@@ -294,7 +319,13 @@ async function deploy() {
 
     const maxBalance = await collateral.balanceOf(borrower._address);
 
-    await router.connect(borrower).deleverage(collateral.address, maxBalance, max, '0x');
+    // Deleverage up to original deposited amount + estimate of swap fees (0.3% for each swap and we're doing 6 swaps max)
+    await router.connect(borrower).deleverage_OM0(collateral.address, BigInt(maxBalance) - BigInt(91.5e18), max, '0x');
+
+    const newBalance = await collateral.balanceOf(borrower._address);
+
+    // Redeem
+    await router.connect(borrower).redeem(collateral.address, newBalance, borrower._address, max, '0x');
 
     const finalDenebBalance = await collateral.balanceOf(borrower._address);
 
@@ -302,19 +333,18 @@ async function deploy() {
 
     const outstandingBalance = await borrowable.getBorrowBalance(borrower._address);
 
-    console.log('PROTOCOL: outstanding borrow balance of borrower after de-leverage: %s', outstandingBalance / 1e18);
+    console.log(
+        'PROTOCOL: outstanding borrow balance of borrower after de-leverage: %s DAI',
+        outstandingBalance / 1e18,
+    );
 
-    console.log('BORROWER: cygdeneb balance of borrower after de-leverage: %s', finalDenebBalance / 1e18);
+    console.log('BORROWER: CYG-LP balance of borrower after de-leverage: %s CYG-LP', finalDenebBalance / 1e18);
 
-    console.log('PROTOCOL: totalBalance of borrowable after de-leverage: %s', finalAlbireoBalance / 1e18);
+    console.log('PROTOCOL: totalBalance of borrowable after de-leverage: %s DAI', finalAlbireoBalance / 1e18);
 
     const totalBalanceD = await collateral.totalBalance();
 
     console.log('PROTOCOL: totalBalance of collateral after de-leverage: %s LP TOKENS', totalBalanceD / 1e18);
-
-    const daiBalanceAfter = await DAI.balanceOf(borrower._address);
-
-    console.log('BORROWER: DAI Balance borrower after de-leverage: %s', daiBalanceAfter / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
 
@@ -325,23 +355,37 @@ async function deploy() {
     const balanceCygDaiLender = await borrowable.balanceOf(lender._address);
 
     await borrowable.connect(lender).approve(router.address, max);
-
     await router.connect(lender).redeem(borrowable.address, balanceCygDaiLender, lender._address, max, '0x');
 
     const finalLPBalance = await LPTOKEN.balanceOf(borrower._address);
-
     const finalDaiBalance = await DAI.balanceOf(lender._address);
+    const daiBalanceAfter = await DAI.balanceOf(borrower._address);
 
-    console.log('BORROWER: LP Balance of borrower after interacting with Cygnus: %s', finalLPBalance / 1e18);
+    console.log('BORROWER: DAI Balance borrower after de-leverage: %s DAI', daiBalanceAfter / 1e18);
     console.log('LENDER: DAI Balance of lender after interacting wtih Cygnus: %s DAI', finalDaiBalance / 1e18);
+    console.log('BORROWER: LP Balance of borrower after interacting with Cygnus: %s', finalLPBalance / 1e18);
 
-    console.log('PROTOCOL: totalBalance of borrowable after full redeem: %s', await borrowable.totalBalance());
-    console.log('PROTOCOL: totalSupply of borrowable after full redeem: %s', await borrowable.totalSupply());
+    console.log(
+        'PROTOCOL: totalBalance of collateral after full redeem: %s LP TOKENS',
+        (await collateral.totalBalance()) / 1e19,
+    );
 
-    console.log('PROTOCOL: totalBalance of collateral after full redeem: %s', await collateral.totalBalance());
-    console.log('PROTOCOL: totalSupply of collateral after full redeem: %s', await collateral.totalSupply());
+    console.log('PROTOCOL: totalSupply of collateral after full redeem: %s CYG-LP', await collateral.totalSupply());
 
-    console.log('RESERVES: balanceOf reserves manager: %s CygDAI', await borrowable.balanceOf(reservesManager.address) / 1e18);
+    // only cygDai left in the pool should be the DAO reserves
+    console.log(
+        'PROTOCOL: totalBalance of borrowable after full redeem: %s DAI',
+        (await borrowable.totalBalance()) / 1e18,
+    );
+    console.log(
+        'PROTOCOL: totalSupply of borrowable after full redeem: %s CygDAI',
+        (await borrowable.totalSupply()) / 1e18,
+    );
+
+    console.log(
+        'RESERVES: balanceOf reserves manager: %s CygDAI',
+        (await borrowable.balanceOf(reservesManager.address)) / 1e18,
+    );
 }
 
 deploy();
