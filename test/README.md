@@ -1,4 +1,4 @@
-# <h3> Unit tests
+# <h3> Unit and integration tests
   
   The unit tests serve the purpose of proving the above features and the security of Cygnus. 
   
