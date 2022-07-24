@@ -5,24 +5,25 @@ pragma solidity >=0.8.4;
 import { ICygnusCollateralVoid } from "./interfaces/ICygnusCollateralVoid.sol";
 import { CygnusCollateralControl } from "./CygnusCollateralControl.sol";
 
-// Libraries
-import { VoidHelper } from "./libraries/VoidHelper.sol";
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
-import { SafeErc20 } from "./libraries/SafeErc20.sol";
-
 // Interfaces
-import { CygnusTerminal } from "./CygnusTerminal.sol";
+import { ICygnusTerminal, CygnusTerminal } from "./CygnusTerminal.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { IDexPair } from "./interfaces/IDexPair.sol";
 import { IDexRouter02 } from "./interfaces/IDexRouter.sol";
 import { IErc20 } from "./interfaces/IErc20.sol";
 import { IRewarder, IMiniChef } from "./interfaces/IMiniChef.sol";
+import { IWAVAX } from "./interfaces/IWAVAX.sol";
+
+// Libraries
+import { VoidHelper } from "./libraries/VoidHelper.sol";
+import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import { SafeErc20 } from "./libraries/SafeErc20.sol";
 
 /**
  *  @title  CygnusCollateralVoid Assigns the masterchef/rewards contract (if any) to harvest and reinvest rewards
  *  @notice This contract is considered optional and default state is offline (bool `voidActivated`)
- *          It is the only contract in Cygnus that should be changed according to the LP Token's masterchef/rewarder
- *          Most functions are kept as private as they are only relevant to this contract and the rest of the contracts
+ *          It is the only contract in Cygnus that should be changed according to the LP Token's masterchef/rewarder.
+ *          As such most functions are kept private as they are only relevant to this contract and the others
  *          are indifferent to this.
  */
 contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl {
@@ -49,7 +50,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Private ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice Address of the chain's native token
@@ -66,22 +67,22 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     address private immutable token1;
 
+    /**
+     *  @notice The token that is given as rewards by the dex' masterchef/rewarder contract
+     */
+    address private rewardsToken;
+
+    /**
+     *  @notice The address of this dex' router
+     */
+    IDexRouter02 private dexRouter;
+
+    /**
+     *  @notice The fee this dex charges for each swap divided by 1000 (ie uniswap charges 0.3%, swap fee is 997)
+     */
+    uint256 private dexSwapFee;
+
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     */
-    IDexRouter02 public override dexRouter;
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     */
-    address public override rewardsToken;
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     */
-    uint256 public override swapFeeFactor;
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
@@ -108,17 +109,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         nativeToken = ICygnusFactory(hangar18).nativeToken();
     }
 
+    /**
+     *  @notice Accepts AVAX and immediately deposits in WAVAX contract to receive wrapped avax
+     */
+    receive() external payable {
+        // Receive AVAX and deposit in WAVAX contract to immediately convert to WAVAX
+        IWAVAX(nativeToken).deposit{ value: msg.value }();
+    }
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. MODIFIERS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @custom:modifier chargeVoid Reinvests rewards from masterchef/rewarder before depositing
-     */
-    modifier chargeVoid() {
-        checkVoid();
-        _;
-    }
 
     /**
      *  @custom:modifier onlyEOA Modifier which reverts transaction if msg.sender is considered a contract
@@ -133,15 +134,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
-
-    /**
-     *  @notice Reinvests if void is activated
-     */
-    function checkVoid() private {
-        if (voidActivated) {
-            reinvest(address(0));
-        }
-    }
 
     /**
      *  @notice Reverts if it is not considered a EOA
@@ -160,15 +152,21 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function getMasterChef() external view override returns (address) {
-        return address(rewarder);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     */
-    function getPoolId() external view override returns (uint256) {
-        return pid;
+    function voidInfo()
+        external
+        view
+        override
+        returns (
+            IMiniChef rewarder_,
+            uint256 pid_,
+            bool voidActivated_,
+            address rewardsToken_,
+            uint256 dexSwapFee_,
+            IDexRouter02 dexRouter_
+        )
+    {
+        // Return all the private storage variables
+        return (rewarder, pid, voidActivated, rewardsToken, dexSwapFee, dexRouter);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -183,7 +181,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @param tokenOut Address of the token we are receiving
      *  @param amount Amount of TokenIn we are swapping
      */
-    function swapExactTokensForTokens(
+    function swapTokensPrivate(
         address tokenIn,
         address tokenOut,
         uint256 amount
@@ -212,7 +210,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @param amountB The amount of token B to add as liquidity
      *  @return liquidity The total liquidity amount added
      */
-    function addLiquidity(
+    function addLiquidityPrivate(
         address tokenA,
         address tokenB,
         uint256 amountA,
@@ -225,119 +223,60 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         tokenB.approveDexRouter(address(dexRouter), amountB);
 
         // prettier-ignore
-        (/* amountA */, /* amountB */, liquidity) = 
-          dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), type(uint256).max);
+        (
+            /* amountA */,
+            /* amountB */,
+            liquidity
+        ) = dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), type(uint256).max);
     }
 
     /**
      *  @notice Gets the rewards from the masterchef's rewarder contract for multiple tokens and converts to rewardToken
      */
     function getRewardsPrivate() private returns (uint256) {
-        // Withdraw from the masterchef by depositing 0 amount
-        IMiniChef(rewarder).deposit(pid, 0);
+        // Harvest rewards from the masterchef by withdrawing 0 amount
+        IMiniChef(rewarder).withdraw(pid, 0);
+
+        // Get the contract that pays the bonus AVAX rewards (if any) from the dex
+        (, , , , , IRewarder bonusRewarder, , , ) = IMiniChef(rewarder).poolInfo(pid);
+
+        // Check if this LP is paying additional rewards
+        if (address(bonusRewarder) != address(0)) {
+            // Check on contract to see if the reward is AVAX
+            bool isNative = bonusRewarder.isNative();
+
+            // If is AVAX, bonus reward is WAVAX due to receive() function else get bonus reward token
+            address bonusRewardToken = isNative ? nativeToken : address(bonusRewarder.rewardToken());
+
+            // Get the balance of the bonus reward token
+            uint256 bonusRewardBalance = bonusRewardToken.contractBalanceOf();
+
+            // If we have any, swap everything to this shuttle's rewardsToken
+            if (bonusRewardBalance > 0) {
+                swapTokensPrivate(bonusRewardToken, rewardsToken, bonusRewardBalance);
+            }
+        }
 
         // Return this contract's total rewards balance
         return rewardsToken.contractBalanceOf();
     }
 
-    /**
-     *  @notice Reinvests rewards token to buy more LP tokens and adds it back to position
-     *          As a result the debt owned by borrowers diminish on every reinvestment as their LP Token amount increase
-     *  @custom:security non-reentrant
-     */
-    function reinvest(address reinvestor) private nonReentrant update {
-        // 1. Withdraw all the rewards
-        uint256 currentRewards = getRewardsPrivate();
-
-        // If none accumulated return and do nothing
-        if (currentRewards == 0) {
-            return;
-        }
-
-        // 2. If called manually send reward to user
-        uint256 eoaReward;
-
-        if (reinvestor != address(0)) {
-            // Get the externally owned account reward
-            eoaReward = currentRewards.mul(REINVEST_REWARD);
-
-            // Transfer the reward for reinvesting
-            IErc20(rewardsToken).safeTransfer(reinvestor, eoaReward);
-
-            /// @custom:event Transfer
-            emit Transfer(address(this), reinvestor, eoaReward);
-        }
-
-        // 3. Convert all the remaining rewards to token0 or token1
-        address tokenA;
-
-        address tokenB;
-
-        // Check if rewards token is token0 or token1 from LP
-        if (token0 == rewardsToken || token1 == rewardsToken) {
-            (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
-        } else {
-            // Swap token reward token to native token
-            swapExactTokensForTokens(rewardsToken, nativeToken, currentRewards - eoaReward);
-
-            // Check if token0 or token1 is native token
-            if (token0 == nativeToken || token1 == nativeToken) {
-                (tokenA, tokenB) = token0 == nativeToken ? (token0, token1) : (token1, token0);
-            } else {
-                // Swap native token to token0
-                swapExactTokensForTokens(nativeToken, token0, nativeToken.contractBalanceOf());
-
-                // Assign tokenA and tokenB to token0 and token1 respectively
-                (tokenA, tokenB) = (token0, token1);
-            }
-        }
-
-        // 4. Convert tokenA to LP Token underlyings
-        // Get the balance of tokenA held by this contract
-        uint256 totalAmountA = tokenA.contractBalanceOf();
-
-        // Contract should always have balance
-        assert(totalAmountA > 0);
-
-        // prettier-ignore
-        (uint256 reserves0, uint256 reserves1, /* BlockTimestamp */) = IDexPair(underlying).getReserves();
-
-        // Get reserves of tokenA for optimal deposit
-        uint256 reservesA = tokenA == token0 ? reserves0 : reserves1;
-
-        // Get optimal swap amount for token A
-        uint256 swapAmount = VoidHelper.optimalDepositA(totalAmountA, reservesA, swapFeeFactor);
-
-        // Swap optimal amount to tokenA to tokenB for liquidity deposit
-        swapExactTokensForTokens(tokenA, tokenB, swapAmount);
-
-        // Add liquidity
-        uint256 liquidity = addLiquidity(tokenA, tokenB, totalAmountA - swapAmount, tokenB.contractBalanceOf());
-
-        // 5. Stake the LP Tokens
-        rewarder.deposit(pid, liquidity);
-
-        /// @custom:event RechargeVoid
-        emit RechargeVoid(address(this), _msgSender(), currentRewards, liquidity);
-    }
-
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Syncs total total balance of this contract from our deposits in the masterchef
+     *  @notice Syncs total balance of this contract from our deposits in the masterchef, else this contract's deposit
      *  @dev Overrides CygnusTerminal
      */
     function updateInternal() internal override(CygnusTerminal) {
-        // For LP Tokens which don't have void activated
+        // Get total balance held by this contract
         if (!voidActivated) {
+            // Update from terminal
             super.updateInternal();
         }
-        // If activated get totalBalance from masterchef
+        // Else return our balance held in the masterchef
         else {
-            (uint256 _totalBalance, ) = rewarder.userInfo(pid, address(this));
-
-            // Update Total Rewards Balance
-            totalBalance = _totalBalance;
+            // prettier-ignore
+            (totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
 
             /// @custom:event Sync
             emit Sync(totalBalance);
@@ -355,7 +294,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         IMiniChef rewarderVoid,
         address rewardsTokenVoid,
         uint256 pidVoid,
-        uint256 swapFeeFactorVoid
+        uint256 dexSwapFeeVoid
     ) external override nonReentrant cygnusAdmin {
         /// @custom:error InvalidRewardsToken Avoid setting cygnus void twice
         if (rewardsToken != address(0)) {
@@ -375,7 +314,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         rewardsToken = rewardsTokenVoid;
 
         // Swap fee for this dex
-        swapFeeFactor = swapFeeFactorVoid;
+        dexSwapFee = dexSwapFeeVoid;
 
         // Approve dex router in rewards token
         rewardsTokenVoid.safeApprove(address(dexRouterVoid), type(uint256).max);
@@ -390,14 +329,77 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         voidActivated = true;
 
         /// @custom:event ChargeVoid
-        emit ChargeVoid(dexRouterVoid, rewarderVoid, rewardsTokenVoid, pidVoid, swapFeeFactorVoid);
+        emit ChargeVoid(dexRouterVoid, rewarderVoid, rewardsTokenVoid, pidVoid, dexSwapFeeVoid);
     }
 
     /**
+     *  @notice Reinvests rewards token to buy more LP tokens and adds it back to position
+     *          As a result the debt owned by borrowers diminish on every reinvestment as their LP Token amount increase
      *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security non-reentrant
      */
-    function reinvestRewards() external override onlyEOA {
-        // Reinvest rewards and send bounty to msg sender
-        reinvest(_msgSender());
+    function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
+        // 1. Withdraw all the rewards
+        uint256 currentRewards = getRewardsPrivate();
+
+        // If none accumulated return and do nothing
+        if (currentRewards == 0) {
+            return;
+        }
+
+        // 2. Send reward to user
+        uint256 eoaReward = currentRewards.mul(REINVEST_REWARD);
+
+        // Transfer the reward for reinvesting
+        IErc20(rewardsToken).safeTransfer(_msgSender(), eoaReward);
+
+        // 3. Convert all the remaining rewards to token0 or token1
+        address tokenA;
+
+        address tokenB;
+
+        // Check if rewards token is token0 or token1 from LP
+        if (token0 == rewardsToken || token1 == rewardsToken) {
+            // Check which token is rewardsToken
+            (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
+        } else {
+            // Swap token reward token to native token
+            swapTokensPrivate(rewardsToken, nativeToken, currentRewards - eoaReward);
+            // Check if token0 or token1 is native token
+            if (token0 == nativeToken || token1 == nativeToken) {
+                // Check which token is nativeToken
+                (tokenA, tokenB) = token0 == nativeToken ? (token0, token1) : (token1, token0);
+            } else {
+                // Swap native token to token0
+                swapTokensPrivate(nativeToken, token0, nativeToken.contractBalanceOf());
+
+                // Assign tokenA and tokenB to token0 and token1 respectively
+                (tokenA, tokenB) = (token0, token1);
+            }
+        }
+
+        // 4. Convert tokenA to LP Token underlyings
+        uint256 totalAmountA = tokenA.contractBalanceOf();
+
+        // prettier-ignore
+        (uint256 reserves0, uint256 reserves1, /* BlockTimestamp */) = IDexPair(underlying).getReserves();
+
+        // Get reserves of tokenA for optimal deposit
+        uint256 reservesA = tokenA == token0 ? reserves0 : reserves1;
+
+        // Get optimal swap amount for token A
+        uint256 swapAmount = VoidHelper.optimalDepositA(totalAmountA, reservesA, dexSwapFee);
+
+        // Swap optimal amount to tokenA to tokenB for liquidity deposit
+        swapTokensPrivate(tokenA, tokenB, swapAmount);
+
+        // Add liquidity and get LP Token
+        uint256 liquidity = addLiquidityPrivate(tokenA, tokenB, totalAmountA - swapAmount, tokenB.contractBalanceOf());
+
+        // 5. Stake the LP Tokens
+        rewarder.deposit(pid, liquidity);
+
+        /// @custom:event RechargeVoid
+        emit RechargeVoid(address(this), _msgSender(), currentRewards, eoaReward);
     }
 }

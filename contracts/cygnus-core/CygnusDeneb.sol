@@ -46,12 +46,12 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
      *  @custom:struct CollateralParameters Important parameters for the collateral contracts
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
-     *  @custom:member cygnusAlbireo The address of the first Cygnus borrow token
+     *  @custom:member cygnusDai The address of the Cygnus borrow contract for this collateral
      */
     struct CollateralParameters {
         address factory;
         address underlying;
-        address cygnusAlbireo;
+        address cygnusDai;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -60,6 +60,11 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
      *  @inheritdoc ICygnusDeneb
      */
     CollateralParameters public override collateralParameters;
+
+    /**
+     *  @inheritdoc ICygnusDeneb
+     */
+    bytes32 public constant override COLLATERAL_INIT_CODE_HASH = keccak256(type(CygnusCollateral).creationCode);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             6. NON-CONSTANT FUNCTIONS
@@ -70,21 +75,21 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusDeneb
      */
-    function deployDeneb(address underlying, address borrowContract)
+    function deployDeneb(address underlying, address cygnusDai)
         external
         override
         nonReentrant
-        returns (address deneb)
+        returns (address collateral)
     {
         // Assign important addresses to pass to collateral contracts
         collateralParameters = CollateralParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusAlbireo: borrowContract
+            cygnusDai: cygnusDai
         });
 
         // Create Collateral contract
-        deneb = address(new CygnusCollateral{ salt: keccak256(abi.encode(underlying, _msgSender())) }());
+        collateral = address(new CygnusCollateral{ salt: keccak256(abi.encode(underlying, _msgSender())) }());
 
         // Delete and refund some gas
         delete collateralParameters;

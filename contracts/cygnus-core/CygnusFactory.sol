@@ -40,41 +40,49 @@ import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol"
  */
 contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            1. LIBRARIES
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @custom:library PRBMathUD60x18 for uint256 fixed point math, also imports the main library `PRBMath`.
-     */
-    using PRBMathUD60x18 for uint256;
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Official record of all shuttles deployed
-     *  @custom:struct Official record of pools deployed by this factory
-     *  @custom:member isInitialized Whether or not the lending pool is initialized
-     *  @custom:member shuttleID The ID of the lending pool
-     *  @custom:member cygnusDeneb The address of the Cygnus collateral
-     *  @custom:member cygnusAlbireo The address of the borrowing contract
-     *  @custom:member borrowToken The address of the underlying albireo contract (DAI)
+     *  @custom:struct Official record of all collateral and borrow deployer contracts, unique per dex
+     *  @custom:member active Whether or not these orbiters are active and usable
+     *  @custom:member dexName The name of the dex
+     *  @custom:member orbiterDeneb The address of the collateral deployer contract
+     *  @custom:member orbiterAlbireo The address of the borrow deployer contract
+     *
+     *   struct Orbiter {
+     *       bool active;
+     *       uint24 dexId;
+     *       string dexName;
+     *       ICygnusDeneb orbiterDeneb;
+     *       ICygnusAlbireo orbiterAlbireo;
+     *   }
+     */
+
+    /**
+     *  @custom:struct Shuttle Official record of pools deployed by this factory
+     *  @custom:member launched Whether or not the lending pool is initialized
+     *  @custom:member shuttleId The ID of the lending pool
+     *  @custom:member collateral The address of the Cygnus collateral
+     *  @custom:member cygnusDai The address of the borrowing contract
+     *  @custom:member underlyingCollateral The address of the underlying collateral (LP Token)
+     *  @custom:member dai The address of the underlying albireo contract (DAI)
      */
     struct Shuttle {
-        bool isInitialized;
-        uint24 shuttleID;
-        address cygnusDeneb;
-        address cygnusAlbireo;
-        address borrowToken;
+        bool launched;
+        uint24 shuttleId;
+        address collateral;
+        address cygnusDai;
+        address lpTokenPair;
+        address borrowToken; //672
+        ICygnusFactory.Orbiter orbiter; // 608
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusFactory
      */
     mapping(address => Shuttle) public override getShuttles;
 
@@ -82,6 +90,16 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @inheritdoc ICygnusFactory
      */
     address[] public override allShuttles;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    mapping(uint256 => Orbiter) public override getOrbiters;
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    Orbiter[] public override allOrbiters;
 
     /**
      *  @inheritdoc ICygnusFactory
@@ -116,16 +134,6 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    ICygnusDeneb public immutable override collateralDeployer;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
-    ICygnusAlbireo public immutable override borrowDeployer;
-
-    /**
-     *  @inheritdoc ICygnusFactory
-     */
     IChainlinkNebulaOracle public override cygnusNebulaOracle; // Price oracle
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -133,46 +141,36 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Sets the cygnus admin/reservesManager/deployers/oracle and the borrow token (DAI)
-     *  @param _cygnusAdmin Address of the Cygnus Admin to update important protocol parameters
+     *  @notice Sets the cygnus admin/reservesManager/orbiters/oracle and the borrow token (DAI)
+     *  @param _admin Address of the Cygnus Admin to update important protocol parameters
      *  @param _vegaTokenManager Address of the contract that handles weighted forwarding of Erc20 tokens
      *  @param _dai Address of the DAI contract on this chain (different for mainnet, c-chain, etc.)
-     *  @param _collateralDeployer Address of the collateral deployer (Deneb)
-     *  @param _borrowDeployer Address of the borrow deployer (Albireo)
      *  @param _cygnusNebulaOracle Address of the price oracle
      */
     constructor(
-        address _cygnusAdmin,
+        address _admin,
         address _vegaTokenManager,
         address _dai,
         address _nativeToken,
-        ICygnusDeneb _collateralDeployer,
-        ICygnusAlbireo _borrowDeployer,
         IChainlinkNebulaOracle _cygnusNebulaOracle
     ) {
-        // Assign admin, has access to updatable parameters
-        admin = _cygnusAdmin;
+        // Assign cygnus admin, has access to special functions
+        admin = _admin;
 
-        // Cygnus reserves
+        // Assign reserves manager
         vegaTokenManager = _vegaTokenManager;
+
+        // Address of the native token for this chain (ie WETH)
+        nativeToken = _nativeToken;
 
         // Address of DAI on this factory's chain
         dai = _dai;
-
-        // Native token for this chain
-        nativeToken = _nativeToken;
-
-        // Assign collateral deployer for checking collateral addresses deployed from the contract
-        collateralDeployer = _collateralDeployer;
-
-        // Assign borrow deployer for checking borrow addresses deployed from the contract
-        borrowDeployer = _borrowDeployer;
 
         // Assign oracle used by all pools
         cygnusNebulaOracle = _cygnusNebulaOracle;
 
         /// @custom:event NewCygnusAdmin
-        emit NewCygnusAdmin(address(0), _cygnusAdmin);
+        emit NewCygnusAdmin(address(0), _admin);
 
         /// @custom:event NewVegaTokenManager
         emit NewVegaTokenManager(address(0), _vegaTokenManager);
@@ -200,8 +198,43 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @notice Only Cygnus admins can deploy pools in Cygnus V1
      */
     function isCygnusAdmin() private view {
+        /// @custom:error CygnusAdminOnly Avoid unless caller is Cygnus admin
         if (_msgSender() != admin) {
-            revert CygnusFactory__CygnusAdminOnly(_msgSender());
+            revert CygnusFactory__CygnusAdminOnly({ sender: _msgSender(), admin: admin });
+        }
+    }
+
+    /**
+     *  @notice Checks if the new orbiter we are setting already exists. This is just a safety and to make sure
+     *          each pair of deployers are in sync with each other
+     *  @param newDenebOrbiter The address of the collateral deployer
+     *  @param newAlbireoOrbiter The address of the borrow deployer
+     *  @param orbitersLength How many orbiter pairs we have deployed
+     */
+    function checkOrbitersInternal(
+        ICygnusDeneb newDenebOrbiter,
+        ICygnusAlbireo newAlbireoOrbiter,
+        uint256 orbitersLength
+    ) private view {
+        // Check if orbiters already exist
+        for (uint256 i = 0; i < orbitersLength; i++) {
+            // Assign orbiters to memory for gas savings
+            Orbiter memory orbiter = getOrbiters[i];
+
+            /// @custom:error CollateralOrbiterAlreadySet Avoid duplicate collateral orbiter
+            if (orbiter.cygnusDeneb == newDenebOrbiter) {
+                revert CygnusFactory__CollateralOrbiterAlreadySet({
+                    cygnusDeneb: getOrbiters[i].cygnusDeneb,
+                    newCygnusDeneb: newDenebOrbiter
+                });
+            }
+            /// @custom:error BorrowOrbiterAlreadySet Avoid duplicate borrow orbiter
+            else if (orbiter.cygnusAlbireo == newAlbireoOrbiter) {
+                revert CygnusFactory__BorrowOrbiterAlreadySet({
+                    cygnusAlbireo: getOrbiters[i].cygnusAlbireo,
+                    newCygnusAlbireo: newAlbireoOrbiter
+                });
+            }
         }
     }
 
@@ -210,8 +243,17 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    function shuttlesLength() external view override returns (uint256) {
+    function shuttlesDeployed() external view override returns (uint256) {
+        // Return how many shuttles this contract has launched
         return allShuttles.length;
+    }
+
+    /**
+     *  @inheritdoc ICygnusFactory
+     */
+    function orbitersDeployed() external view override returns (uint256) {
+        // Return how many borrow/collateral orbiter sets this contract has
+        return allOrbiters.length;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -223,119 +265,221 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @notice Creates a record of each shuttle deployed by this contract
      *  @dev Prepares shuttle for deployment and stores each Shuttle struct
-     *  @param lpTokenPair Address of the DEX' LP Token for this shuttle
+     *  @param lpTokenPair Address of LP Token for this shuttle
      */
     function boardShuttle(address lpTokenPair) private {
+        // Get the ID for this LP token's shuttle
+        uint24 shuttleId = getShuttles[lpTokenPair].shuttleId;
+
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
-        if (getShuttles[lpTokenPair].shuttleID != 0) {
-            revert CygnusFactory__ShuttleAlreadyDeployed(lpTokenPair);
+        if (shuttleId != 0) {
+            revert CygnusFactory__ShuttleAlreadyDeployed({ id: shuttleId, lpTokenPair: lpTokenPair });
         }
 
-        // Push to lending pool
-        allShuttles.push(lpTokenPair);
-
-        // Create the struct for this pair
+        // Set all to default before deploying
         getShuttles[lpTokenPair] = Shuttle(
             false, // Initialized, default false until oracle is set
             uint24(allShuttles.length), // Lending pool ID
             address(0), // Collateral address
             address(0), // Borrow contract address
-            address(0) // DAI
+            address(0), // Underlying collateral asset (LP Token)
+            address(0), // Underlying borrow asset (DAI)
+            Orbiter(false, 0, "", ICygnusDeneb(address(0)), ICygnusAlbireo(address(0)))
         );
+
+        // Push to lending pool
+        allShuttles.push(lpTokenPair);
     }
 
-    /*  ────────────────────────────────────────────── external ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  3 Phases:
-     *    i. Calculate Cygnus collateral address internally
-     *    ii.a. Deploy Borrow contract with calculated Collateral Address
-     *       b. Deploy collateral with deployed Borrow contract address.
-     *       c. Check if collateral address == calculated address, revert if error
-     *    iii. assert oracle exists for this pair and initialize lending pool
+     *  @inheritdoc ICygnusFactory
+     */
+    function setNewOrbiter(
+        string memory orbiterName,
+        ICygnusDeneb _cygnusDeneb,
+        ICygnusAlbireo _cygnusAlbireo
+    ) external override nonReentrant cygnusAdmin {
+        // Total orbiters
+        uint256 totalOrbiters = allOrbiters.length;
+
+        // Check if orbiters already exists, reverts if either are already set
+        checkOrbitersInternal(_cygnusDeneb, _cygnusAlbireo, totalOrbiters);
+
+        // Orbiters, ID starts from 0 so length is alwyas 1 ahead from record
+        Orbiter storage orbiter = getOrbiters[totalOrbiters];
+
+        // ID for this group of collateral and borrow orbiters
+        orbiter.orbiterId = uint24(totalOrbiters);
+
+        // Name of the exchange these orbiters are for
+        orbiter.orbiterName = orbiterName;
+
+        // Collateral orbiter address
+        orbiter.cygnusDeneb = _cygnusDeneb;
+
+        // Borrow orbiter address
+        orbiter.cygnusAlbireo = _cygnusAlbireo;
+
+        // ID for this group of collateral/borrow orbiters
+        orbiter.active = true;
+
+        // Push struct to array
+        allOrbiters.push(orbiter);
+
+        /// @custom:event InitializeOrbiters
+        emit InitializeOrbiters(true, totalOrbiters, orbiterName, _cygnusDeneb, _cygnusAlbireo);
+    }
+
+    /**
+     *    Phase 1: Board shuttle check
+     *              -> No shuttle with the same LP Token has been deployed before
+     *
+     *    Phase 2: Orbiter check
+     *              -> Orbiters (deployers) are active and usable
+     *
+     *    Phase 3: Deploy Collateral and Borrow contracts
+     *              -> Calculate address of the collateral and deploy borrow contract with calculated collateral address
+     *              -> Deploy the collateral contract with the deployed borrow address
+     *              -> Check that collateral contract address is equal to the calculated collateral address, else revert
+     *
+     *    Phase 4: Price Oracle check:
+     *              -> Assert price oracle exists for this LP Token pair
+     *
+     *    Phase 5: Initialize shuttle
+     *              -> Initialize and store record of this shuttle in this contract
      *
      *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
     function deployShuttle(
+        uint256 orbiterId,
         address lpTokenPair,
         uint256 baseRate,
-        uint256 farmApy,
+        uint256 multiplier,
         uint256 kinkMultiplier
-    ) external override nonReentrant cygnusAdmin returns (address cygnusAlbireo, address cygnusDeneb) {
+    ) external override nonReentrant cygnusAdmin returns (address cygnusDai, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
 
-        // Check if exists, if not, add this shuttle ID (address[].length)
+        // Prepare shuttle for deployment, reverts if lpTokenPair already exists
         boardShuttle(lpTokenPair);
-
-        // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
-        address collateralCalc = CygnusPoolAddress.getCollateralContract(
-            lpTokenPair,
-            address(this),
-            address(collateralDeployer)
-        );
-
-        /// @custom:error CollateralAlreadyExists Avoid deploying same collateral twice
-        if (getShuttles[lpTokenPair].cygnusDeneb != address(0)) {
-            revert CygnusFactory__CollateralAlreadyExists(lpTokenPair);
-        }
 
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
-        // Deploy first borrow token
-        cygnusAlbireo = borrowDeployer.deployAlbireo(dai, collateralCalc, baseRate, farmApy, kinkMultiplier);
+        // Load orbiters to memory
+        Orbiter memory orbiter = getOrbiters[orbiterId];
 
-        // Deploy collateral
-        cygnusDeneb = collateralDeployer.deployDeneb(lpTokenPair, cygnusAlbireo);
-
-        /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
-        if (cygnusDeneb != collateralCalc) {
-            revert CygnusFactory__CollateralAddressMismatch({
-                calculatedCollateral: collateralCalc,
-                deployedCollateral: cygnusDeneb
+        /// @custom:error OrbitersAreInactive
+        if (!orbiter.active) {
+            revert CygnusFactory__OrbitersAreInactive({
+                id: orbiter.orbiterId,
+                cygnusDeneb: orbiter.cygnusDeneb,
+                cygnusAlbireo: orbiter.cygnusAlbireo
             });
         }
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
-        // No way back now, initialize pool
+        // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
+        address predictedC = CygnusPoolAddress.getCollateralContract(
+            lpTokenPair,
+            address(this),
+            address(orbiter.cygnusDeneb),
+            orbiter.cygnusDeneb.COLLATERAL_INIT_CODE_HASH()
+        );
+
+        // Deploy borrow
+        cygnusDai = orbiter.cygnusAlbireo.deployAlbireo(dai, predictedC, baseRate, multiplier, kinkMultiplier);
+
+        // Deploy collateral
+        collateral = orbiter.cygnusDeneb.deployDeneb(lpTokenPair, cygnusDai);
+
+        /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
+        if (collateral != predictedC) {
+            revert CygnusFactory__CollateralAddressMismatch({
+                calculatedCollateral: predictedC,
+                deployedCollateral: collateral
+            });
+        }
+
+        //  ─────────────────────────────── Phase 4 ───────────────────────────────
+
+        // Oracle should never NOT be initialized for this pair. If not initialized, deployment of collateral auto fails
+        (bool nebulaOracleInitialized, , , , ) = cygnusNebulaOracle.getNebula(lpTokenPair);
+
+        /// @custom:error LPTokenPairNotSupported Avoid deploying if the oracle for the LP token is not initalized
+        if (!nebulaOracleInitialized) {
+            revert CygnusFactory__LPTokenPairNotSupported({ lpTokenPair: lpTokenPair });
+        }
+
+        //  ─────────────────────────────── Phase 5 ───────────────────────────────
+
+        // No way back now, store shuttle in factory
 
         // Add collateral contract to record
-        getShuttles[lpTokenPair].cygnusDeneb = cygnusDeneb;
+        getShuttles[lpTokenPair].collateral = collateral;
 
         // Add cygnus borrow contract to record
-        getShuttles[lpTokenPair].cygnusAlbireo = cygnusAlbireo;
+        getShuttles[lpTokenPair].cygnusDai = cygnusDai;
+
+        // Add the address of the underlying albireo contract
+        getShuttles[lpTokenPair].lpTokenPair = lpTokenPair;
 
         // Add the address of the underlying albireo contract
         getShuttles[lpTokenPair].borrowToken = dai;
 
-        // Oracle status for this pair
-        (bool nebulaOracleInitialized, , , , ) = cygnusNebulaOracle.getNebula(lpTokenPair);
-
-        // Oracle should never not be initialized for this pair
-        if (!nebulaOracleInitialized) {
-            revert CygnusFactory__LPTokenPairNotSupported(lpTokenPair);
-        }
+        // Store orbiters struct in the shuttle struct
+        getShuttles[lpTokenPair].orbiter = orbiter;
 
         // This specific lending pool is initialized can't be deployed again
-        getShuttles[lpTokenPair].isInitialized = true;
+        getShuttles[lpTokenPair].launched = true;
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(lpTokenPair, allShuttles.length, cygnusDeneb, cygnusAlbireo, dai);
+        emit NewShuttleLaunched(lpTokenPair, allShuttles.length, collateral, cygnusDai, dai);
     }
 
     /**
      *  @inheritdoc ICygnusFactory
+     */
+    function setOrbiterStatus(uint256 orbiterId) external override nonReentrant cygnusAdmin {
+        // Get the orbiters
+        ICygnusFactory.Orbiter storage orbiter = getOrbiters[orbiterId];
+
+        /// @custom:error OrbiterNotSet Avoid switching off if orbiters are not set
+        if ((address(orbiter.cygnusDeneb) == address(0)) || address(orbiter.cygnusAlbireo) == address(0)) {
+            revert CygnusFactory__OrbitersNotSet({ orbiterId: orbiterId });
+        }
+
+        // Switch orbiter status
+        orbiter.active = !orbiter.active;
+
+        /// @custom:event SwitchOrbiterStatus
+        emit SwitchOrbiterStatus(
+            orbiter.active,
+            orbiter.orbiterId,
+            orbiter.orbiterName,
+            orbiter.cygnusDeneb,
+            orbiter.cygnusAlbireo
+        );
+    }
+
+    /**
+     *  @notice 👽
+     *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
-    function setNewNebulaOracle(address newPriceOracle) external override cygnusAdmin nonReentrant {
+    function setNewNebulaOracle(address newPriceOracle) external override nonReentrant cygnusAdmin {
         /// @custom:error CygnusNebulaCantBeZero Avoid zero address oracle
         if (newPriceOracle == address(0)) {
-            revert CygnusFactory__CygnusNebulaCantBeZero(newPriceOracle);
+            revert CygnusFactory__CygnusNebulaCantBeZero({ priceOracle: newPriceOracle });
         }
         /// @custom:error CygnusNebulaAlreadySet Avoid setting the same address twice
         else if (newPriceOracle == address(cygnusNebulaOracle)) {
-            revert CygnusFactory__CygnusNebulaAlreadySet(newPriceOracle);
+            revert CygnusFactory__CygnusNebulaAlreadySet({
+                priceOracle: address(cygnusNebulaOracle),
+                newPriceOracle: newPriceOracle
+            });
         }
 
         // Assign old oracle address for event
@@ -349,13 +493,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
+     *  @notice 👽
      *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
-    function setPendingAdmin(address newCygnusAdmin) external override cygnusAdmin nonReentrant {
+    function setPendingAdmin(address newCygnusAdmin) external override nonReentrant cygnusAdmin {
         /// @custom:error CygnusAdminAlreadySet Avoid setting the same admin twice
         if (newCygnusAdmin == admin) {
-            revert CygnusFactory__CygnusAdminAlreadySet(newCygnusAdmin);
+            revert CygnusFactory__CygnusAdminAlreadySet({ currentAdmin: admin, newPendingAdmin: newCygnusAdmin });
         }
 
         // Address of the requested account to be Cygnus admin
@@ -366,13 +511,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
+     *  @notice 👽
      *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
-    function setNewCygnusAdmin() external override cygnusAdmin nonReentrant {
+    function setNewCygnusAdmin() external override nonReentrant cygnusAdmin {
         /// @custom:error PendingAdminCantBeZero Avoid setting cygnus admin as address(0)
         if (pendingNewAdmin == address(0)) {
-            revert CygnusFactory__PendingAdminCantBeZero(pendingNewAdmin);
+            revert CygnusFactory__PendingAdminCantBeZero({ pending: pendingNewAdmin, sender: _msgSender() });
         }
 
         // Address of the Admin up until now
@@ -389,13 +535,17 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
+     *  @notice 👽
      *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
-    function setPendingVegaTokenManager(address newVegaTokenManager) external override cygnusAdmin nonReentrant {
+    function setPendingVegaTokenManager(address newVegaTokenManager) external override nonReentrant cygnusAdmin {
         /// @custom:error CygnusVegaAlreadySet Avoid setting the same reserves admin twice
         if (newVegaTokenManager == vegaTokenManager) {
-            revert CygnusFactory__CygnusVegaAlreadySet(newVegaTokenManager);
+            revert CygnusFactory__CygnusVegaAlreadySet({
+                currentVegaTokenManager: vegaTokenManager,
+                newVegaTokenManager: newVegaTokenManager
+            });
         }
 
         // Address of the Vega contract up until now
@@ -406,13 +556,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
+     *  @notice 👽
      *  @inheritdoc ICygnusFactory
      *  @custom:security non-reentrant
      */
-    function setNewVegaTokenManager() external override cygnusAdmin nonReentrant {
+    function setNewVegaTokenManager() external override nonReentrant cygnusAdmin {
         /// @custom:error PendingVegaCantBeZero Avoid setting the reserves manager as the zero address
         if (pendingVegaTokenManager == address(0)) {
-            revert CygnusFactory__PendingVegaCantBeZero(pendingVegaTokenManager);
+            revert CygnusFactory__PendingVegaCantBeZero({ pending: pendingVegaTokenManager, sender: _msgSender() });
         }
 
         // Address of the reserves admin up until now

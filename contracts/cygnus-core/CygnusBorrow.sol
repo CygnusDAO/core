@@ -5,16 +5,16 @@ pragma solidity >=0.8.4;
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 import { CygnusBorrowTracker } from "./CygnusBorrowTracker.sol";
 
+// Libraries
+import { SafeErc20 } from "./libraries/SafeErc20.sol";
+import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
 import { IErc20 } from "./interfaces/IErc20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { ICygnusCallee } from "./interfaces/ICygnusCallee.sol";
-
-// Libraries
-import { SafeErc20 } from "./libraries/SafeErc20.sol";
-import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
 
 /**
  *  @title CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves
@@ -138,7 +138,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
 
         // For leverage functionality, if data is not empty then callback to the router
         if (data.length > 0) {
-            ICygnusCallee(receiver).cygnusBorrow(_msgSender(), borrower, borrowAmount, data);
+            ICygnusAltairCall(receiver).altairBorrow_O9E(_msgSender(), borrower, borrowAmount, data);
         }
 
         // Get total balance of the underlying asset

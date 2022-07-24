@@ -5,16 +5,20 @@ pragma solidity >=0.8.4;
 import { ICygnusBorrowInterest } from "./interfaces/ICygnusBorrowInterest.sol";
 import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
-// Interfaces
-import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
-
 // Libraries
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+
+// Interfaces
+import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
 
 /**
  *  @title  CygnusBorrowInterest Interest rate model contract for Cygnus
  *  @author CygnusDAO
- *  @notice Constructs the interest rate model used and updates the `per-second` rates
+ *  @notice Constructs the interest rate model used and updates the `per-second` rates. It loads the parameters
+ *          passed to the factory from the struct of the borrow deployer to avoid setting constructor arguments,
+ *          keeping the same bytecode for each borrow contract. `CygnusBorrowControl` loads the struct to store
+ *          the factory, the underlying (DAI) and collateral addresses. This contract loads the struct again
+ *          to set the per-second interest rate parameters for interest accruals in the next child contract.
  */
 contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -57,7 +61,8 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Interest Rate model
+     *  @notice Constructs the Interest Rate model. Need to load the struct in 2 different instances as
+     *          baseRate, multiplier and kink are temp variables and factory, underlying and collateral are storage
      */
     constructor() {
         // prettier-ignore
@@ -156,7 +161,7 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         uint256 newBaseRatePerYear,
         uint256 newMultiplierPerYear,
         uint256 newKinkMultiplier
-    ) external override nonReentrant cygnusAdmin {
+    ) external override cygnusAdmin nonReentrant {
         // Update Per second rates
         updateJumpRateModelInternal(newBaseRatePerYear, newMultiplierPerYear, newKinkMultiplier);
     }

@@ -28,6 +28,11 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      */
     error CygnusCollateralChef__OnlyEOAAllowed(address sender, address origin);
 
+    /**
+     *  @custom:error NotNativeTokenSender Avoid receiving unless sender is native token
+     */
+    error CygnusCollateralVoid__NotNativeTokenSender(address sender, address origin);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -59,44 +64,35 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      */
     event RechargeVoid(address indexed shuttle, address reinvestor, uint256 rewardBalance, uint256 reinvestReward);
 
-    /**
-     *  @notice Syncs contracts totalRewardsBalance with masterchef
-     */
-    event SyncRewards(uint256 totalRewardsBalance);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @return The address of the router from the DEX this shuttle's LP Token belongs to
-     */
-    function dexRouter() external view returns (IDexRouter02);
-
-    /**
-     *  @return The address of the token that is earned as a bonus by providing liquidity to the DEX
-     */
-    function rewardsToken() external view returns (address);
-
-    /**
-     *  @return The fee that each DEX charges for a swap (usually 0.3%)
-     */
-    function swapFeeFactor() external view returns (uint256);
-
-    /**
-     *  @return The reward that is handed to the user who reinvested the shuttle's rewards to buy more LP Tokens
+     *  @return REINVEST_REWARD The % of rewards paid to the user who reinvested this shuttle's rewards to buy more LP
      */
     function REINVEST_REWARD() external view returns (uint256);
 
     /**
-     *  @return The address of the contract that gives out rewards to this shuttle's LP Token holders
+     *  @notice Returns this contract's void values (if activated) showing the masterchef address, pool id, etc.
+     *  @return rewarder_ The address of the masterchef/rewarder
+     *  @return pid_ The pool ID the collateral's underlying LP Token belongs to in the masterchef/rewarder
+     *  @return voidActivated_ Whether or not this contract has the void activated
+     *  @return rewardsToken_ The address of the rewards token from the Dex
+     *  @return dexSwapFee_ The fee the dex charges for swaps (divided by 1000 ie Uniswap charges 0.3%, swap fee is 997)
+     *  @return dexRouter_ The address of the dex' router used to swap between tokens
      */
-    function getMasterChef() external view returns (address);
-
-    /**
-     *  @return The pool id of this shuttle's LP Token in the masterchef contract
-     */
-    function getPoolId() external view returns (uint256);
+    function voidInfo()
+        external
+        view
+        returns (
+            IMiniChef rewarder_,
+            uint256 pid_,
+            bool voidActivated_,
+            address rewardsToken_,
+            uint256 dexSwapFee_,
+            IDexRouter02 dexRouter_
+        );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -120,7 +116,10 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
     ) external;
 
     /**
-     *  @notice Reinvests all rewards from the masterchef to buy more LP Tokens
+     *  @notice Reinvests all rewards from the masterchef to buy more LP Tokens to deposit in the masterchef.
+     *          This makes totalBalance increase in this contract, increasing the exchangeRate between
+     *          CygnusLP and underlying, thus lowering user's debt ratios
+     *  @custom:security non-reentrant
      */
-    function reinvestRewards() external;
+    function reinvestRewards_y7b() external;
 }

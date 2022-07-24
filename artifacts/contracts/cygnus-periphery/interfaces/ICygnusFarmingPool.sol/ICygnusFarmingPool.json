@@ -1,0 +1,34 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ICygnusFarmingPool",
+  "sourceName": "contracts/cygnus-periphery/interfaces/ICygnusFarmingPool.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "borrowBalance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "borrowIndex",
+          "type": "uint256"
+        }
+      ],
+      "name": "trackBorrow",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

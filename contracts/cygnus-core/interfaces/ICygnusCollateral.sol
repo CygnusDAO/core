@@ -35,12 +35,22 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     /**
      *  @custom:error LiquiditingSelf Emitted when liquidator is borrower
      */
-    error CygnusCollateral__LiquidatingSelf(address borrower);
+    error CygnusCollateral__CantLiquidateSelf(address borrower);
 
     /**
-     *  @custom:error InsufficientRedeemAmount Emitted when liquidator is borrower
+     *  @custom:error RedeemAmountInvalid Emitted when redeeming more than pool's totalBalance
      */
-    error CygnusCollateral__InsufficientRedeemAmount(uint256 declaredRedeemTokens);
+    error CygnusCollateral__RedeemAmountInvalid(uint256 redeemAmount, uint256 totalBalance);
+
+    /**
+     *  @custom:error CantRedeemZero Emitted when trying to redeem 0 tokens
+     */
+    error CygnusCollateral__CantRedeemZero(address sender, address origin, uint256 redeemAmount);
+
+    /**
+     *  @custom:error InsufficientRedeemAmount Emitted when redeeming more than user balance of redeem Tokens
+     */
+    error CygnusCollateral__InsufficientRedeemAmount(uint256 denebTokens, uint256 redeemableDeneb);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -59,9 +69,10 @@ interface ICygnusCollateral is ICygnusCollateralModel {
      *  @param borrower The address of redeemer
      *  @param liquidator The address of the liquidator
      *  @param denebAmount The amount being seized is the balance of
+     *  @param denebFee The protocol fee (if any)
      *  @custom:event Emitted when collateral is seized
      */
-    event SeizeCollateral(address borrower, address liquidator, uint256 denebAmount);
+    event SeizeCollateral(address borrower, address liquidator, uint256 denebAmount, uint256 denebFee);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

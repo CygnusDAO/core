@@ -6,7 +6,6 @@ node_modules/
 
 # Hardhat
 cache/
-artifacts/
 contracts/coverage
 
 # Coverage

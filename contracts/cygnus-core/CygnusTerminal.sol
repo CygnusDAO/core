@@ -66,8 +66,10 @@ import { IMiniChef } from "./interfaces/IMiniChef.sol";
  *  @title  CygnusTerminal
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
-            to get the vault token (CygDAI or CygLP). Similar to UniswapV2Pair with some small edits, specifically
-            the mint/redeem functions are edited with the masterchef for the pools
+ *          to get the vault token (CygDAI or CygLP). Similar to UniswapV2Pair with some small edits, specifically
+ *          the mint/redeem functions are edited with the masterchef for the pools in case collateral contracts
+ *          are linked to the masterchef (`voidActivated`). Keep the PID, Masterchef and voidActivated internal
+ *          and do getters in the collateral contract (for the borrow contract voidActivated is always false).
  */
 contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -96,16 +98,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     uint256 internal constant INITIAL_EXCHANGE_RATE = 1e18;
 
     /**
-     *  @notice The minimum liquidity used by Uniswap
-     */
-    uint256 internal constant MINIMUM_LIQUIDITY = 10**3;
-
-    /**
-     *  @notice Dead address we mint the MINIMUM_LIQUIDITY to
-     */
-    address internal constant DEAD_ADDRESS = address(0xdead);
-
-    /**
      *  @notice Address of the Masterchef/Rewarder contract
      */
     IMiniChef internal rewarder;
@@ -114,6 +106,11 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
      */
     uint256 internal pid;
+
+    /**
+     *  @notice Whether or not the collateral contract has void activated
+     */
+    bool internal voidActivated;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -131,11 +128,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      */
     address public override hangar18;
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    bool public override voidActivated;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -235,13 +227,15 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Mint and deposit in masterchef if Void is activated
         if (voidActivated) {
             // Check for pools with deposit fees
-            (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
+            // prettier-ignore
+            (uint256 totalBalanceBefore, /* reward debt */ ) = rewarder.userInfo(pid, address(this));
 
             // Deposit in rewader
             rewarder.deposit(pid, balance);
 
             // Check balance after deposit
-            (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
+            // prettier-ignore
+            (uint256 totalBalanceAfter, /* reward debt */) = rewarder.userInfo(pid, address(this));
 
             // Get mint amount
             balance = totalBalanceAfter - totalBalanceBefore;
@@ -253,15 +247,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
         // (amount * scale) / exchangeRate
         cygnusMintTokens = balance.div(exchangeRate());
-
-        // Only for the very first deposit
-        if (totalSupply == 0) {
-            // Substract from mint amount
-            cygnusMintTokens -= MINIMUM_LIQUIDITY;
-
-            // Burn to dead address, emit transfer event
-            mintInternal(DEAD_ADDRESS, MINIMUM_LIQUIDITY);
-        }
 
         /// custom:error CantMintZero Avoid minting no tokens
         if (cygnusMintTokens <= 0) {
@@ -287,7 +272,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Get the initial amount * exchange rate / scale
         redeemAmount = cygnusRedeemTokens.mul(exchangeRate());
 
-        /// @custom:error CantBurnZero Avoid redeem unless is positive amount
+        /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (redeemAmount <= 0) {
             revert CygnusTerminal__CantRedeemZero(redeemAmount);
         }
@@ -299,6 +284,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Burn initial amount and emit Transfer event
         burnInternal(address(this), cygnusRedeemTokens);
 
+        // Check if void is activated for the collateral
         if (voidActivated) {
             rewarder.withdraw(pid, redeemAmount);
         }

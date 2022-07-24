@@ -96,11 +96,6 @@ interface ICygnusTerminal is IErc20Permit {
      */
     function exchangeRate() external returns (uint256);
 
-    /**
-     *  @return Whether or not CollateralVoid contract is activated and collateral is linked to DEX rewarder
-     */
-    function voidActivated() external returns (bool);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

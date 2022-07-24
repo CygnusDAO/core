@@ -82,7 +82,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public constant override KINK_MULTIPLIER_MAX = 20;
+    uint256 public constant override KINK_MULTIPLIER_MAX = 10;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. CONSTRUCTOR
@@ -90,13 +90,12 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
     /**
      *  @notice Constructs the Borrow arm of the pool. It assigns the factory, the underlying asset (DAI) and the
-     *          collateral contract for this borrow token. Aside from this is assigns the custom interest rate model
-     *          from the deployment: base rate, multiplier and the kink utilization rate.
+     *          collateral contract for this borrow token. Interest rate model is assigned in the next child contract
      */
     constructor() {
         // Get factory, underlying and collateral address and interest rate parameters for this shuttle
         // prettier-ignore
-        (hangar18, underlying, collateral, /*base*/, /*multi*/, /*kink*/) = ICygnusAlbireo(_msgSender())
+        (hangar18, underlying, collateral, /* base */, /* multiplier */, /* kink */) = ICygnusAlbireo(_msgSender())
             .borrowParameters();
 
         // Match initial exchange rate

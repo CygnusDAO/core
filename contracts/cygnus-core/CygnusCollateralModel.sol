@@ -48,7 +48,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @return liquidity The account's liquidity in DAI, if any
      *  @return shortfall The account's shortfall in DAI, if any
      */
-    function accountLiquidityInternal(uint256 amountCollateral, uint256 borrowedAmount)
+    function collateralNeededInternal(uint256 amountCollateral, uint256 borrowedAmount)
         internal
         view
         returns (uint256 liquidity, uint256 shortfall)
@@ -78,19 +78,20 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         }
     }
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
     /**
-     *  @inheritdoc ICygnusCollateralModel
+     *  @param borrower Address of the borrower
+     *  @param borrowedAmount Borrowed amount of DAI by `borrower`
+     *  @return liquidity If user has more collateral than needed, return liquidity amount and 0 shortfall
+     *  @return shortfall If user has less collateral than needed, return 0 liquidity and shortfall amount
      */
-    function accountLiquidity(address borrower, uint256 borrowedAmount)
-        public
+    function accountLiquidityInternal(address borrower, uint256 borrowedAmount)
+        internal
         view
-        override
         returns (uint256 liquidity, uint256 shortfall)
     {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
+            // solhint-disable-next-line
             revert CygnusCollateralModel__BorrowerCantBeAddressZero({ sender: borrower, origin: tx.origin });
         }
 
@@ -103,16 +104,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 amountCollateral = balanceOf(borrower).mul(exchangeRate());
 
         // Calculate user's liquidity or shortfall internally
-        return accountLiquidityInternal(amountCollateral, borrowedAmount);
+        return collateralNeededInternal(amountCollateral, borrowedAmount);
     }
 
-    /**
-     *  @inheritdoc ICygnusCollateralModel
-     */
-    function getAccountLiquidity(address borrower) public view override returns (uint256 liquidity, uint256 shortfall) {
-        // Calculate liquidity or shortfall
-        return accountLiquidity(borrower, type(uint256).max);
-    }
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusCollateralModel
@@ -123,6 +118,19 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
+    function getAccountLiquidity(address borrower)
+        external
+        view
+        override
+        returns (uint256 liquidity, uint256 shortfall)
+    {
+        // Calculate liquidity or shortfall
+        return accountLiquidityInternal(borrower, type(uint256).max);
+    }
 
     /**
      *  @inheritdoc ICygnusCollateralModel
@@ -141,7 +149,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Account for 0 collateral to avoid divide by 0
-        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai);
+        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai).div(debtRatio);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -157,7 +165,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         address borrower,
         address borrowableToken,
         uint256 accountBorrows
-    ) external override chargeVoid returns (bool) {
+    ) external view override returns (bool) {
         // Gas savings
         address _borrowDAITokenA = cygnusDai;
 
@@ -169,11 +177,11 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
             });
         }
 
-        // Amount of borrowable token A
-        uint256 amountTokenA = borrowableToken == _borrowDAITokenA ? accountBorrows : type(uint256).max;
+        // Amount of DAI
+        uint256 cygnusDaiAmount = borrowableToken == _borrowDAITokenA ? accountBorrows : type(uint256).max;
 
         // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidity(borrower, amountTokenA);
+        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, cygnusDaiAmount);
 
         return shortfall == 0;
     }

@@ -59,8 +59,9 @@ describe('CYGNUS BORROW: ADMIN CONTROLS', function () {
     // Cygnus Borrow customs
     const shuttleBaseRate = BigInt(0.05e18);
 
-    const shuttleKinkRate = BigInt(0.75e18);
+    const shuttleKinkMultiplier = BigInt(4);
 
+    // 10%
     const shuttleMultiplier = BigInt(0.1e18);
 
     /*  ─────────────────────────────────────────── Addresses ─────────────────────────────────────────────  */

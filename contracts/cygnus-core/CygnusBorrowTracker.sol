@@ -6,11 +6,11 @@ import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
 import { CygnusBorrowApprove } from "./CygnusBorrowApprove.sol";
 import { CygnusBorrowInterest } from "./CygnusBorrowInterest.sol";
 
-// Interfaces
-import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
-
 // Libraries
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+
+// Interfaces
+import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
 
 /**
  *  @title  CygnusBorrowTracker Contract that accrues interest to borrows/reserves and stores borrow data of each user

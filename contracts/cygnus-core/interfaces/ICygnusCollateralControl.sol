@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
+
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -24,6 +25,11 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      *  @custom:error CygnusOracleAlreadySet Emitted when the new oracle address is the same as the current oracle
      */
     error CygnusCollateralControl__CygnusOracleAlreadySet(address currentOracle, address newOracle);
+
+    /**
+     *  @custom:error VoidCantBeZero Emitted when the void is the zero address
+     */
+    error CygnusCollateralControl__VoidCantBeZero();
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════  
             2. CUSTOM EVENTS
@@ -61,6 +67,13 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      *  @custom:event NewLiquidationFee Emitted when a new liquidation fee is set
      */
     event NewLiquidationFee(uint256 oldLiquidationFee, uint256 newLiquidationFee);
+
+    /**
+     *  @notice Logs when a new void is set by admins
+     *  @param oldVoid The address of the previous void contract
+     *  @param newVoid The address of the new void contract
+     */
+    event NewCygnusVoid(address oldVoid, address newVoid);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS

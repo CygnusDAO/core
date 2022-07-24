@@ -5,6 +5,8 @@ pragma solidity >=0.8.4;
 import { ICygnusCollateralControl } from "./interfaces/ICygnusCollateralControl.sol";
 import { CygnusTerminal } from "./CygnusTerminal.sol";
 
+import { Strings } from "./libraries/Strings.sol";
+
 // Interfaces
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
@@ -21,6 +23,15 @@ import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
  *          (the Cygnus borrow contract for this collateral).
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+            1. LIBRARIES
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @custom:library Strings Library used to append the name of the underlying LP Token to the CygLP token
+     */
+    using Strings for string;
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -44,7 +55,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override debtRatio = 0.80e18;
+    uint256 public override debtRatio = 0.90e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -66,7 +77,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override DEBT_RATIO_MAX = 0.875e18;
+    uint256 public constant override DEBT_RATIO_MAX = 1e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -81,7 +92,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override LIQUIDATION_FEE_MAX = 0.20e18;
+    uint256 public constant override LIQUIDATION_FEE_MAX = 0.10e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             3. CONSTRUCTOR
@@ -98,6 +109,9 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
         // Assign price oracle from factory
         cygnusNebulaOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();
+
+        // Set the symbol for this LP Token (`CygLP token0/token1`)
+        symbol = Strings.appendDeneb(underlying);
 
         // Assurance
         totalSupply = 0;

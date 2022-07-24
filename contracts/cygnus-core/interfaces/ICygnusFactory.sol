@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.4;
 
-// Deployers
+// Orbiters
 import { ICygnusDeneb } from "./ICygnusDeneb.sol";
 import { ICygnusAlbireo } from "./ICygnusAlbireo.sol";
 
@@ -18,14 +18,29 @@ interface ICygnusFactory {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error ShuttleAlreadyDeployed Emitted when trying to deploy a shuttle that already exists
+     *  @custom:error CygnusAdminOnly Emitted when caller is not Admin
      */
-    error CygnusFactory__ShuttleAlreadyDeployed(address);
+    error CygnusFactory__CygnusAdminOnly(address sender, address admin);
 
     /**
-     *  @custom:error CollateralAlreadyExists Emitted when trying to deploy an already initialized collateral arm
+     *  @custom:error BorrowOrbiterAlreadySet Emitted when the borrow orbiter already exists
      */
-    error CygnusFactory__CollateralAlreadyExists(address);
+    error CygnusFactory__BorrowOrbiterAlreadySet(ICygnusAlbireo cygnusAlbireo, ICygnusAlbireo newCygnusAlbireo);
+
+    /**
+     *  @custom:error CollateralOrbiterAlreadySet Emitted when the borrow orbiter already exists
+     */
+    error CygnusFactory__CollateralOrbiterAlreadySet(ICygnusDeneb cygnusDeneb, ICygnusDeneb newCygnusDeneb);
+
+    /**
+     *  @custom:error ShuttleAlreadyDeployed Emitted when trying to deploy a shuttle that already exists
+     */
+    error CygnusFactory__ShuttleAlreadyDeployed(uint24 id, address lpTokenPair);
+
+    /**
+     *  @custom:error OrbitersAreInactive Emitted when deploying a shuttle with orbiters that are inactive
+     */
+    error CygnusFactory__OrbitersAreInactive(uint24 id, ICygnusDeneb cygnusDeneb, ICygnusAlbireo cygnusAlbireo);
 
     /**
      *  @custom:error CollateralAddressMismatch Emitted when predicted collateral address doesn't match with deployed
@@ -33,44 +48,44 @@ interface ICygnusFactory {
     error CygnusFactory__CollateralAddressMismatch(address calculatedCollateral, address deployedCollateral);
 
     /**
-     *  @custom:error CygnusAdminOnly Emitted when caller is not Admin
-     */
-    error CygnusFactory__CygnusAdminOnly(address);
-
-    /**
      *  @custom:error LPTokenPairNotSupported Emitted when trying to deploy a shuttle with an unsupported LP Pair
      */
-    error CygnusFactory__LPTokenPairNotSupported(address);
+    error CygnusFactory__LPTokenPairNotSupported(address lpTokenPair);
 
     /**
-     *  @custom:error PendingReservesCantBeZero Emitted when pending reserves contract address is the zero address
+     *  @custom:error OrbitersNotSet Emitted when attempting to switch off orbiters that don't exist
      */
-    error CygnusFactory__PendingVegaCantBeZero(address);
-
-    /**
-     *  @custom:error PendingCygnusAdmin Emitted when pending Cygnus admin is the zero address
-     */
-    error CygnusFactory__PendingAdminCantBeZero(address);
+    error CygnusFactory__OrbitersNotSet(uint256 orbiterId);
 
     /**
      *  @custom:error CygnusNebulaCantBeZero Emitted when the new oracle is the zero address
      */
-    error CygnusFactory__CygnusNebulaCantBeZero(address);
-
-    /**
-     *  @custom:error CygnusVegaAlreadySet Emitted when the vega token manager is the same as the one we are assigning
-     */
-    error CygnusFactory__CygnusVegaAlreadySet(address);
-
-    /**
-     *  @custom:error CygnusAdminAlreadySet Emitted when the admin is the same as the new one we are assigning
-     */
-    error CygnusFactory__CygnusAdminAlreadySet(address);
+    error CygnusFactory__CygnusNebulaCantBeZero(address priceOracle);
 
     /**
      *  @custom:error CygnusNebulaAlreadySet Emitted when the oracle set is the same as the new one we are assigning
      */
-    error CygnusFactory__CygnusNebulaAlreadySet(address);
+    error CygnusFactory__CygnusNebulaAlreadySet(address priceOracle, address newPriceOracle);
+
+    /**
+     *  @custom:error CygnusAdminAlreadySet Emitted when the admin is the same as the new one we are assigning
+     */
+    error CygnusFactory__CygnusAdminAlreadySet(address currentAdmin, address newPendingAdmin);
+
+    /**
+     *  @custom:error PendingCygnusAdmin Emitted when pending Cygnus admin is the zero address
+     */
+    error CygnusFactory__PendingAdminCantBeZero(address pending, address sender);
+
+    /**
+     *  @custom:error CygnusVegaAlreadySet Emitted when the vega token manager is the same as the one we are assigning
+     */
+    error CygnusFactory__CygnusVegaAlreadySet(address currentVegaTokenManager, address newVegaTokenManager);
+
+    /**
+     *  @custom:error PendingReservesCantBeZero Emitted when pending reserves contract address is the zero address
+     */
+    error CygnusFactory__PendingVegaCantBeZero(address pending, address sender);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -87,18 +102,18 @@ interface ICygnusFactory {
     /**
      *  @notice Logs when a new shuttle is launched
      *  @param lpTokenPair The address of the underlying LP Token
-     *  @param shuttleID The ID of this lending pool
-     *  @param cygnusDeneb The address of the Cygnus collateral contract
-     *  @param cygnusAlbireo The address of the Cygnus borrow contract
-     *  @param cygnusDAI The address of underlying borrow token (DAI)
+     *  @param shuttleId The ID of this lending pool
+     *  @param collateral The address of the Cygnus collateral contract
+     *  @param cygnusDai The address of the Cygnus borrow contract
+     *  @param dai The address of underlying borrow token (DAI)
      *  @custom:event Emitted when a new lending pool is launched
      */
     event NewShuttleLaunched(
         address indexed lpTokenPair,
-        uint256 shuttleID,
-        address cygnusDeneb,
-        address cygnusAlbireo,
-        address cygnusDAI
+        uint256 shuttleId,
+        address collateral,
+        address cygnusDai,
+        address dai
     );
 
     /**
@@ -133,6 +148,39 @@ interface ICygnusFactory {
      */
     event NewVegaTokenManager(address oldVegaTokenManager, address vegaTokenManager);
 
+    /**
+     *  @notice Logs when new orbiters are added to the factory.
+     *  @param active Whether or not these orbiters are active and usable
+     *  @param orbitersLength How many orbiter pairs we have (equals the amount of Dexes cygnus is using)
+     *  @param orbitersName The name of the dex for these orbiters
+     *  @param collateralOrbiter The address of the collateral orbiter for this dex
+     *  @param borrowOrbiter The address of the borrow orbiter for this dex
+     *
+     */
+    event InitializeOrbiters(
+        bool active,
+        uint256 orbitersLength,
+        string orbitersName,
+        ICygnusDeneb collateralOrbiter,
+        ICygnusAlbireo borrowOrbiter
+    );
+
+    /**
+     *  @notice Logs when orbiters get deleted from storage
+     *  @param active Bool representing whether or not these orbiters are usable
+     *  @param orbiterId The ID of the collateral & borrow orbiters
+     *  @param orbiterName The name of the dex these orbiters were for
+     *  @param cygnusDeneb The address of the deleted collateral orbiter
+     *  @param cygnusAlbireo The address of the deleted borrow orbiter
+     */
+    event SwitchOrbiterStatus(
+        bool active,
+        uint256 orbiterId,
+        string orbiterName,
+        ICygnusDeneb cygnusDeneb,
+        ICygnusAlbireo cygnusAlbireo
+    );
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -140,12 +188,29 @@ interface ICygnusFactory {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
+     *  @notice We write it to interface due to getShuttles return value
+     *  @custom:struct Official record of all collateral and borrow deployer contracts, unique per dex
+     *  @custom:member active Whether or not these orbiters are active and usable
+     *  @custom:member orbiterId The ID for this pair of orbiters
+     *  @custom:member orbiterName The name of the dex
+     *  @custom:member cygnusDeneb The address of the collateral deployer contract
+     *  @custom:member cygnusAlbireo The address of the borrow deployer contract
+     */
+    struct Orbiter {
+        bool active;
+        uint24 orbiterId;
+        string orbiterName;
+        ICygnusDeneb cygnusDeneb;
+        ICygnusAlbireo cygnusAlbireo;
+    }
+
+    /**
      *  @return admin The address of the Cygnus Admin which grants special permissions in collateral/borrow contracts
      */
     function admin() external view returns (address);
 
     /**
-     *  @notice pendingAdmin The address of the requested account to be the new Cygnus Admin
+     *  @return pendingAdmin The address of the requested account to be the new Cygnus Admin
      */
     function pendingNewAdmin() external view returns (address);
 
@@ -160,38 +225,51 @@ interface ICygnusFactory {
     function pendingVegaTokenManager() external view returns (address);
 
     /**
-     * @return collateralDeployer The address of the Collateral deployer
-     */
-    function collateralDeployer() external view returns (ICygnusDeneb);
-
-    /**
-     * @return borrowDeployer The address of the Borrow deployer
-     */
-    function borrowDeployer() external view returns (ICygnusAlbireo);
-
-    /**
      * @return cygnusNebulaOracle The address of the Cygnus price oracle
      */
     function cygnusNebulaOracle() external view returns (IChainlinkNebulaOracle);
 
     /**
      *  @notice Official record for all the pairs deployed
-     *  @param lpTokenPair The address of the LP Token
-     *  @return isInitialized Whether this pair exists or not
-     *  @return shuttleID The ID of this shuttle
-     *  @return cygnusDeneb The address of the collateral contract
-     *  @return cygnusAlbireo The address of the borrow contract
-     *  @return borrowToken The address of the underlying albireo contract (DAI)
+     *  @param _lpTokenPair The address of the LP Token
+     *  @return launched Whether this pair exists or not
+     *  @return shuttleId The ID of this shuttle
+     *  @return collateral The address of the collateral contract
+     *  @return cygnusDai The address of the borrow contract
+     *  @return lpTokenPair The address of the collaterla's
+     *  @return borrowToken The address of the underlying borrow contract
+     *  @return orbiter The struct containing the address of the collateral/borrow orbiters for each dex
      */
-    function getShuttles(address lpTokenPair)
+    function getShuttles(address _lpTokenPair)
         external
         view
         returns (
-            bool isInitialized,
-            uint24 shuttleID,
-            address cygnusDeneb,
-            address cygnusAlbireo,
-            address borrowToken
+            bool launched,
+            uint24 shuttleId,
+            address collateral,
+            address cygnusDai,
+            address lpTokenPair,
+            address borrowToken,
+            Orbiter memory orbiter
+        );
+
+    /**
+     *  @notice Getter for the Orbiter struct
+     *  @return active Whether or not these orbiters are active and usable
+     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
+     *  @return orbiterName The name of the dex
+     *  @return cygnusDeneb The address of the collateral deployer contract
+     *  @return cygnusAlbireo The address of the borrow deployer contract
+     */
+    function getOrbiters(uint256 orbitersId_)
+        external
+        view
+        returns (
+            bool active,
+            uint24 orbiterId,
+            string memory orbiterName,
+            ICygnusDeneb cygnusDeneb,
+            ICygnusAlbireo cygnusAlbireo
         );
 
     /**
@@ -200,9 +278,34 @@ interface ICygnusFactory {
     function allShuttles(uint256) external view returns (address);
 
     /**
-     *  @return shuttlesLength The total number of shuttles deployed
+     *  @notice Array of Structs containing info of each orbiter deployed
+     *  @param orbiterId_ The ID of the orbiter pair we want to get the info of
+     *  @return active Whether or not these orbiters are active and usable
+     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
+     *  @return orbiterName The name of the dex
+     *  @return cygnusDeneb The address of the collateral deployer contract
+     *  @return cygnusAlbireo The address of the borrow deployer contract
      */
-    function shuttlesLength() external view returns (uint256);
+    function allOrbiters(uint256 orbiterId_)
+        external
+        view
+        returns (
+            bool active,
+            uint24 orbiterId,
+            string memory orbiterName,
+            ICygnusDeneb cygnusDeneb,
+            ICygnusAlbireo cygnusAlbireo
+        );
+
+    /**
+     *  @return shuttlesDeployed The total number of shuttles deployed
+     */
+    function shuttlesDeployed() external view returns (uint256);
+
+    /**
+     *  @return orbitersDeployed The total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter)
+     */
+    function orbitersDeployed() external view returns (uint256);
 
     /**
      *  @return dai The address of DAI
@@ -210,7 +313,7 @@ interface ICygnusFactory {
     function dai() external view returns (address);
 
     /**
-     * @return nativeToken The address of the chain's native token
+     *  @return nativeToken The address of the chain's native token
      */
     function nativeToken() external view returns (address);
 
@@ -219,47 +322,77 @@ interface ICygnusFactory {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Initializes both Borrow arms and the collateral arm
-     *  @param lpTokenPair The address of the underlying LP Token this pool is for
-     *  @param baseRate The interest rate model's base rate this shuttle uses
-     *  @param farmApy The multiplier this shuttle uses for calculating the interest rate
-     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
-     *  @return cygnusAlbireo The address of the Cygnus borrow contract for this pool
-     *  @return cygnusDeneb The address of the Cygnus collateral contract for both borrow tokens
-     *  @custom:error non-reentrant
+     *  @notice Turns off orbiters making them not able for deployment of pools
+     *  @param orbiterId The ID of the orbiter pairs we want to switch the status of
      */
-    function deployShuttle(
-        address lpTokenPair,
-        uint256 baseRate,
-        uint256 farmApy,
-        uint256 kinkMultiplier
-    ) external returns (address cygnusAlbireo, address cygnusDeneb);
+    function setOrbiterStatus(uint256 orbiterId) external;
 
     /**
-     *  @notice sets a new price oracle 👽
+     *  @notice Sets the new orbiters to deploy collateral and borrow contracts and stores orbiters in storage
+     *  @param name The name of the DEX these orbiters are for
+     *  @param cygnusDeneb The address of this orbiter's collateral deployer
+     *  @param cygnusAlbireo the address of this orbiter's borrow deployer
+     */
+    function setNewOrbiter(
+        string memory name,
+        ICygnusDeneb cygnusDeneb,
+        ICygnusAlbireo cygnusAlbireo
+    ) external;
+
+    /**
+     *  @notice Initializes both Borrow arms and the collateral arm
+     *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
+     *  @param lpTokenPair The address of the underlying LP Token this pool is for
+     *  @param baseRate The interest rate model's base rate this shuttle uses
+     *  @param multiplier The multiplier this shuttle uses for calculating the interest rate
+     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
+     *  @return cygnusDai The address of the Cygnus borrow contract for this pool
+     *  @return collateral The address of the Cygnus collateral contract for both borrow tokens
+     *  @custom:security non-reentrant
+     */
+    function deployShuttle(
+        uint256 orbiterId,
+        address lpTokenPair,
+        uint256 baseRate,
+        uint256 multiplier,
+        uint256 kinkMultiplier
+    ) external returns (address cygnusDai, address collateral);
+
+    /**
+     *  @notice 👽
+     *  @notice Sets a new price oracle
      *  @param newpriceoracle address of the new price oracle
+     *  @custom:security non-reentrant
      */
     function setNewNebulaOracle(address newpriceoracle) external;
 
     /**
-     *  @notice Sets a new pending admin for Cygnus 👽
+     *  @notice 👽
+     *  @notice Sets a new pending admin for Cygnus
      *  @param newCygnusAdmin Address of the requested Cygnus admin
+     *  @custom:security non-reentrant
      */
     function setPendingAdmin(address newCygnusAdmin) external;
 
     /**
-     *  @notice Approves the pending admin and is the new Cygnus admin 👽
+     *  @notice 👽
+     *  @notice Approves the pending admin and is the new Cygnus admin
+     *  @custom:security non-reentrant
      */
     function setNewCygnusAdmin() external;
 
     /**
-     *  @notice Request a new implementation contract for Cygnus
+     *  @notice 👽
+     *  @notice Sets the address for the future reserves manger if accepted
      *  @param newVegaTokenManager The address of the requested contract to be the new Vega Token Manager
+     *  @custom:security non-reentrant
      */
     function setPendingVegaTokenManager(address newVegaTokenManager) external;
 
     /**
+     *  @notice 👽
      *  @notice Accepts the new implementation contract
+     *  @custom:security non-reentrant
      */
     function setNewVegaTokenManager() external;
 }

@@ -46,7 +46,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      *  @custom:struct BorrowParameters Important parameters for the borrow contracts
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
-     *  @custom:member cygnusDeneb The address of the Cygnus collateral contract for this borrow token
+     *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
      &  @custom:member baseRatePerYear The base rate per year for this shuttle
      *  @custom:member farmApy The farm APY for this LP Token
      *  @custom:member kinkUtilizationRate The kink utilization rate for this pool
@@ -54,9 +54,9 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
     struct BorrowParameters {
         address factory;
         address underlying;
-        address cygnusDeneb;
+        address collateral;
         uint256 baseRatePerYear;
-        uint256 farmApy;
+        uint256 multiplier;
         uint256 kinkMultiplier;
     }
 
@@ -66,6 +66,11 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      *  @inheritdoc ICygnusAlbireo
      */
     BorrowParameters public override borrowParameters;
+
+    /**
+     *  @inheritdoc ICygnusAlbireo
+     */
+    bytes32 public constant override BORROW_INIT_CODE_HASH = keccak256(type(CygnusBorrow).creationCode);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             6. NON-CONSTANT FUNCTIONS
@@ -78,23 +83,23 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
      */
     function deployAlbireo(
         address underlying,
-        address collateralContract,
+        address collateral,
         uint256 baseRatePerYear,
-        uint256 farmApy,
+        uint256 multiplier,
         uint256 kinkMultiplier
-    ) external override nonReentrant returns (address albireo) {
+    ) external override nonReentrant returns (address cygnusDai) {
         // Assign important addresses to pass to borrow contracts
         borrowParameters = BorrowParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusDeneb: collateralContract,
+            collateral: collateral,
             baseRatePerYear: baseRatePerYear,
-            farmApy: farmApy,
+            multiplier: multiplier,
             kinkMultiplier: kinkMultiplier
         });
 
         // Create Borrow contract
-        albireo = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateralContract, _msgSender())) }());
+        cygnusDai = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateral, _msgSender())) }());
 
         // Delete and refund some gas
         delete borrowParameters;

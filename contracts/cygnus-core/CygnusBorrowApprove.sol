@@ -7,7 +7,8 @@ import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
 /**
  *  @title  CygnusBorrowApprove
- *  @notice Contract for approving borrows for the borrow arm of the lending pool and updating borrow allowances
+ *  @notice Contract for approving borrows for the borrow arm of the lending pool and updating borrow allowances.
+ *          Before any borrow the borrower must have positive borrowAllowances set by this contract.
  */
 contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

@@ -14,21 +14,26 @@ interface ICygnusDeneb {
      *  @notice Passing the struct parameters to the collateral contract avoids setting constructor
      *  @return factory The address of the Cygnus factory
      *  @return underlying The address of the underlying LP Token
-     *  @return cygnusAlbireo The address of the first Cygnus borrow token
+     *  @return cygnusDai The address of the Cygnus borrow contract for this collateral
      */
     function collateralParameters()
         external
         returns (
             address factory,
             address underlying,
-            address cygnusAlbireo
+            address cygnusDai
         );
+
+    /**
+     *  @return COLLATERAL_INIT_CODE_HASH The init code hash of the collateral contract for this deployer
+     */
+    function COLLATERAL_INIT_CODE_HASH() external view returns (bytes32);
 
     /**
      *  @notice Function to deploy the collateral contract of a lending pool
      *  @param underlying The address of the underlying LP Token
-     *  @param cygnusAlbireo The address of the Cygnus borrow token
-     *  @return deneb The address of the new deployed Cygnus collateral contract
+     *  @param cygnusDai The address of the Cygnus borrow contract for this collateral
+     *  @return collateral The address of the new deployed Cygnus collateral contract
      */
-    function deployDeneb(address underlying, address cygnusAlbireo) external returns (address deneb);
+    function deployDeneb(address underlying, address cygnusDai) external returns (address collateral);
 }
