@@ -6,7 +6,7 @@ This repository contains the smart contracts source code and markets configurati
 
 # **What is Cygnus?**
 
-Cygnus is a stablecoin lending and leveraged LP farming protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying DAI or as borrowers by supplying their LP Tokens. Lenders are able to provide DAI in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow against it to farm greater rewards.
+Cygnus is a 100% on-chain stablecoin lending and leveraged LP farming protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying DAI or as borrowers by supplying their LP Tokens. Lenders are able to provide DAI in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow DAI against it to farm greater rewards. As borrowers are borrowing a static value (DAI) against their LP tokens, they are essentially going long on their underlying assets.
 
 Each lending pool is connected to a DEX (TraderJoe, Sushi, etc.). By depositing your LPs in Cygnus, rewards from the masterchef or any other liquidity mining program get reinvested automatically. Users also have the option to reinvest rewards manually if they wish to.
 
@@ -21,9 +21,10 @@ By lending stablecoins to borrowers in specific farms, lenders earn an APY in st
 
 # **Protocol Features**
 
+There are NO deposit fees, NO borrow fees or NO lending fees. Users are free to deposit and redeem their positions whenever they want at no cost aside from gas fees.
+
   ![image](https://user-images.githubusercontent.com/97303883/175662172-723323cb-1f04-46c5-afd6-66bc5ce84faf.png)
   
-# 
 # **Cygnus architecture**
 
 <h3> Overview </h3>
