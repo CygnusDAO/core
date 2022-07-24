@@ -270,7 +270,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Get total balance held by this contract
         if (!voidActivated) {
             // Update from terminal
-            super.updateInternal;
+            super.updateInternal();
         }
         // Else return our balance held in the masterchef
         else {
@@ -338,7 +338,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @custom:security non-reentrant
      */
     function reinvestRewards() external override nonReentrant onlyEOA update {
-        // 1. Withdraw all the rewards
+        // ─────────────────────── 1. Withdraw all rewards
+
         uint256 currentRewards = getRewardsPrivate();
 
         // If none accumulated return and do nothing
@@ -346,18 +347,21 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             return;
         }
 
-        // 2. Send reward to user
+        // ─────────────────────── 2. Send reward to the reinvestor
+
+        // Calculate reward for user (rewards harvested * REINVEST_REWARD)
         uint256 eoaReward = currentRewards.mul(REINVEST_REWARD);
 
-        // Transfer the reward for reinvesting
+        // Transfer the reward to the reinvestor
         IErc20(rewardsToken).safeTransfer(_msgSender(), eoaReward);
 
-        // 3. Convert all the remaining rewards to token0 or token1
+        // ─────────────────────── 3. Convert all rewardsToken to token0 or token1
+
         address tokenA;
 
         address tokenB;
 
-        // Check if rewards token is token0 or token1 from LP
+        // Check if rewards token is already token0 or token1 from LP
         if (token0 == rewardsToken || token1 == rewardsToken) {
             // Check which token is rewardsToken
             (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
@@ -377,7 +381,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             }
         }
 
-        // 4. Convert tokenA to LP Token underlyings
+        // ─────────────────────── 4. Convert Token A to LP Token underlying
+
+        // Total amunt of token A
         uint256 totalAmountA = tokenA.contractBalanceOf();
 
         // prettier-ignore
@@ -395,7 +401,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Add liquidity and get LP Token
         uint256 liquidity = addLiquidityPrivate(tokenA, tokenB, totalAmountA - swapAmount, tokenB.contractBalanceOf());
 
-        // 5. Stake the LP Tokens
+        // ─────────────────────── 5. Stake the LP Token
+
         rewarder.deposit(pid, liquidity);
 
         /// @custom:event RechargeVoid

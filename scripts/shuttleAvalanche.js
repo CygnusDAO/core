@@ -194,7 +194,8 @@ async function deploy() {
         (await DAI.balanceOf(lender._address)) / 1e18,
     );
 
-    console.log('---- Borrower deposits 1 LP token of joe/Avax into Cygnus ----');
+    console.log('---- Borrower deposits 100 LP tokens of joe/Avax into Cygnus shuttle of joe/avax ----');
+    console.log('---- Lender deposits 25,000 DAI into Cygnus shuttle of joe/avax ----');
 
     // Price of 1 LP Token of joe/avax in DAI
     const oneLPToken = await collateral.getLPTokenPrice();
