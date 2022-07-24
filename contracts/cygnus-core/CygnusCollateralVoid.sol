@@ -95,17 +95,16 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /**
      *  @notice Constructs the Cygnus Void contract which handles rewards reinvestments
-     *  @dev Assign token0 and token1 in constructor as the underlying is always a univ2 LP Token
-     *  @dev Assign nativeToken from the factory
+     *  @notice Assign token0 and token1 as the underlying is always a univ2 LP Token + assign this chain's nativeToken
      */
     constructor() {
-        // Token0
+        // Token0 of the underlying
         token0 = IDexPair(underlying).token0();
 
-        // Token1
+        // Token1 of the underlying
         token1 = IDexPair(underlying).token1();
 
-        // Factory
+        // This chains native token
         nativeToken = ICygnusFactory(hangar18).nativeToken();
     }
 
@@ -271,15 +270,12 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Get total balance held by this contract
         if (!voidActivated) {
             // Update from terminal
-            super.updateInternal();
+            super.updateInternal;
         }
         // Else return our balance held in the masterchef
         else {
             // prettier-ignore
-            (uint256 _totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
-
-            // Update total balance held by this contract
-            totalBalance = _totalBalance;
+            (totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
 
             /// @custom:event Sync
             emit Sync(totalBalance);
@@ -341,7 +337,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
-    function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
+    function reinvestRewards() external override nonReentrant onlyEOA update {
         // 1. Withdraw all the rewards
         uint256 currentRewards = getRewardsPrivate();
 

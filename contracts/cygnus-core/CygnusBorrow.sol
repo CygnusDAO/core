@@ -43,10 +43,9 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     /**
      *  @notice mints reserves to CygnusReservesManager
      *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
-     *  @param _totalSupply The latest stored total supply
      *  @return Latest exchange rate
      */
-    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
+    function mintReservesInternal(uint256 _exchangeRate) internal returns (uint256) {
         // Get current exchange rate stored for borrow contract
         uint256 _exchangeRateLast = exchangeRateStored;
 
@@ -55,7 +54,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - _exchangeRateLast).mul(reserveFactor));
 
             // Calculate new reserves if any
-            uint256 newReserves = PRBMath.mulDiv(_totalSupply, _exchangeRate, newExchangeRate) - _totalSupply;
+            uint256 newReserves = totalReserves - mintedReserves;
 
             // if there are no new reserves to mint, just return exchangeRate
             if (newReserves == 0) {
@@ -68,7 +67,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             // Safe internal mint
             mintInternal(vegaTokenManager, newReserves);
 
-            // Store new exchange rate
+            // Add reserves
+            mintedReserves += newReserves;
+
+            // Update exchange rate
             exchangeRateStored = newExchangeRate;
 
             // Return new exchange rate
@@ -102,7 +104,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         uint256 _exchangeRate = _totalBalance.div(_totalSupply);
 
         // Check if there are new reserves to mint and thus new exchange rate, else just returns this _exchangeRate
-        return mintReservesInternal(_exchangeRate, _totalSupply);
+        return mintReservesInternal(_exchangeRate);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -155,7 +157,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         );
 
         // Check if user can borrow and updates collateral totalBalance
-        bool userCanBorrow = ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows);
+        bool userCanBorrow = ICygnusCollateral(collateral).canBorrow_J2u(borrower, address(this), accountBorrows);
 
         // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {

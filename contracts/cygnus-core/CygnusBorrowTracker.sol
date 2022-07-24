@@ -51,6 +51,11 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
      */
     mapping(address => BorrowSnapshot) internal borrowBalances;
 
+    /**
+     *  @notice Internal variable to keep track of minted reserves, used by CygnusBorrow contract to add to `totalReserves`
+     */
+    uint256 internal mintedReserves;
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**

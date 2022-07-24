@@ -128,7 +128,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         override
         returns (uint256 liquidity, uint256 shortfall)
     {
-        // Calculate liquidity or shortfall
+        // Calculate if `borrower` has liquidity or shortfall
         return accountLiquidityInternal(borrower, type(uint256).max);
     }
 
@@ -161,7 +161,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function canBorrow(
+    function canBorrow_J2u(
         address borrower,
         address borrowableToken,
         uint256 accountBorrows

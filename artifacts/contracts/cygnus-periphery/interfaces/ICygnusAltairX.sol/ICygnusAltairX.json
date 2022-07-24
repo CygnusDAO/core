@@ -318,7 +318,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "lpTokenPair",
+          "name": "collateral",
           "type": "address"
         },
         {
@@ -337,7 +337,7 @@
           "type": "bytes"
         }
       ],
-      "name": "deleverage_OM0",
+      "name": "deleverage",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -383,7 +383,7 @@
           "type": "bytes"
         }
       ],
-      "name": "leverage_adl",
+      "name": "leverage",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

@@ -1088,7 +1088,7 @@
     },
     {
       "inputs": [],
-      "name": "reinvestRewards_y7b",
+      "name": "reinvestRewards",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

@@ -250,13 +250,16 @@ async function deploy() {
     // Borrower 9x leverage (borrows DAI equivalent to 800 LP Tokens)
     await router
         .connect(borrower)
-        .leverage_adl(collateral.address, BigInt(oneLPToken) * BigInt(800), borrower._address, max, '0x');
+        .leverage(collateral.address, BigInt(oneLPToken) * BigInt(800), borrower._address, max, '0x');
 
     const borrowBalanceAfter = await borrowable.getBorrowBalance(borrower._address);
 
     console.log('PROTOCOL: outstanding borrow balance of borrower: %s DAI', borrowBalanceAfter / 1e18);
 
-    console.log('BORROWER: Debt ratio after leverage x9: %s', await collateral.getDebtRatio(borrower._address));
+    console.log('(at 100% Debt ratio users position is liquidatable)');
+
+    console.log('BORROWER: Debt ratio after leverage x9: %s %', await collateral.getDebtRatio(borrower._address) / 1e18);
+
 
     const denebBalanceAfterL = await collateral.balanceOf(borrower._address);
 
@@ -295,7 +298,7 @@ async function deploy() {
 
     console.log('7 Days pass...');
 
-    await collateral.connect(reinvestor).reinvestRewards_y7b();
+    await collateral.connect(reinvestor).reinvestRewards();
 
     const reinvestorBalanceAfter = await REWARDTOKEN.balanceOf(reinvestor.address);
 
@@ -320,7 +323,7 @@ async function deploy() {
     const maxBalance = await collateral.balanceOf(borrower._address);
 
     // Deleverage up to original deposited amount + estimate of swap fees (0.3% for each swap and we're doing 6 swaps max)
-    await router.connect(borrower).deleverage_OM0(collateral.address, BigInt(maxBalance) - BigInt(91.5e18), max, '0x');
+    await router.connect(borrower).deleverage(collateral.address, BigInt(maxBalance) - BigInt(91.5e18), max, '0x');
 
     const newBalance = await collateral.balanceOf(borrower._address);
 

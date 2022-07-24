@@ -227,15 +227,13 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Mint and deposit in masterchef if Void is activated
         if (voidActivated) {
             // Check for pools with deposit fees
-            // prettier-ignore
-            (uint256 totalBalanceBefore, /* reward debt */ ) = rewarder.userInfo(pid, address(this));
+            (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
 
             // Deposit in rewader
             rewarder.deposit(pid, balance);
 
             // Check balance after deposit
-            // prettier-ignore
-            (uint256 totalBalanceAfter, /* reward debt */) = rewarder.userInfo(pid, address(this));
+            (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
 
             // Get mint amount
             balance = totalBalanceAfter - totalBalanceBefore;

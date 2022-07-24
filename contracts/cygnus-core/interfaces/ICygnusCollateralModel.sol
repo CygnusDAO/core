@@ -27,7 +27,6 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-
     /**
      *  @notice Gets an account's liquidity or shortfall
      *  @param borrower The address of the borrower.
@@ -49,7 +48,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
      *  @param accountBorrows The amount the user wants to borrow.
      *  @return Whether the account can borrow.
      */
-    function canBorrow(
+    function canBorrow_J2u(
         address borrower,
         address borrowableToken,
         uint256 accountBorrows

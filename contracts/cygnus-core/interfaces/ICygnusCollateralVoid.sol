@@ -121,5 +121,5 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *          CygnusLP and underlying, thus lowering user's debt ratios
      *  @custom:security non-reentrant
      */
-    function reinvestRewards_y7b() external;
+    function reinvestRewards() external;
 }

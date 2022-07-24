@@ -192,7 +192,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         uint256 denebTokens = balanceOf(address(this));
 
         // Calculate user's redeem (amount * scale / exch)
-        uint256 redeemableDeneb = redeemAmount.div(exchangeRate()) + 1;
+        uint256 redeemableDeneb = redeemAmount.div(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if there's less tokens than declared
         if (denebTokens < redeemableDeneb) {
