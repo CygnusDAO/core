@@ -2,12 +2,12 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
+import { ICygnusCollateralVoid } from "./ICygnusCollateralVoid.sol";
 
 /**
  *  @title ICygnusCollateralModel The interface for querying any borrower's positions and find liquidity/shortfalls
  */
-interface ICygnusCollateralModel is ICygnusCollateralControl {
+interface ICygnusCollateralModel is ICygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

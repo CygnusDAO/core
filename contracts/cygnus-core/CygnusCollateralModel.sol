@@ -13,13 +13,14 @@ import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
 
 /**
  *  @title  CygnusCollateralModel Main contract in Cygnus that calculates a borrower's liquidity or shortfall
-            in DAI (how much LP Token the user has deposited, and then we use the oracle to return what the LP
-            Token deposited amount is worth in DAI)
+ *          in DAI (how much LP Token the user has deposited, and then we use the oracle to return what the LP
+ *          Token deposited amount is worth in DAI)
  *  @author CygnusDAO
  *  @notice Theres 2 main functions to calculate the liquidity of a user: `getDebtRatio` and `getAccountLiquidity`
  *          `getDebtRatio` will return the percentage of the loan divided by the user's collateral, scaled by 1e18.
  *          If `getDebtRatio` returns higher than the collateral contract's max `debtRatio` then the user has shortfall
- *          and can be liquidated. 
+ *          and can be liquidated.
+ *
  *          The same can be calculated but instead of returning a percentage will return the actual amount of the user's
  *          liquidity or shortfall but denominated in DAI, by calling `getAccountLiquidity`
  *          The last function `canBorrow` is called by the `cygnusDai` contract (the borrow arm) to confirm if a user

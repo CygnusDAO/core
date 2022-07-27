@@ -49,6 +49,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         // Get current exchange rate stored for borrow contract
         uint256 _exchangeRateLast = exchangeRateStored;
 
+        // Calculate new exchange rate, if different to last mint reserves
         if (_exchangeRate > _exchangeRateLast) {
             // Calculate new exchange rate taking reserves int oaccount
             uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - _exchangeRateLast).mul(reserveFactor));

@@ -10,7 +10,7 @@ import { Strings } from "./libraries/Strings.sol";
 // Interfaces
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
+import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
@@ -105,7 +105,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     constructor() {
         // Get important addresses from collateral deployer
-        (hangar18, underlying, cygnusDai) = ICygnusDeneb(_msgSender()).collateralParameters();
+        (hangar18, underlying, cygnusDai) = IDenebOrbiter(_msgSender()).collateralParameters();
 
         // Assign price oracle from factory
         cygnusNebulaOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();

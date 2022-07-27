@@ -13,14 +13,14 @@
                        ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
            .                            .       .          .            .                          .             .⠀
     
-        BORROW DEPLOYER V1 - `Albireo`                                                           
+        BORROW ORBITER V1 - `Albireo`                                                           
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
+import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 import { Context } from "./utils/Context.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 
@@ -35,7 +35,7 @@ import { CygnusBorrow } from "./CygnusBorrow.sol";
  *          structs to avoid having to set constructors in the core contracts, being able to calculate
  *          addresses of lending pools with CREATE2
  */
-contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
+contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -63,12 +63,12 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusAlbireo
+     *  @inheritdoc IAlbireoOrbiter
      */
     BorrowParameters public override borrowParameters;
 
     /**
-     *  @inheritdoc ICygnusAlbireo
+     *  @inheritdoc IAlbireoOrbiter
      */
     bytes32 public constant override BORROW_INIT_CODE_HASH = keccak256(type(CygnusBorrow).creationCode);
 
@@ -79,7 +79,7 @@ contract CygnusAlbireo is ICygnusAlbireo, Context, ReentrancyGuard {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusAlbireo
+     *  @inheritdoc IAlbireoOrbiter
      */
     function deployAlbireo(
         address underlying,

@@ -101,13 +101,13 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         address borrower,
         uint256 repayAmount
     ) external override returns (uint256 denebAmount) {
-        // @custom:error LiquidatingSelf Avoid liquidating self
+        // @custom:error CantLiquidateSelf Avoid liquidating self
         if (_msgSender() == borrower) {
             revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower });
         }
-        // @custom:error NotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
+        // @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
         else if (_msgSender() != cygnusDai) {
-            revert CygnusCollateral__MsgSenderNotBorrowable({ sender: _msgSender(), borrowable: cygnusDai });
+            revert CygnusCollateral__MsgSenderNotCygnusDai({ sender: _msgSender(), borrowable: cygnusDai });
         }
 
         // Get user's liquidity or shortfall

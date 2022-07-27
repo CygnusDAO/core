@@ -9,7 +9,7 @@ import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
-import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
+import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusBorrowInterest Interest rate model contract for Cygnus
@@ -67,7 +67,7 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
     constructor() {
         // prettier-ignore
         (/* factory */, /* underlying */ , /* collateral */, uint256 baseRate, uint256 multiplier, uint256 kink) = 
-          ICygnusAlbireo(_msgSender()).borrowParameters();
+          IAlbireoOrbiter(_msgSender()).borrowParameters();
 
         /// Update the interest rate model from the parameters passed and stored through CygnusBorrowControl
         updateJumpRateModelInternal(baseRate, multiplier, kink);

@@ -5,7 +5,7 @@ pragma solidity >=0.8.4;
  *  @title ICygnusAlbireo The interface the Cygnus borrow deployer
  *  @notice A contract that constructs a Cygnus borrow pool must implement this to pass arguments to the pool
  */
-interface ICygnusAlbireo {
+interface IAlbireoOrbiter {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

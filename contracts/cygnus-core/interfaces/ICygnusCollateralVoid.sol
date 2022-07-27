@@ -3,7 +3,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
+import { ICygnusTerminal, ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
 
 // Interfaces
 import { IDexPair } from "./IDexPair.sol";
@@ -32,6 +32,16 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @custom:error NotNativeTokenSender Avoid receiving unless sender is native token
      */
     error CygnusCollateralVoid__NotNativeTokenSender(address sender, address origin);
+
+    /**
+     *  @custom:error RedeemAmountExceedsBalance Avoid redeeming more than pool balance
+     */
+    error CygnusCollateralVoid__RedeemAmountExceedsBalance(uint256 redeemAmount, uint256 totalBalance);
+
+    /**
+     *  @custom:error CantMintZero Avoid redeeming 0 tokens
+     */
+    error CygnusCollateralVoid__CantMintZero(uint256 mintTokens);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -107,7 +117,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @param _swapFeeFactor The swap fee factor used by this DEX
      *  @custom:security non-reentrant
      */
-    function initializeVoid(
+    function chargeVoid(
         IDexRouter02 _dexRouter,
         IMiniChef _rewarder,
         address _rewardsToken,
@@ -121,5 +131,5 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *          CygnusLP and underlying, thus lowering user's debt ratios
      *  @custom:security non-reentrant
      */
-    function reinvestRewards() external;
+    function reinvestRewards_y7b() external;
 }

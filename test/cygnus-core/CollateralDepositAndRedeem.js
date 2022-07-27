@@ -34,6 +34,13 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
     // NATIVE
     const nativeToken = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
 
+    // VOID
+    let voidx;
+    let voidRouter = '0x60ae616a2155ee3d9a68541ba4544862310933d4';
+    let masterChef = '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F';
+    let rewardToken = '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd';
+    let pid = 6;
+
     /* ─────────────────────────────────────── External Contracts ─────────────────────────────────────────  */
 
     // dai and JoeAvax LP Token contracts
@@ -85,7 +92,7 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
     // Custom pool rates for the JoeAvax lending pool
     const baseRate = BigInt(0.08e18);
 
-    const kink = BigInt(0.75e18);
+    const kink = BigInt(3);
 
     const multi = BigInt(0.15e18);
 
@@ -143,7 +150,7 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
         // ═══════════════════ Router ════════════════════════════════════════════════════════
 
         // Router
-        const Router = await ethers.getContractFactory('CygnusAltair');
+        const Router = await ethers.getContractFactory('CygnusAltairX');
 
         router = await Router.deploy(factory.address);
 
@@ -212,16 +219,16 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
 
         collateral = await ethers.getContractAt('CygnusCollateral', shuttle.cygnusDeneb, owner);
 
-        // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
-        await collateral
-            .connect(owner)
-            .initializeVoid(
-                '0x60ae616a2155ee3d9a68541ba4544862310933d4',
-                '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F',
-                '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd',
-                6,
-                997,
-            );
+        // ═════════════════════ INITIALIZE VOID ════════════════════════════════════════════════════════════
+
+        // Void
+        let Void = await ethers.getContractFactory('CygnusJoeVoid');
+
+        // factory, lpToken + Router + MasterChef + RewardsToken + poolId + swapFee
+        voidx = await Void.deploy(factory.address, joeAvaxLPAddress, voidRouter, masterChef, rewardToken, pid, 997);
+
+        // Assign
+        await collateral.connect(owner).setCygnusCollateralVoid(voidx.address);
     });
 
     describe('Deployment of pools from factory', function () {
@@ -250,15 +257,18 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
 
             await router
                 .connect(borrowerFirstDepositor)
-                .mint(collateral.address, BigInt(1e18), borrowerFirstDepositor._address, max);
+                .mintCollateral(collateral.address, BigInt(1e18), borrowerFirstDepositor._address, max, '0x');
         });
     });
 
     describe('Borrower deposits LP Token for CygLP', function () {
         // Mints without approving router in LP contract
         it('Deposits LP Token in collateral contract before approving router in LP contract: FAIL { LP_CONTRACT }', async () => {
-            await expect(router.connect(borrower).mint(collateral.address, BigInt(10e18), borrower._address, max)).to.be
-                .reverted;
+            await expect(
+                router
+                    .connect(borrower)
+                    .mintCollateral(collateral.address, BigInt(10e18), borrower._address, max, '0x'),
+            ).to.be.reverted;
         });
 
         // Approve Router in LP
@@ -270,7 +280,11 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
 
         // Mint tokens
         it('Deposits LP Token in collateral and mints CygLP and emit { Mint }', async () => {
-            await expect(router.connect(borrower).mint(collateral.address, BigInt(10e18), borrower._address, max))
+            await expect(
+                router
+                    .connect(borrower)
+                    .mintCollateral(collateral.address, BigInt(10e18), borrower._address, max, '0x'),
+            )
                 .to.emit(collateral, 'Mint')
                 .withArgs(router.address, borrower._address, BigInt(10e18), BigInt(10e18));
         });
@@ -278,6 +292,10 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
         // Has Cyg LP
         it('Borrower has CygLP in wallet', async () => {
             expect(await collateral.balanceOf(borrower._address)).to.eq(BigInt(10e18));
+        });
+
+        it('Borrower reinvests rewards in void', async () => {
+            await expect(voidx.connect(borrower).chargeVoid()).to.emit(voidx, 'RechargeVoid');
         });
     });
 

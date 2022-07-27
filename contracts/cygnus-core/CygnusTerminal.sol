@@ -97,21 +97,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      */
     uint256 internal constant INITIAL_EXCHANGE_RATE = 1e18;
 
-    /**
-     *  @notice Address of the Masterchef/Rewarder contract
-     */
-    IMiniChef internal rewarder;
-
-    /**
-     *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
-     */
-    uint256 internal pid;
-
-    /**
-     *  @notice Whether or not the collateral contract has void activated
-     */
-    bool internal voidActivated;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
@@ -220,31 +205,15 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function mint(address minter) external override nonReentrant update returns (uint256 cygnusMintTokens) {
+    function mint(address minter) external virtual override nonReentrant update returns (uint256 cygnusMintTokens) {
         // Get current balance
         uint256 balance = IErc20(underlying).balanceOf(address(this));
 
-        // Mint and deposit in masterchef if Void is activated
-        if (voidActivated) {
-            // Check for pools with deposit fees
-            (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
-
-            // Deposit in rewader
-            rewarder.deposit(pid, balance);
-
-            // Check balance after deposit
-            (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
-
-            // Get mint amount
-            balance = totalBalanceAfter - totalBalanceBefore;
-        }
-        // Else just mint tokens without depositing in masterchef
-        else {
-            balance = balance - totalBalance;
-        }
+        // Substract from totalBalance to get deposit amount
+        uint256 deposit = balance - totalBalance;
 
         // (amount * scale) / exchangeRate
-        cygnusMintTokens = balance.div(exchangeRate());
+        cygnusMintTokens = deposit.div(exchangeRate());
 
         /// custom:error CantMintZero Avoid minting no tokens
         if (cygnusMintTokens <= 0) {
@@ -255,7 +224,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         mintInternal(minter, cygnusMintTokens);
 
         /// @custom:event Mint
-        emit Mint(_msgSender(), minter, balance, cygnusMintTokens);
+        emit Mint(_msgSender(), minter, deposit, cygnusMintTokens);
     }
 
     /**
@@ -263,14 +232,14 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(address holder) external override nonReentrant update returns (uint256 redeemAmount) {
+    function redeem(address holder) external virtual override nonReentrant update returns (uint256 redeemAmount) {
         // Get current balance
         uint256 cygnusRedeemTokens = balanceOf(address(this));
 
         // Get the initial amount * exchange rate / scale
         redeemAmount = cygnusRedeemTokens.mul(exchangeRate());
 
-        /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
+        /// @custom:error CantBurnZero Avoid redeem unless is positive amount
         if (redeemAmount <= 0) {
             revert CygnusTerminal__CantRedeemZero(redeemAmount);
         }
@@ -281,11 +250,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
         // Burn initial amount and emit Transfer event
         burnInternal(address(this), cygnusRedeemTokens);
-
-        // Check if void is activated for the collateral
-        if (voidActivated) {
-            rewarder.withdraw(pid, redeemAmount);
-        }
 
         // Optimistically transfer redeemed tokens
         IErc20(underlying).safeTransfer(holder, redeemAmount);

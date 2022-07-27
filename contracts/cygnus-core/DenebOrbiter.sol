@@ -20,12 +20,14 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusDeneb } from "./interfaces/ICygnusDeneb.sol";
+import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 import { Context } from "./utils/Context.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 
 // Collateral contract
 import { CygnusCollateral } from "./CygnusCollateral.sol";
+
+import "hardhat/console.sol";
 
 /**
  *  @title  CygnusDeneb Contract that deploys the Cygnus Collateral arm of the lending pool
@@ -35,7 +37,7 @@ import { CygnusCollateral } from "./CygnusCollateral.sol";
  *          We pass structs to avoid having to set constructors in the core contracts, being able to calculate
  *          addresses of lending pools with CREATE2
  */
-contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
+contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -57,12 +59,12 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusDeneb
+     *  @inheritdoc IDenebOrbiter
      */
     CollateralParameters public override collateralParameters;
 
     /**
-     *  @inheritdoc ICygnusDeneb
+     *  @inheritdoc IDenebOrbiter
      */
     bytes32 public constant override COLLATERAL_INIT_CODE_HASH = keccak256(type(CygnusCollateral).creationCode);
 
@@ -73,7 +75,7 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusDeneb
+     *  @inheritdoc IDenebOrbiter
      */
     function deployDeneb(address underlying, address cygnusDai)
         external
@@ -90,6 +92,8 @@ contract CygnusDeneb is ICygnusDeneb, Context, ReentrancyGuard {
 
         // Create Collateral contract
         collateral = address(new CygnusCollateral{ salt: keccak256(abi.encode(underlying, _msgSender())) }());
+
+        console.log('deneb?!?!?!');
 
         // Delete and refund some gas
         delete collateralParameters;

@@ -23,9 +23,9 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     error CygnusCollateral__ValueExceedsBalance(uint256 redeemValue, uint256 redeemBalance);
 
     /**
-     *  @custom:error NotBorrowable Emitted for liquidation when msg.sender is not borrowable.
+     *  @custom:error MsgSenderNotCygnusDai Emitted for liquidation when msg.sender is not borrowable.
      */
-    error CygnusCollateral__MsgSenderNotBorrowable(address sender, address borrowable);
+    error CygnusCollateral__MsgSenderNotCygnusDai(address sender, address borrowable);
 
     /**
      *  @custom:error NotLiquidatable Emitted when there is no shortfall

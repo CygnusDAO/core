@@ -6,7 +6,7 @@ import { ICygnusBorrowControl } from "./interfaces/ICygnusBorrowControl.sol";
 import { CygnusTerminal } from "./CygnusTerminal.sol";
 
 // Interfaces
-import { ICygnusAlbireo } from "./interfaces/ICygnusAlbireo.sol";
+import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
@@ -95,7 +95,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     constructor() {
         // Get factory, underlying and collateral address and interest rate parameters for this shuttle
         // prettier-ignore
-        (hangar18, underlying, collateral, /* base */, /* multiplier */, /* kink */) = ICygnusAlbireo(_msgSender())
+        (hangar18, underlying, collateral, /* base */, /* multiplier */, /* kink */) = IAlbireoOrbiter(_msgSender())
             .borrowParameters();
 
         // Match initial exchange rate
@@ -147,6 +147,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @custom:security non-reentrant
      */
     function setCygnusBorrowTracker(address newBorrowTracker) external override cygnusAdmin nonReentrant {
+        // Need the option of setting the borrow tracker as address(0) to remove rewards pool
         /// @custom:error BorrowTrackerAlreadySet Avoid Duplicate
         if (newBorrowTracker == cygnusBorrowTracker) {
             revert CygnusBorrowControl__BorrowTrackerAlreadySet({

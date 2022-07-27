@@ -5,7 +5,7 @@ pragma solidity >=0.8.4;
  *  @title ICygnusDeneb The interface for a contract that is capable of deploying Cygnus collateral pools
  *  @notice A contract that constructs a Cygnus collateral pool must implement this to pass arguments to the pool
  */
-interface ICygnusDeneb {
+interface IDenebOrbiter {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

@@ -21,7 +21,10 @@ import { SafeErc20 } from "./libraries/SafeErc20.sol";
 
 /**
  *  @title  CygnusCollateralVoid Assigns the masterchef/rewards contract (if any) to harvest and reinvest rewards
- *  @notice This contract is considered optional and default state is offline (bool `voidActivated`)
+ *  @notice This contract is considered optional and default state is offline (bool `voidActivated`). Vanilla
+ *          shuttles should not have this contract included (for example UniswapV2) as they dont have a masterchef
+ *          contract behind them.
+ *
  *          It is the only contract in Cygnus that should be changed according to the LP Token's masterchef/rewarder.
  *          As such most functions are kept private as they are only relevant to this contract and the others
  *          are indifferent to this.
@@ -52,6 +55,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
+    // From underlying/factory
+
     /**
      *  @notice Address of the chain's native token
      */
@@ -67,6 +72,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     address private immutable token1;
 
+    // from void
+
     /**
      *  @notice The token that is given as rewards by the dex' masterchef/rewarder contract
      */
@@ -81,6 +88,21 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice The fee this dex charges for each swap divided by 1000 (ie uniswap charges 0.3%, swap fee is 997)
      */
     uint256 private dexSwapFee;
+
+    /**
+     *  @notice Address of the Masterchef/Rewarder contract
+     */
+    IMiniChef internal rewarder;
+
+    /**
+     *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
+     */
+    uint256 internal pid;
+
+    /**
+     *  @notice Whether or not the collateral contract has void activated
+     */
+    bool internal voidActivated;
 
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
 
@@ -112,7 +134,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Accepts AVAX and immediately deposits in WAVAX contract to receive wrapped avax
      */
     receive() external payable {
-        // Receive AVAX and deposit in WAVAX contract to immediately convert to WAVAX
+        // Deposit in nativeToken (WAVAX) contract
         IWAVAX(nativeToken).deposit{ value: msg.value }();
     }
 
@@ -138,7 +160,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Reverts if it is not considered a EOA
      */
     function checkEOA() private view {
-        /// @custom:error OnlyAccountsAllowed Avoid if not called by EOA
+        /// @custom:error OnlyEOAAllowed Avoid if not called by an externally owned account
         // solhint-disable-next-line
         if (_msgSender() != tx.origin) {
             // solhint-disable-next-line
@@ -156,15 +178,15 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         view
         override
         returns (
-            IMiniChef rewarder_,
-            uint256 pid_,
-            bool voidActivated_,
-            address rewardsToken_,
-            uint256 dexSwapFee_,
-            IDexRouter02 dexRouter_
+            IMiniChef,
+            uint256,
+            bool,
+            address,
+            uint256,
+            IDexRouter02
         )
     {
-        // Return all the private storage variables
+        // Return all the private storage variables from this contract
         return (rewarder, pid, voidActivated, rewardsToken, dexSwapFee, dexRouter);
     }
 
@@ -198,7 +220,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         tokenIn.approveDexRouter(address(dexRouter), amount);
 
         // Swap tokens
-        dexRouter.swapExactTokensForTokens(amount, 0, path, address(this), type(uint256).max);
+        dexRouter.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp);
     }
 
     /**
@@ -221,12 +243,13 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Approve token B
         tokenB.approveDexRouter(address(dexRouter), amountB);
 
+        // Performs the quote and optimalLiquidity in the pair contract
         // prettier-ignore
         (
             /* amountA */,
             /* amountB */,
             liquidity
-        ) = dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), type(uint256).max);
+        ) = dexRouter.addLiquidity(tokenA, tokenB, amountA, amountB, 0, 0, address(this), block.timestamp);
     }
 
     /**
@@ -288,7 +311,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
-    function initializeVoid(
+    function chargeVoid(
         IDexRouter02 dexRouterVoid,
         IMiniChef rewarderVoid,
         address rewardsTokenVoid,
@@ -337,7 +360,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
-    function reinvestRewards() external override nonReentrant onlyEOA update {
+    function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
         // ─────────────────────── 1. Withdraw all rewards
 
         uint256 currentRewards = getRewardsPrivate();
@@ -407,5 +430,83 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(address(this), _msgSender(), currentRewards, eoaReward);
+    }
+
+    /**
+     *  @dev This low level function should only be called from `Altair` contract only
+     *  @inheritdoc ICygnusTerminal
+     *  @custom:security non-reentrant
+     */
+    function mint(address minter)
+        external
+        override(ICygnusTerminal)
+        nonReentrant
+        update
+        returns (uint256 cygnusMintTokens)
+    {
+        // Get current balance
+        uint256 balance = IErc20(underlying).balanceOf(address(this));
+
+        // Check for pools with deposit fees
+        (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
+
+        // Deposit in rewader
+        rewarder.deposit(pid, balance);
+
+        // Check balance after deposit
+        (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
+
+        // (amount * scale) / exchangeRate
+        cygnusMintTokens = (totalBalanceAfter - totalBalanceBefore).div(exchangeRate());
+
+        /// custom:error CantMintZero Avoid minting no tokens
+        if (cygnusMintTokens <= 0) {
+            revert CygnusTerminal__CantMintZero(cygnusMintTokens);
+        }
+
+        // Mint tokens and emit Transfer event
+        mintInternal(minter, cygnusMintTokens);
+
+        /// @custom:event Mint
+        emit Mint(_msgSender(), minter, balance, cygnusMintTokens);
+    }
+
+    /**
+     *  @dev This low level function should only be called from `Altair` contract only
+     *  @inheritdoc ICygnusTerminal
+     *  @custom:security non-reentrant
+     */
+    function redeem(address holder)
+        external
+        override(ICygnusTerminal)
+        nonReentrant
+        update
+        returns (uint256 redeemAmount)
+    {
+        // Get current balance
+        uint256 cygnusRedeemTokens = balanceOf(address(this));
+
+        // Get the initial amount * exchange rate / scale
+        redeemAmount = cygnusRedeemTokens.mul(exchangeRate());
+
+        /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
+        if (redeemAmount <= 0) {
+            revert CygnusTerminal__CantRedeemZero(redeemAmount);
+        }
+        /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
+        else if (redeemAmount > totalBalance) {
+            revert CygnusTerminal__RedeemAmountInvalid({ invalidAmount: redeemAmount, contractBalance: totalBalance });
+        }
+
+        // Burn initial amount and emit Transfer event
+        burnInternal(address(this), cygnusRedeemTokens);
+
+        rewarder.withdraw(pid, redeemAmount);
+
+        // Optimistically transfer redeemed tokens
+        IErc20(underlying).safeTransfer(holder, redeemAmount);
+
+        /// @custom:event Redeem
+        emit Redeem(_msgSender(), holder, redeemAmount, cygnusRedeemTokens);
     }
 }

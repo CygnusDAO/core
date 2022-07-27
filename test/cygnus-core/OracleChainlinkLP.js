@@ -21,18 +21,16 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
 
     // Check all with 99% precision
     const rangeMin = BigInt(0.995e18);
-
     const rangeMax = BigInt(1.005e18);
-
     const oneMantissa = BigInt(1e18);
 
     const max = ethers.constants.MaxUint256;
 
     const AddressZero = ethers.constants.AddressZero;
 
-    const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
+    const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, '../abis/lptoken.json')).toString();
 
-    const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/dai.json')).toString();
+    const daiAbi = fs.readFileSync(path.resolve(__dirname, '../abis/dai.json')).toString();
 
     /*  ─────────────────────────────────────────────────── Test Case 1 ───────────────────────────────────────────────────  */
 
@@ -61,7 +59,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
          *  Get the total supply and reserves of each token0 and token1 from dex to calculate price
          *
          */
-        const LPTokenJoeAvax = new ethers.Contract('0x454E67025631C065d3cFAD6d71E6892f74487a15', lpTokenAbi, owner);
+        const LPTokenJoeAvax = new ethers.Contract(joeAvaxLP, lpTokenAbi, owner);
 
         const reserves = await LPTokenJoeAvax.getReserves();
 
@@ -98,7 +96,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
          *  Get the total supply and reserves of each token0 and token1 from dex to calculate price
          *
          */
-        const LPTokenEthAvax = new ethers.Contract('0xFE15c2695F1F920da45C30AAE47d11dE51007AF9', lpTokenAbi, owner);
+        const LPTokenEthAvax = new ethers.Contract(ethAvaxLP, lpTokenAbi, owner);
 
         const reserves = await LPTokenEthAvax.getReserves();
 
@@ -136,12 +134,12 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
          *  Get the total supply and reserves of each token0 and token1 from dex to calculate price
          *
          */
-        const LPTokenUsdcAvax = new ethers.Contract('0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1', lpTokenAbi, owner);
+        const LPTokenUsdcAvax = new ethers.Contract(usdcAvaxLP, lpTokenAbi, owner);
 
         const reserves = await LPTokenUsdcAvax.getReserves();
 
         // Update manually or throws errors, usdc
-        const totalSupply = 0.696213;
+        const totalSupply = 0.6922;
 
         // usdc adjust
         const usdcReserves = Number((BigInt(reserves._reserve0) * BigInt(10 ** (18 - 6))) / BigInt(1e18));
@@ -163,11 +161,11 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
      * UPDATE TO CURRENT PRICE to do fair price and normal price calculations against the on-chain price the oracle returns
      *
      */
-    const joePrice = 0.256483;
+    const joePrice = 0.346436;
 
-    const avaxPrice = 19.71;
+    const avaxPrice = 21.05;
 
-    const ethPrice = 1231.36;
+    const ethPrice = 1489.55;
 
     const usdcPrice = 1;
 
@@ -277,19 +275,19 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
         it('Initializes JOE/AVAX LP Token and emits { InitializeChainlinkNebula } with arguments (true, id, lpToken, aggregatorA, aggregatorB)', async () => {
             await expect(cygnusOracle.initializeNebula(joeAvaxLP, joeAggregator, avaxAggregator))
                 .to.emit(cygnusOracle, 'InitializeChainlinkNebula')
-                .withArgs(true, 1, joeAvaxLP, joeAggregator, avaxAggregator);
+                .withArgs(true, 0, joeAvaxLP, joeAggregator, avaxAggregator);
         });
 
         it('Initializes ETH/AVAX LP Token and emits { InitializeChainlinkNebula } with arguments (true, id, lpToken, aggregatorA, aggregatorB)', async () => {
             await expect(cygnusOracle.initializeNebula(ethAvaxLP, ethAggregator, avaxAggregator))
                 .to.emit(cygnusOracle, 'InitializeChainlinkNebula')
-                .withArgs(true, 2, ethAvaxLP, ethAggregator, avaxAggregator);
+                .withArgs(true, 1, ethAvaxLP, ethAggregator, avaxAggregator);
         });
 
         it('Initializes USDc/AVAX LP Token and emits { InitializeChainlinkNebula } with arguments (true, id, lpToken, aggregatorA, aggregatorB)', async () => {
             await expect(cygnusOracle.initializeNebula(usdcAvaxLP, usdcAggregator, avaxAggregator))
                 .to.emit(cygnusOracle, 'InitializeChainlinkNebula')
-                .withArgs(true, 3, usdcAvaxLP, usdcAggregator, avaxAggregator);
+                .withArgs(true, 2, usdcAvaxLP, usdcAggregator, avaxAggregator);
         });
     });
 
@@ -453,7 +451,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
         it('Owner deletes an LP token pair from the oracle and emits { DeleteChainlinkNebula }', async () => {
             await expect(cygnusOracle.deleteNebula(joeAvaxLP))
                 .to.emit(cygnusOracle, 'DeleteChainlinkNebula')
-                .withArgs(1, joeAvaxLP, joeAggregator, avaxAggregator, owner.address);
+                .withArgs(0, joeAvaxLP, joeAggregator, avaxAggregator, owner.address);
         });
 
         it('Checks that the first slot in array (JOE/AVAX LP) is deleted and is address(0)', async () => {
@@ -488,7 +486,7 @@ describe('Cygnus-Chainlink: LP Fair Price Oracle', function () {
         it('Admin initializes deleted oracle again and emits { InitializedChainlinkOracle }', async () => {
             await expect(cygnusOracle.initializeNebula(joeAvaxLP, joeAggregator, avaxAggregator))
                 .to.emit(cygnusOracle, 'InitializeChainlinkNebula')
-                .withArgs(true, 4, joeAvaxLP, joeAggregator, avaxAggregator);
+                .withArgs(true, 3, joeAvaxLP, joeAggregator, avaxAggregator);
 
             expect(await cygnusOracle.nebulaSize()).to.be.eq(4);
         });
