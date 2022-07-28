@@ -97,11 +97,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     // ────────────── Current Pool Rates ──────────────
 
     /**
-     *  @return The current debt ratio for this shuttle, default at 80% (x5 leverage).
-     */
-    function debtRatio() external view returns (uint256);
-
-    /**
      *  @return The current liquidation incentive for this shuttle, default at 5%.
      */
     function liquidationIncentive() external view returns (uint256);
@@ -112,17 +107,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     function liquidationFee() external view returns (uint256);
 
     // ──────────── Min/Max rates allowed ─────────────
-
-    /**
-     *  @notice Set a minimum for borrow protection
-     *  @return Minimum debt ratio at which the collateral becomes liquidatable, equivalent to 50% (x2 leverage)
-     */
-    function DEBT_RATIO_MIN() external pure returns (uint256);
-
-    /**
-     *  @return Maximum debt ratio at which the collateral becomes liquidatable, equivalent to 87.5% (x8 leverage)
-     */
-    function DEBT_RATIO_MAX() external pure returns (uint256);
 
     /**
      *  @notice Set a minimum to for lender protection
@@ -154,14 +138,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      *  @custom:security non-reentrant
      */
     function setNebulaOracle() external;
-
-    /**
-     *  @notice 👽
-     *  @notice Updates the debt ratio for the shuttle
-     *  @param  newDebtRatio The new requested point at which a loan is liquidatable
-     *  @custom:security non-reentrant
-     */
-    function setDebtRatio(uint256 newDebtRatio) external;
 
     /**
      *  @notice 👽

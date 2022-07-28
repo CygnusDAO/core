@@ -99,93 +99,90 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
      *
      *
      */
-    describe('Borrower takes out a DAI loan', async () => {
-        /**
-         *
-         *  Borrower interactions with router to borrow
-         *
-         *
-         */
-        // Borrow without borrowApprove
-
-        it('Borrows without `borrowApprove` call: FAIL { CygnusBorrowApprove__BorrowNotAllowed }', async () => {
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(10e18), borrower._address, max, '0x'),
-            ).to.be.reverted;
+    describe('When the borrower deposited and takes out a loan', async () => {
+        describe('When the borrower doesnt call `borrowApprove` in borrowable', async () => {
+            it('Reverts the transaction: FAIL { CygnusBorrowApprove__BorrowNotAllowed }', async () => {
+                await expect(
+                    router.connect(borrower).borrow(borrowable.address, BigInt(10e18), borrower._address, max, '0x'),
+                ).to.be.reverted;
+            });
         });
+        describe('When the borrower approves borrow in borrowable contract', async () => {
+            // Approves router and emits event
+            it('Allows router with `borrowApprove` and emits { Approval }', async () => {
+                await expect(borrowable.connect(borrower).borrowApprove(router.address, max))
+                    .to.emit(borrowable, 'BorrowApproval')
+                    .withArgs(borrower._address, router.address, max);
+            });
 
-        // Approves router and emits event
-        it('Borrower allows router with `borrowApprove` and emits { Approval }', async () => {
-            await expect(borrowable.connect(borrower).borrowApprove(router.address, max))
-                .to.emit(borrowable, 'BorrowApproval')
-                .withArgs(borrower._address, router.address, max);
-        });
+            // Check user's liquidity
+            it('Takes out mroe than allowed at 90% debt ratio: FAIL { Insufficient_Liquidity  }', async () => {
+                // This users collateral in DAI
+                const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
-        // Check user's liquidity
-        it('Borrower takes out more than his collateral available at 80% debt ratio: FAIL { Insufficient_Liquidity  }', async () => {
-            // This users collateral in DAI
-            const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
+                // Maximum the borrower can take out
+                const liquidity = collateralInDai.liquidity / 1.05;
 
-            // Maximum the borrower can take out
-            const liquidity = collateralInDai.liquidity / 1.05;
+                // Borrow max liquidity + slighlty more, revert
+                await expect(
+                    router
+                        .connect(borrower)
+                        .borrow(borrowable.address, BigInt(liquidity + 10000), borrower._address, max, '0x'),
+                ).to.be.reverted;
+            });
 
-            // Borrow max liquidity + slighlty more, revert
-            await expect(
-                router
-                    .connect(borrower)
-                    .borrow(borrowable.address, BigInt(liquidity + 100000), borrower._address, max, '0x'),
-            ).to.be.reverted;
-        });
+            // Check user's debt ratio is 0 (no borrows)
+            it('Checks users debt ratio is 0', async () => {
+                const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
-        // Check user's debt ratio is 0 (no borrows)
-        it('Checks users debt ratio is 0', async () => {
-            const userDebtRatio = await collateral.getDebtRatio(borrower._address);
+                expect(userDebtRatio).to.be.eq(0);
+            });
 
-            expect(userDebtRatio).to.be.eq(0);
-        });
+            // Get user's max liquidity and borrow max limit
+            it('Borrower takes out max allowed at 90% debt ratio and emits { Borrow }', async () => {
+                // This users collateral in DAI
+                const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
-        // Get user's max liquidity and borrow max limit
-        it('Borrower takes out max allowed at 80% debt ratio and emits { Borrow }', async () => {
-            // This users collateral in DAI
-            const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
+                const maxLiquidity = collateralInDai.liquidity / 1.05;
 
-            const maxLiquidity = collateralInDai.liquidity / 1.05;
+                // Borrow
+                await expect(
+                    router
+                        .connect(borrower)
+                        .borrow(borrowable.address, BigInt(maxLiquidity), borrower._address, max, '0x'),
+                ).to.emit(borrowable, 'Borrow');
+            });
 
-            // Borrow
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(maxLiquidity), borrower._address, max, '0x'),
-            ).to.emit(borrowable, 'Borrow');
-        });
+            // Check DAI balance of borrower
+            it('User has DAI in wallet', async () => {
+                // Initial dai balance was 0
+                expect(await dai.balanceOf(borrower._address)).to.be.gt(borrowerInitialDaiBalance);
+            });
 
-        // Check DAI balance of borrower
-        it('User has DAI in wallet', async () => {
-            // Initial dai balance was 0
-            expect(await dai.balanceOf(borrower._address)).to.be.gt(borrowerInitialDaiBalance);
-        });
+            // Debt ratio of borrower should be max 100%
+            it('Borrower debt ratio is max at 100%', async () => {
+                const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
-        // Debt ratio of borrower should be max 100%
-        it('Borrower debt ratio is < 100% due to compounding of rewards', async () => {
-            const userDebtRatio = await collateral.getDebtRatio(borrower._address);
+                expect(userDebtRatio).to.be.within(BigInt(0.9999e18), BigInt(1.0001e18));
+            });
 
-            expect(userDebtRatio).to.be.within(BigInt(0.99e18), BigInt(1.01e18));
-        });
+            // Check that borrower cannot borrow more
+            it('Borrower cant borrow more', async () => {
+                // Borrow Min
+                await expect(
+                    router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x'),
+                ).to.be.reverted;
+            });
 
-        // Check that borrower cannot borrow more
-        it('Borrower cant borrow more', async () => {
-            // Borrow Min
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x'),
-            ).to.be.reverted;
-        });
+            it('Borrower has 0 liquidity', async () => {
+                // This users collateral in DAI
+                const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
-        it('Borrower has 0 liquidity', async () => {
-            // This users collateral in DAI
-            const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
+                const maxLiquidity = collateralInDai.liquidity;
 
-            const maxLiquidity = collateralInDai.liquidity;
-
-            // Check that the borrower has no liquidity
-            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.1e18));
+                // Check that the borrower has no liquidity
+                expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.1e18));
+            });
         });
     });
 
@@ -205,7 +202,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
         });
 
         // Increase debt ratio
-        it('Increases debtRatio to 85%', async () => {
+        it('Increases debtRatio to 95%', async () => {
             const oldDebtRatio = await collateral.debtRatio();
 
             const newDebtRatio = BigInt(0.95e18);
@@ -220,7 +217,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
             // Check user's debt ratio
-            expect(userDebtRatio).to.be.within(BigInt(0.85e18), BigInt(1.0e18));
+            expect(userDebtRatio).to.be.within(BigInt(0.95e18), BigInt(1e18));
 
             console.log(userDebtRatio);
 
@@ -233,21 +230,20 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             // This users collateral in DAI
             const collateralInDaiV2 = await collateral.getAccountLiquidity(borrower._address);
 
-            const maxLiquidityV2 = BigInt(collateralInDaiV2.liquidity) - BigInt(0.001e18);
+            const maxLiquidityV2 = collateralInDaiV2.liquidity / 1.05;
 
             // Borrow
             await expect(
-                router.connect(borrower).borrow(borrowable.address, maxLiquidityV2, borrower._address, max, '0x'),
+                router.connect(borrower).borrow(borrowable.address, BigInt(maxLiquidity), borrower._address, max, '0x'),
             ).to.emit(borrowable, 'Borrow');
         });
 
-        // Debt ratio of borrower should be ~99%
-        it('Borrower debt ratio is 99%', async () => {
+        it('Borrower debt ratio is 100%', async () => {
             // Static call the debt ratio
             const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
             // Check user's debt ratio
-            expect(userDebtRatio).to.be.within(BigInt(0.99e18), BigInt(1.01e18));
+            expect(userDebtRatio).to.be.within(BigInt(0.9999e18), BigInt(1.0001e18));
 
             // Check that debtRatio is updated
             expect(await collateral.debtRatio()).to.be.eq(BigInt(0.95e18));
@@ -260,52 +256,37 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             const maxLiquidity = collateralInDai.liquidity;
 
             // Check that the borrower has no liquidity
-            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.01e18));
+            expect(maxLiquidity).to.be.within(BigInt(0), BigInt(0.0001e18));
         });
     });
 
-    describe('Checking reserve balances, total borrows etc.', function () {
+    describe('When users deposit or redeem, reserves are minted', function () {
         it('Check reserves internal', async () => {
             // Have to poke exchangeRate as it is only triggered by another MINT or REDEEM and user
             // has already minted before there were any reserves
             await expect(borrowable.exchangeRate()).to.emit(borrowable, 'Transfer');
 
-            // Check reserves
-            const totalReserves = await borrowable.totalReserves();
-            const reservesBalance = await borrowable.balanceOf(safeAddress1.address);
-            //console.log('Total Reserves: %s', totalReserves);
-            //console.log('Reserves Balance 1: %s', reservesBalance);
-
-            // Borrowable's total DAI balance
-            const totalBalance = await borrowable.totalBalance();
-            //console.log('Total Balance: %s', totalBalance);
-
-            // Exchange Rate
-            const exchangeRate = await borrowable.exchangeRate();
-            //console.log('ExchangeRate %s', exchangeRate);
-
-            // Total Borrows
-            const totalBorrows = await borrowable.totalBorrows();
-            //console.log('Total Borrows: %s', totalBorrows);
+            expect(await borrowable.totalReserves()).to.be.gt(0);
+            expect(await borrowable.totalBorrows()).to.be.gt(0);
         });
     });
 
-    describe('Borrower repays loans', function () {
+    describe('When the borrower repays a loan', function () {
         /**
          *
          *  Checks interactions when repaying loans
          *
          *
          */
-        it('Borrower has 85% debt ratio', async () => {
+        it('Checks that the debt ratio is still 100%', async () => {
             // Static call the debt ratio
             const userDebtRatio = await collateral.getDebtRatio(borrower._address);
 
             // Check user's debt ratio
-            expect(userDebtRatio).to.be.within(BigInt(0.99e18), BigInt(1.01e18));
+            expect(userDebtRatio).to.be.within(BigInt(0.9999e18), BigInt(1.0001e18));
         });
 
-        it('Borrower repays part of his loan back without approving router in DAI: FAIL { InsufficientAllowance }', async () => {
+        it('Repays part of his loan back without approving router in DAI: FAIL { InsufficientAllowance }', async () => {
             const loanRepayAmount = BigInt(10e18);
 
             // Static call the debt ratio

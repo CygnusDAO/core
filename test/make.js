@@ -6,9 +6,6 @@ const path = require('path');
 const hre = require('hardhat');
 const ethers = hre.ethers;
 
-// Custom
-const users = require('./users.js');
-
 /*////////////////////////////////////////////////////////////
  /                                                           /
  /              SETUP OF ALL CYGNUS CONTRACTS                /
@@ -18,15 +15,12 @@ module.exports = async function make() {
     // Addresses in this chain //
 
     // 1. LP Token address -----------------------------------------------------
-
     const lpTokenAddress = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
 
     // 2. DAI address on this chain --------------------------------------------
-
     const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
 
     // 3. Native chain token ---------------------------------------------------
-
     const nativeAddress = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
 
     // 4. Chainlink aggregators ------------------------------------------------
@@ -44,7 +38,6 @@ module.exports = async function make() {
     const orbiterName = 'TraderJoe';
 
     ///////////////////////////////// OPTIONAL /////////////////////////////////
-
     // ---------------------------- Cygnus Void --------------------------------
 
     // Dex router
@@ -71,38 +64,38 @@ module.exports = async function make() {
     const lpToken = new ethers.Contract(lpTokenAddress, lpTokenAbi, owner);
 
     // ═══════════════════ 1. ORACLE ═══════════════════════════════════════════════════════════
-    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     const Oracle = await ethers.getContractFactory('ChainlinkNebulaOracle');
 
     // Deploy with Chainlink's dai Aggregator
     const oracle = await Oracle.deploy(daiAggregator);
 
-    console.log('Cygnus LP Oracle   | %s', oracle.address);
-
     // Initialize oracle, else the deployment for this lending pool fails
     await oracle.initializeNebula(lpTokenAddress, token0Aggregator, token1Aggregator);
 
-    // ═══════════════════ 2. BORROW DEPLOYER ══════════════════════════════════════════════════
     console.log('──────────────────────────────────────────────────────────────────────────────');
+    console.log('Cygnus LP Oracle   | %s', oracle.address);
+    console.log('──────────────────────────────────────────────────────────────────────────────');
+
+    // ═══════════════════ 2. BORROW DEPLOYER ══════════════════════════════════════════════════
 
     const Albireo = await ethers.getContractFactory('AlbireoOrbiter');
 
     const albireo = await Albireo.deploy();
 
     console.log('Borrow Orbiter     | %s', albireo.address);
+    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // ═══════════════════ 3. COLLATERAL DEPLOYER ═════════════════════════════════════════════
-    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     const Deneb = await ethers.getContractFactory('DenebOrbiter');
 
     const deneb = await Deneb.deploy();
 
     console.log('Collateral Orbiter | %s', deneb.address);
+    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // ═══════════════════ 4. FACTORY ═════════════════════════════════════════════════════════
-    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // Factory
     const Factory = await ethers.getContractFactory('CygnusFactory');
@@ -115,17 +108,15 @@ module.exports = async function make() {
         oracle.address,
     );
 
-    console.log('Cygnus Factory     | %s', factory.address);
-
-    console.log('──────────────────────────────────────────────────────────────────────────────');
-
-    console.log('Cygnus Reserves    | %s', await factory.vegaTokenManager());
-
     // Orbiter
     const orbiter = await factory.setNewOrbiter(orbiterName, deneb.address, albireo.address);
 
-    // ═══════════════════ 5. ROUTER ══════════════════════════════════════════════════════════
+    console.log('Cygnus Factory     | %s', factory.address);
     console.log('──────────────────────────────────────────────────────────────────────────────');
+    console.log('Cygnus Reserves    | %s', await factory.vegaTokenManager());
+    console.log('──────────────────────────────────────────────────────────────────────────────');
+
+    // ═══════════════════ 5. ROUTER ══════════════════════════════════════════════════════════
 
     // Router
     const Router = await ethers.getContractFactory('CygnusAltairX');
@@ -133,9 +124,9 @@ module.exports = async function make() {
     const router = await Router.deploy(factory.address);
 
     console.log('Cygnus Router      | %s', router.address);
+    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
-    console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // custom pool rates for the JoeAvax lending pool
     const baseRate = BigInt(0.08e18);
@@ -145,17 +136,15 @@ module.exports = async function make() {
     const kinkMultiplier = BigInt(3);
 
     // Shuttle with LP Token address from setup
-    await factory.deployShuttle(0, lpToken.address, baseRate, multiplier, kinkMultiplier);
+    await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier, kinkMultiplier);
 
     const shuttle = await factory.getShuttles(lpToken.address);
 
     // ═══════════════════════════════════════════════════════════════════════════════════════
+
     console.log('Cygnus Collateral  | %s', shuttle.collateral);
-
     console.log('──────────────────────────────────────────────────────────────────────────────');
-
     console.log('Cygnus Borrowable  | %s', shuttle.cygnusDai);
-
     console.log('──────────────────────────────────────────────────────────────────────────────');
 
 

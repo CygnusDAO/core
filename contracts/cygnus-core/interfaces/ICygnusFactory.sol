@@ -343,8 +343,8 @@ interface ICygnusFactory {
 
     /**
      *  @notice Initializes both Borrow arms and the collateral arm
-     *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
      *  @param lpTokenPair The address of the underlying LP Token this pool is for
+     *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
      *  @param baseRate The interest rate model's base rate this shuttle uses
      *  @param multiplier The multiplier this shuttle uses for calculating the interest rate
      *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
@@ -353,8 +353,8 @@ interface ICygnusFactory {
      *  @custom:security non-reentrant
      */
     function deployShuttle(
-        uint256 orbiterId,
         address lpTokenPair,
+        uint256 orbiterId,
         uint256 baseRate,
         uint256 multiplier,
         uint256 kinkMultiplier

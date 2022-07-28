@@ -303,8 +303,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @custom:security non-reentrant
      */
     function deployShuttle(
-        uint256 orbiterId,
         address lpTokenPair,
+        uint256 orbiterId,
         uint256 baseRate,
         uint256 multiplier,
         uint256 kinkMultiplier

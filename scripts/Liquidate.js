@@ -68,7 +68,6 @@ async function deploy() {
     await collateral.connect(owner).setDebtRatio(BigInt(1e18));
 
     console.log('Borrower`s LP Balance before Cygnus        | %s', (await lpToken.balanceOf(borrower._address)) / 1e18);
-
     console.log('Lender`s DAI balance before Cygnus         | %s', (await dai.balanceOf(lender._address)) / 1e18);
 
     // Borrower: Deposits 100 LP Token = ~740 usd
@@ -89,10 +88,7 @@ async function deploy() {
     const cygLPTotalBalanceBeforeL = await collateral.totalBalance();
     const daiBalanceBeforeL = await dai.balanceOf(borrower._address);
 
-    console.log(
-        'Borrower`s CygLP balance before leverage   | %s CygLP',
-        (await collateral.balanceOf(borrower._address)) / 1e18,
-    );
+    console.log('Borrower`s CygLP balance before leverage   | %s CygLP', cygLPBalanceBeforeL / 1e18);
     console.log('Borrowable`s totalBalance before leverage  | %s DAI', albireoBalanceBeforeL / 1e18);
     console.log('Collateral`s totalBalance before leverage  | %s LP TOKENS', cygLPTotalBalanceBeforeL / 1e18);
 
@@ -108,21 +104,19 @@ async function deploy() {
         .connect(borrower)
         .leverage(collateral.address, BigInt(oneLPToken) * BigInt(400), borrower._address, max, '0x');
 
-    console.log(
-        'Borrower`s borrow balance after leverage   | %s DAI',
-        (await borrowable.getBorrowBalance(borrower._address)) / 1e18,
-    );
-    console.log(
-        'Borrower`s CygLP balance after leverage x4 | %s CYG-LP',
-        (await collateral.balanceOf(borrower._address)) / 1e18,
-    );
-    console.log(
-        'Borrower`s debt ratio after leverage x4    | % %s',
-        (await collateral.getDebtRatio(borrower._address)) / 1e16,
-    );
+    const cygLPBalanceAfterL = await collateral.balanceOf(borrower._address);
+    const CygDaiBalanceAfterL = await borrowable.balanceOf(lender._address);
+    const albireoBalanceAfterL = await borrowable.totalBalance();
+    const cygLPTotalBalanceAfterL = await collateral.totalBalance();
 
-    console.log('Borrowable`s totalBalance after leverage   | %s DAI', (await borrowable.totalBalance()) / 1e18);
-    console.log('Collateral`s totalBalance after leverage   | %s LPs', (await collateral.totalBalance()) / 1e18);
+    const borrowBalanceAfterL = await borrowable.getBorrowBalance(borrower._address);
+    const debtRatioAfterL = await collateral.getDebtRatio(borrower._address);
+
+    console.log('Borrower`s borrow balance after leverage   | %s DAI', borrowBalanceAfterL / 1e18);
+    console.log('Borrower`s CygLP balance after leverage    | %s CYG-LP', cygLPBalanceAfterL / 1e18);
+    console.log('Borrower`s debt ratio after leverage       | % %s', debtRatioAfterL / 1e16);
+    console.log('Borrowable`s totalBalance after leverage   | %s DAI', albireoBalanceAfterL / 1e18);
+    console.log('Collateral`s totalBalance after leverage   | %s LPs', cygLPTotalBalanceAfterL / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('REINVEST REWARDS');
@@ -135,7 +129,6 @@ async function deploy() {
     const reinvestorBalance = await rewardTokenContract.balanceOf(safeAddress2.address);
 
     console.log('Collateral`s totalBalance before reinvest  | %s LPs', balanceBeforeReinvest / 1e18);
-
     console.log('Reinvestor`s totalBalance before reinvest  | %s JOE (or reward token)', reinvestorBalance / 1e18);
 
     // Increase 7 days
@@ -151,26 +144,26 @@ async function deploy() {
     const balanceAfterReinvest = await collateral.totalBalance();
 
     console.log('Collateral`s totalBalance after reinvest   | %s LPs', balanceAfterReinvest / 1e18);
-
     console.log('Reinvestor`s balance of rewardToken after  | %s JOE (or rewardToken)', reinvestorBalanceAfter / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('LIQUIDATE');
     console.log('----------------------------------------------------------------------------------------------');
 
-    await collateral.connect(owner).setDebtRatio(BigInt(0.8e18));
-    let borrowerBalanceCollAfterL = await collateral.balanceOf(borrower._address);
-    let lenderBalanceCollAfterL = await collateral.balanceOf(lender._address);
-    let borrowBalanceAfterL = await borrowable.getBorrowBalance(borrower._address);
+  await collateral.connect(owner).setDebtRatio(BigInt(0.8e18));
 
     // Checks that liquidate amount is never above borrowed balance in router (ie if user borrowed 20 dai, router will repay 20 dai, not 5000)
     await router
         .connect(lender)
         .liquidate(borrowable.address, BigInt(5000e18), borrower._address, lender._address, max);
 
-    console.log('Borrower balance of collateral             | %s CygLP', borrowerBalanceCollAfterL / 1e18);
-    console.log('Liquidator balance of collateral           | %s CygLP', lenderBalanceCollAfterL / 1e18);
-    console.log('Borrow Balance of borrower                 | %s DAI', borrowBalanceAfterL / 1e18);
+    let borrowerBalanceCollAfterLiq = await collateral.balanceOf(borrower._address);
+    let lenderBalanceCollAfterLiq = await collateral.balanceOf(lender._address);
+    let borrowBalanceAfterLiq = await borrowable.getBorrowBalance(borrower._address);
+
+    console.log('Borrower balance of collateral             | %s CygLP', borrowerBalanceCollAfterLiq / 1e18);
+    console.log('Liquidator balance of collateral           | %s CygLP', lenderBalanceCollAfterLiq / 1e18);
+    console.log('Borrow Balance of borrower                 | %s DAI', borrowBalanceAfterLiq / 1e18);
 }
 
 deploy();

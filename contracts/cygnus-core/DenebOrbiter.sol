@@ -27,8 +27,6 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 // Collateral contract
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
-import "hardhat/console.sol";
-
 /**
  *  @title  CygnusDeneb Contract that deploys the Cygnus Collateral arm of the lending pool
  *  @author CygnusDAO
@@ -92,8 +90,6 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
 
         // Create Collateral contract
         collateral = address(new CygnusCollateral{ salt: keccak256(abi.encode(underlying, _msgSender())) }());
-
-        console.log('deneb?!?!?!');
 
         // Delete and refund some gas
         delete collateralParameters;

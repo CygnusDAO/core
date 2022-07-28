@@ -55,11 +55,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override debtRatio = 0.90e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
     uint256 public override liquidationIncentive = 1.05e18;
 
     /**
@@ -68,16 +63,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     uint256 public override liquidationFee;
 
     // ──────────────────── Min/Max this pool allows  ────────────────────
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override DEBT_RATIO_MIN = 0.50e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override DEBT_RATIO_MAX = 1e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -169,25 +154,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
         /// @custom:event NewPriceOracle
         emit NewPriceOracle(_cygnusNebulaOracle, newPriceOracle);
-    }
-
-    /**
-     *  @notice 👽
-     *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant
-     */
-    function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin nonReentrant {
-        // Checks if new value is within ranges allowed. If false, reverts with custom error
-        validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
-
-        // Valid, update
-        uint256 oldDebtRatio = debtRatio;
-
-        // Update debt ratio
-        debtRatio = newDebtRatio;
-
-        /// @custom:event newDebtRatio
-        emit NewDebtRatio(oldDebtRatio, newDebtRatio);
     }
 
     /**

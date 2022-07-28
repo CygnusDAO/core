@@ -158,7 +158,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
         });
     });
 
-    describe('When borrower deposited and takes out a loan', async () => {
+    describe('When borrower takes out a loan', async () => {
         describe('When the borrower doesnt call `borrowApprove` in borrowable', async () => {
             it('Reverts the transaction: FAIL { CygnusBorrowApprove__BorrowNotAllowed }', async () => {
                 await expect(
@@ -226,8 +226,6 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
                     // Liq incentive is 5%
                     const maxBorrow = userLiquidity.liquidity / 1.05;
 
-                    console.log(maxBorrow);
-
                     // Max Borrow and emit `Borrow` event
                     await expect(
                         router
@@ -260,13 +258,26 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
 
                     expect(daiBalance).to.be.gt(borrowerInitialDaiBalance);
                 });
+            });
+        });
+    });
 
-                // Check that borrowing mints reserves
-                it('Mints DAO reserves on borrows', async () => {
-                    const daoReserves = await borrowable.balanceOf(daoReservesManager.address);
+    describe('When a liquidator repays a loan and liquidates a position', async () => {
+        describe('When the liquidator tries to liquidate a position without shortfall', async () => {
+            it('Reverts with { NotLiquidatable }', async () => {
+                let borrowedAmount = await borrowable.getBorrowBalance(borrower._address);
+                
+                await borrowable.accrueInterest();
 
-                    expect(daoReserves).to.be.gt(0);
-                });
+                console.log(await collateral.getDebtRatio(borrower._address));
+                console.log(await collateral.getAccountLiquidity(borrower._address));
+
+
+                await expect(
+                    router
+                        .connect(lender)
+                        .liquidate(borrowable.address, BigInt(borrowedAmount), borrower._address, lender._address, max),
+                ).to.be.reverted;
             });
         });
     });
