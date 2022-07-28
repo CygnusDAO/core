@@ -118,17 +118,15 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             expect(totalBalance).to.be.eq(borrowerDeposit);
         });
 
-        it('Has account liquidity equal to deposited amount of LP * price of 1 LP in DAI * debtRatio', async () => {
+        it('Has account liquidity equal to deposited amount of LP * price of 1 LP in DAI', async () => {
             // User liquidiity measured in DAI
             const accountLiq = await collateral.getAccountLiquidity(borrower._address);
             // Balance of CygLP
             const depositedAmount = BigInt(await collateral.balanceOf(borrower._address));
             // Price of 1 deposited LP Token in DAI
             const lpTokenPrice = BigInt(await collateral.getLPTokenPrice());
-            // Debt ratio default at 90%
-            const debtRatio = BigInt(await collateral.debtRatio());
 
-            const liquidity = (((depositedAmount * lpTokenPrice) / BigInt(1e18)) * debtRatio) / BigInt(1e18);
+            const liquidity = (depositedAmount * lpTokenPrice) / BigInt(1e18);
 
             expect(accountLiq.liquidity).to.be.eq(liquidity);
         });
@@ -177,17 +175,15 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
 
             describe('When the borrower borrows max amount of DAI without leverage', async () => {
                 // Formula in CollateralModel.sol
-                it('Checks the max borrow amount is equal to { (deposited LP * LP Token Price * DebtRatio) / LiqIncentive }', async () => {
+                it('Checks the max borrow amount is equal to { (deposited LP * LP Token Price) / LiqIncentive }', async () => {
                     // Deposited 10 LP Tokens
                     const depositedAmount = Number(borrowerDeposit) / 1e18;
                     // current LP TokenPrice
                     const lpTokenPrice = (await collateral.getLPTokenPrice()) / 1e18;
-                    // Debt Ratio  (90%)
-                    const debtRatio = (await collateral.debtRatio()) / 1e18;
                     // Liq incentive (5%);
                     const liqIncentitive = (await collateral.liquidationIncentive()) / 1e18;
                     /// /// MAX AMOUNT /////
-                    const maxAmount = (depositedAmount * lpTokenPrice * debtRatio) / liqIncentitive;
+                    const maxAmount = (depositedAmount * lpTokenPrice) / liqIncentitive;
 
                     /// /// USER LIQ /////
                     const userLiquidity = await collateral.getAccountLiquidity(borrower._address);
@@ -266,12 +262,11 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
         describe('When the liquidator tries to liquidate a position without shortfall', async () => {
             it('Reverts with { NotLiquidatable }', async () => {
                 let borrowedAmount = await borrowable.getBorrowBalance(borrower._address);
-                
+
                 await borrowable.accrueInterest();
 
                 console.log(await collateral.getDebtRatio(borrower._address));
                 console.log(await collateral.getAccountLiquidity(borrower._address));
-
 
                 await expect(
                     router
