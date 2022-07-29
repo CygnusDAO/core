@@ -52,7 +52,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         uint256 value
     ) internal override(Erc20) {
         /// @custom:error CygnusCollateral__InsufficientLiquidity Avoid transfer if there's shortfall
-        if (!tokensUnlocked(from, value)) {
+        if (!canRedeem(from, value)) {
             revert CygnusCollateral__InsufficientLiquidity({ from: from, to: to, value: value });
         }
 
@@ -65,7 +65,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateral
      */
-    function tokensUnlocked(address from, uint256 value) public view override returns (bool) {
+    function canRedeem(address from, uint256 value) public view override returns (bool) {
         // Gas savings
         uint256 balance = balanceOf(from);
 

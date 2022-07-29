@@ -56,13 +56,10 @@ async function deploy() {
     // Set debt ratio to 1, leaving only liquidationIncentive to take effect (5% default)
     await collateral.connect(owner).setDebtRatio(BigInt(1e18));
 
-    console.log('----------------------------------------------------------------------------------------------');
-
     // Price of 1 LP Token of joe/avax in dai
     const oneLPToken = await collateral.getLPTokenPrice();
 
     console.log('Price of LP Token                          | %s DAI', (await oneLPToken) / 1e18);
-
     console.log('----------------------------------------------------------------------------------------------');
     console.log('Borrower deposits 100 LPs, Lender deposits 5000 DAI');
     console.log('----------------------------------------------------------------------------------------------');
@@ -140,7 +137,6 @@ async function deploy() {
     const balanceAfterReinvest = await collateral.totalBalance();
 
     console.log('Collateral`s totalBalance after reinvest   | %s LPs', balanceAfterReinvest / 1e18);
-
     console.log('Reinvestor`s balance of rewardToken after  | %s JOE (or rewardToken)', reinvestorBalanceAfter / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');

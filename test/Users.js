@@ -8,7 +8,7 @@ const ethers = hre.ethers;
  /    LP Token: 0x454E67025631C065d3cFAD6d71E6892f74487a15   /
  /                                                           /
  ////////////////////////////////////////////////////////////*/
-module.exports = async function users() {
+module.exports = async function Users() {
     // Ganache signers
     const [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
 

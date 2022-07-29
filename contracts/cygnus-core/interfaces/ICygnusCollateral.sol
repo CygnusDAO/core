@@ -81,11 +81,11 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @param from The address of the borrower.
-     *  @param value The amount to unlock.
-     *  @return Whether tokens are unlocked or not.
+     *  @param from The address of the borrower
+     *  @param value The amount to redeem
+     *  @return Whether the user `from` can redeem - if user has shortfall, debt must be repaid first
      */
-    function tokensUnlocked(address from, uint256 value) external returns (bool);
+    function canRedeem(address from, uint256 value) external returns (bool);
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 

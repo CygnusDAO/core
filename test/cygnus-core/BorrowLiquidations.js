@@ -13,8 +13,9 @@ const addressZero = ethers.constants.AddressZero;
 const max = ethers.constants.MaxUint256;
 
 // Custom
-const make = require('../make.js');
-const users = require('../users.js');
+const Make = require('../Make.js');
+const Users = require('../Users.js');
+const Strategy = require('../Strategy.js');
 
 // Matchers
 chai.use(solidity);
@@ -24,7 +25,7 @@ chai.use(solidity);
  *  Simple deposit and redeem for all borrow contracts
  *
  */
-context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
+context('BORROW DAI: NO LEVERAGE LIQUIDATIONS', function () {
     // dai and LP Token contracts
     let dai, lpToken;
 
@@ -34,6 +35,9 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
     // Main accounts that interact with Cygnus during this test
     let owner, daoReservesManager, safeAddress2, borrower, lender;
 
+    // Strategy
+    let voidRouter, masterChef, rewardToken, pid, swapFee;
+
     let lenderInitialDaiBalance; // Balance before depositing and interacting with Cygnus
     let lenderFinalDaiBalance; // Balance after interacting and redeeming
     const lenderDeposit = BigInt(2000e18); // 2000 DAI
@@ -42,40 +46,24 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
     let borrowerFinalDaiBalance; // Balance after interacting and redeeming
     const borrowerDeposit = BigInt(10e18); // 10 LP Tokens
 
-    // TraderJoe swapping fee
-
     before(async () => {
         // Cygnus contracts and underlyings
-        [
-            oracle,
-            factory,
-            router,
-            borrowable,
-            collateral,
-            dai,
-            lpToken,
-            voidRouter,
-            masterChef,
-            rewardToken,
-            pid,
-            swapFee,
-        ] = await make();
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
         // Users
-        [owner, daoReservesManager, safeAddress2, lender, borrower] = await users();
+        [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
+
+        // Masterchef reward reinvest or other strategy
+        [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
 
         // Initial DAI and LP balances for lender and borrower
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);
         borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
 
         console.log('------------------------------------------------------------------------------');
-
         console.log('Lender   | %s | Balance: %s DAI', lender._address, lenderInitialDaiBalance / 1e18);
-
         console.log('------------------------------------------------------------------------------');
-
         console.log('Borrower | %s | Balance: %s LPs', borrower._address, borrowerInitialLPBalance / 1e18);
-
         console.log('------------------------------------------------------------------------------');
 
         await collateral.chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
@@ -126,9 +114,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             // Price of 1 deposited LP Token in DAI
             const lpTokenPrice = BigInt(await collateral.getLPTokenPrice());
 
-            const liquidity = (depositedAmount * lpTokenPrice) / BigInt(1e18);
-
-            expect(accountLiq.liquidity).to.be.eq(liquidity);
+            expect(accountLiq.liquidity).to.be.eq((BigInt(depositedAmount) * BigInt(lpTokenPrice)) / BigInt(1e18));
         });
 
         it('Has 0 debt ratio', async () => {
@@ -175,7 +161,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
 
             describe('When the borrower borrows max amount of DAI without leverage', async () => {
                 // Formula in CollateralModel.sol
-                it('Checks the max borrow amount is equal to { (deposited LP * LP Token Price) / LiqIncentive }', async () => {
+                it('Checks that user liquidity is equal to { (deposited LP * LP Token Price) / LiqIncentive }', async () => {
                     // Deposited 10 LP Tokens
                     const depositedAmount = Number(borrowerDeposit) / 1e18;
                     // current LP TokenPrice
@@ -220,7 +206,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
                     const liq = await collateral.liquidationIncentive();
 
                     // Liq incentive is 5%
-                    const maxBorrow = userLiquidity.liquidity / 1.05;
+                    const maxBorrow = (BigInt(userLiquidity.liquidity) * BigInt(1e18)) / BigInt(liq);
 
                     // Max Borrow and emit `Borrow` event
                     await expect(
@@ -245,7 +231,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
                     const userLiquidity = await collateral.getAccountLiquidity(borrower._address);
 
                     // Account for 4 decimal points rounding errors
-                    expect(userLiquidity.liquidity).to.be.within(0, 9000);
+                    expect(userLiquidity.liquidity).to.be.within(0, 1000);
                 });
 
                 // Because no leverage user has control of DAI
@@ -259,21 +245,20 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
     });
 
     describe('When a liquidator repays a loan and liquidates a position', async () => {
-        describe('When the liquidator tries to liquidate a position without shortfall', async () => {
-            it('Reverts with { NotLiquidatable }', async () => {
-                let borrowedAmount = await borrowable.getBorrowBalance(borrower._address);
+        it('Reverts with { NotLiquidatable }', async () => {
+            let borrowedAmount = await borrowable.getBorrowBalance(borrower._address);
 
-                await borrowable.accrueInterest();
-
-                console.log(await collateral.getDebtRatio(borrower._address));
-                console.log(await collateral.getAccountLiquidity(borrower._address));
-
-                await expect(
-                    router
-                        .connect(lender)
-                        .liquidate(borrowable.address, BigInt(borrowedAmount), borrower._address, lender._address, max),
-                ).to.be.reverted;
-            });
+            await expect(
+                router
+                    .connect(lender)
+                    .liquidate(borrowable.address, BigInt(borrowedAmount), borrower._address, lender._address, max),
+            ).to.emit(borrowable, 'Liquidate');
         });
+
+      it('Seizes collateral from the borrower and adds it to the liquidator', async () => { 
+        expect(await collateral.balanceOf(borrower._address)).to.be.lt(borrowerDeposit);
+        expect(await collateral.balanceOf(lender._address)).to.be.gt(0);
+        
+      })
     });
 });

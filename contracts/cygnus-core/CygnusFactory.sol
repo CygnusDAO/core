@@ -257,11 +257,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      */
     function boardShuttle(address lpTokenPair) private {
         // Get the ID for this LP token's shuttle
-        uint24 shuttleId = getShuttles[lpTokenPair].shuttleId;
+        bool launched = getShuttles[lpTokenPair].launched;
 
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
-        if (shuttleId != 0) {
-            revert CygnusFactory__ShuttleAlreadyDeployed({ id: shuttleId, lpTokenPair: lpTokenPair });
+        if (launched) {
+            revert CygnusFactory__ShuttleAlreadyDeployed({
+                id: getShuttles[lpTokenPair].shuttleId,
+                lpTokenPair: lpTokenPair
+            });
         }
 
         // Set all to default before deploying

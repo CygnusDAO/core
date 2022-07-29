@@ -13,8 +13,8 @@ const addressZero = ethers.constants.AddressZero;
 const max = ethers.constants.MaxUint256;
 
 // Custom
-const make = require('../make.js');
-const users = require('../users.js');
+const Make = require('../make.js');
+const Users = require('../users.js');
 
 // Matchers
 chai.use(solidity);
@@ -41,10 +41,10 @@ context('CygnusBorrowControl.sol - Admin control and updatable parameters', func
     // Make Cygnus lending pool and get random users (safe address1, lender, borrower)
     before(async () => {
         // Cygnus contracts and underlyings
-        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await make();
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
         // Users
-        [owner, daoReservesManager, safeAddress1, lender, borrower] = await users();
+        [owner, daoReservesManager, safeAddress1, lender, borrower] = await Users();
 
         // Initial DAI and LP balances for lender and borrower
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);
@@ -59,15 +59,7 @@ context('CygnusBorrowControl.sol - Admin control and updatable parameters', func
 
     describe('When the borrow contract is deployed', function () {
         /*
-         *  Check for default state. Receives parameters from the object deployed
-         *  by cygnusalbireo.sol and assigns the underlying DAI, collateral contract,
-         *  factory address along with the interest rate parameters unique to this pool:
-         *
-         *  - Multiplier
-         *  - Jump Mulitplier
-         *  - Base Rate
-         *  - Kink
-         *
+         *  Check for default state. Receives parameters from the object 
          */
         // Exchange rate
         it('Has the default exchangeRateStored', async () => {

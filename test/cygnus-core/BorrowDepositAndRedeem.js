@@ -13,8 +13,8 @@ const addressZero = ethers.constants.AddressZero;
 const max = ethers.constants.MaxUint256;
 
 // Custom
-const make = require('../make.js');
-const users = require('../users.js');
+const Make = require('../Make.js');
+const Users = require('../Users.js');
 
 // Matchers
 chai.use(solidity);
@@ -25,11 +25,9 @@ chai.use(solidity);
  *
  */
 context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
-    // dai and LP Token contracts
-    let dai, lpToken;
 
-    // Cygnus Contracts
-    let oracle, factory, router, borrowable, collateral;
+    // Cygnus contracts + lp + dai
+    let oracle, factory, router, borrowable, collateral, dai, lpToken
 
     // Main accounts that interact with Cygnus during this test
     let owner, daoReservesManager, safeAddress2, borrower, lender;
@@ -40,10 +38,10 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
 
     before(async () => {
         // Cygnus contracts and underlyings
-        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await make();
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
         // Users
-        [owner, daoReservesManager, safeAddress2, lender, borrower] = await users();
+        [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
 
         // Initial DAI and LP balances for lender and borrower
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);

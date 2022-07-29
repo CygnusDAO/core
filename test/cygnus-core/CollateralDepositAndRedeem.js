@@ -1,234 +1,130 @@
 // Hardhat
 const chai = require('chai');
-const hre = require('hardhat');
 const { solidity } = require('ethereum-waffle');
 const { expect } = chai;
+const hre = require('hardhat');
 
 // Node
 const fs = require('fs');
 const path = require('path');
 
-// Custom errors
-const { CygnusTerminalErrors } = require('./errors/CygnusTerminalErrors.js');
-const { CygnusCollateralErrors } = require('./errors/CygnusCollateralErrors.js');
+// Ethers
+const addressZero = ethers.constants.AddressZero;
+const max = ethers.constants.MaxUint256;
 
+// Custom
+const Make = require('../Make.js');
+const Users = require('../Users.js');
+const Strategy = require('../Strategy.js');
+
+// Matchers
 chai.use(solidity);
 
 /*
  *
- * Run all tests with forked avalanche mainnet.
+ *  Simple deposit and redeem for all borrow contracts
  *
  */
-context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
-    /* ──────────────────────────────────────────── Constants ─────────────────────────────────────────────  */
-
-    // Max digit in a uint256
-    const max = ethers.constants.MaxUint256;
-
-    // 0 address
-    const addressZero = ethers.constants.AddressZero;
-
-    // DAI
-    const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
-
-    // NATIVE
-    const nativeToken = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
-
-    // VOID
-    let voidx;
-    let voidRouter = '0x60ae616a2155ee3d9a68541ba4544862310933d4';
-    let masterChef = '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F';
-    let rewardToken = '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd';
-    let pid = 6;
-
-    /* ─────────────────────────────────────── External Contracts ─────────────────────────────────────────  */
-
-    // dai and JoeAvax LP Token contracts
-    let dai, joeAvaxLP;
-
-    const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/dai.json')).toString();
-
-    // Abis
-    const joeAvaxLPAddress = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
-
-    const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
-
-    // Chainlink V3 Aggregators
-    // DAI
-    const daiAggregator = '0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300';
-
-    // JOE
-    const joeAggregator = '0x02D35d3a8aC3e1626d3eE09A78Dd87286F5E8e3a';
-
-    // AVAX
-    const avaxAggregator = '0x0A77230d17318075983913bC2145DB16C7366156';
-
-    /* ───────────────────────────────────────── Cygnus Contracts ─────────────────────────────────────────  */
+context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
+    // dai and LP Token contracts
+    let dai, lpToken;
 
     // Cygnus Contracts
-    let collateral, borrowable, nebula, factory, router;
+    let oracle, factory, router, borrowable, collateral;
 
-    /* ────────────────────────────────────────────── Users ───────────────────────────────────────────────  */
+    // Main accounts that interact with Cygnus during this test
+    let owner, daoReservesManager, safeAddress2, borrower, lender;
 
-    // Users to account for the min liquidity requirement
-    let borrowerFirstDepositor, lenderFirstDepositor;
+    // Strategy
+    let voidRouter, masterChef, rewardToken, pid, swapFee;
 
-    // Main accounts that interact with Cygnus
-    let borrower, lender;
+    let lenderInitialDaiBalance; // Balance before depositing and interacting with Cygnus
+    let lenderFinalDaiBalance; // Balance after interacting and redeeming
+    const lenderDeposit = BigInt(2000e18); // 2000 DAI
 
-    // Initial balances of borrower and lender before they interact with Cygnus, check that they get full amount
-    let borrowerInitialLPBalance, lenderInitialDaiBalance;
-
-    /* ──────────────────────────────────────────── Addresses ─────────────────────────────────────────────  */
-
-    // Admin, reservesManager, safeAddress2
-    let owner, safeAddress1, safeAddress2;
-
-    // Lending pool
-    let shuttle;
-
-    /* ────────────────────────────────────────── Lending Pool ────────────────────────────────────────────  */
-
-    // Custom pool rates for the JoeAvax lending pool
-    const baseRate = BigInt(0.08e18);
-
-    const kink = BigInt(3);
-
-    const multi = BigInt(0.15e18);
+    let borrowerInitialDaiBalance; // Balance before depositing and interacting with Cygnus
+    let borrowerFinalDaiBalance; // Balance after interacting and redeeming
+    const borrowerDeposit = BigInt(10e18); // 10 LP Tokens
 
     before(async () => {
-        // Admin and ReservesManager
-        const [owner, safeAddress1] = await ethers.getSigners();
+        // Cygnus contracts and underlyings
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
-        // ═══════════════════ ORACLE ═════════════════════════════════════════════════════════
+        // Users
+        [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
 
-        const Nebula = await ethers.getContractFactory('ChainlinkNebulaOracle');
+        // Masterchef reward reinvest or other strategy
+        [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
 
-        // Deploy with Chainlink's dai Aggregator
-        nebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
-
-        //console.log('Nebula Oracle:', nebula.address);
-
-        // Initialize oracle, else the deployment for this lending pool fails
-        await nebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
-
-        // ════════════ Collateral Deployer ═══════════════════════════════════════════════════
-
-        const Deneb = await ethers.getContractFactory('CygnusDeneb');
-
-        const deneb = await Deneb.deploy();
-
-        //console.log('CollateralDeployer:', deneb.address);
-
-        // ════════════ Borrowable Deployer ═══════════════════════════════════════════════════
-
-        const Albireo = await ethers.getContractFactory('CygnusAlbireo');
-
-        const albireo = await Albireo.deploy();
-
-        //console.log('BorrowDeployer', albireo.address);
-
-        // ══════════════════ Factory ═════════════════════════════════════════════════════════
-
-        // Factory
-        const Factory = await ethers.getContractFactory('CygnusFactory');
-
-        const reservesManager = safeAddress1;
-
-        factory = await Factory.deploy(
-            owner.address,
-            reservesManager.address,
-            daiAddress,
-            nativeToken,
-            deneb.address,
-            albireo.address,
-            nebula.address,
-        );
-
-        //console.log('Cygnus Factory:', factory.address);
-
-        // ═══════════════════ Router ════════════════════════════════════════════════════════
-
-        // Router
-        const Router = await ethers.getContractFactory('CygnusAltairX');
-
-        router = await Router.deploy(factory.address);
-
-        //console.log('Router:', router.address);
-
-        // ══════════════════ Shuttle ════════════════════════════════════════════════════════
-
-        // Shuttle with LP Token 0x454e67025631c065d3cfad6d71e6892f74487a15
-        await factory.deployShuttle(joeAvaxLPAddress, baseRate, multi, kink);
-
-        shuttle = await factory.getShuttles(joeAvaxLPAddress);
-
-        // ═══════════════════ ACCOUNTS ════════════════════════════════════════════════════════════
-
-        // BORROWER AND LENDER 1
-
-        // Borrower: Random LP Holder for JOE / AVAX
-        await network.provider.request({
-            method: 'hardhat_impersonateAccount',
-            params: ['0x0f1410a815105f4429a404d2101890aa11d97951'],
-        });
-
-        borrower = await ethers.provider.getSigner('0x0f1410a815105f4429a404d2101890aa11d97951');
-
-        // Lender: Random DAI Whale
-        await network.provider.request({
-            method: 'hardhat_impersonateAccount',
-            params: ['0x277b09605debf23776e87aa4cebbf85d8a0da353'],
-        });
-
-        lender = await ethers.provider.getSigner('0x277b09605debf23776e87aa4cebbf85d8a0da353');
-
-        // BORROWER AND LENDER 2
-
-        // Borrower: Random LP Holder for JOE / AVAX
-        await network.provider.request({
-            method: 'hardhat_impersonateAccount',
-            params: ['0x14E895102acd7D639C76276094990dCfDD20102F'],
-        });
-
-        borrowerFirstDepositor = await ethers.provider.getSigner('0x14E895102acd7D639C76276094990dCfDD20102F');
-
-        // Lender: dai Whale
-        await network.provider.request({
-            method: 'hardhat_impersonateAccount',
-            params: ['0x7851dc7cf893242dfb5fe283116d68cfb8a828fe'],
-        });
-
-        lenderFirstDepositor = await ethers.provider.getSigner('0x7851dc7cf893242dfb5fe283116d68cfb8a828fe');
-
-        // ═════════════════════ LP TOKEN AND dai ═══════════════════════════════════
-
-        // Connect with borrower
-        joeAvaxLP = new ethers.Contract(joeAvaxLPAddress, lpTokenAbi, borrower);
-
-        // Connect with lender
-        dai = new ethers.Contract(daiAddress, daiAbi, lender);
-
-        // Balance of Borrower's LP before interactions with Cygnus
-        borrowerInitialLPBalance = await joeAvaxLP.balanceOf(borrower._address);
-
-        // Balance of Lender's dai before interactions with Cygnus
+        // Initial DAI and LP balances for lender and borrower
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);
+        borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
 
-        borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.cygnusAlbireo, owner);
+        console.log('------------------------------------------------------------------------------');
+        console.log('Lender   | %s | Balance: %s DAI', lender._address, lenderInitialDaiBalance / 1e18);
+        console.log('------------------------------------------------------------------------------');
+        console.log('Borrower | %s | Balance: %s LPs', borrower._address, borrowerInitialLPBalance / 1e18);
+        console.log('------------------------------------------------------------------------------');
 
-        collateral = await ethers.getContractAt('CygnusCollateral', shuttle.cygnusDeneb, owner);
+        await collateral.chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
 
-        // ═════════════════════ INITIALIZE VOID ════════════════════════════════════════════════════════════
+        // Lender deposits 10000 DAI
+        await dai.connect(lender).approve(router.address, max);
+        await router.connect(lender).mint(borrowable.address, lenderDeposit, lender._address, max);
 
-        // Void
-        let Void = await ethers.getContractFactory('CygnusJoeVoid');
+        // Borrower deposits 10 LP tokens
+        await lpToken.connect(borrower).approve(router.address, max);
+        await router.connect(borrower).mint(collateral.address, borrowerDeposit, borrower._address, max);
 
-        // factory, lpToken + Router + MasterChef + RewardsToken + poolId + swapFee
-        voidx = await Void.deploy(factory.address, joeAvaxLPAddress, voidRouter, masterChef, rewardToken, pid, 997);
+        // Get initial dai balance
+        borrowerInitialDaiBalance = (await dai.balanceOf(borrower._address)) / 1e18;
+    });
 
-        // Assign
-        await collateral.connect(owner).setCygnusCollateralVoid(voidx.address);
+    describe('When Cygnus factory deploys collateral and borrow contracts', function () {
+        describe('When the collateral contract is deployed', function () {
+            // Collateral
+            it('Sets the name of the collateral pool token', async () => {
+                expect(await collateral.name()).to.eq('Cygnus: Collateral');
+            });
+            it('Has an exchange rate equal to INITIAL_EXCHANGE_RATE (1e18)', async () => {
+                expect(await collateral.exchangeRate()).to.eq(BigInt(1e18));
+            });
+
+            it('Has a total supply of 0', async () => {
+                expect(await collateral.totalSupply()).to.eq(0);
+            });
+
+            it('Has a total balance of 0', async () => {
+                expect(await collateral.totalBalance()).to.eq(0);
+            });
+
+            it('Sets the underlying asset as the LP Token', async () => {
+                expect(await collateral.underlying()).to.eq(lpToken.address);
+            });
+        });
+
+        describe('When the borrow contract is deployed', function () {
+            // Borrowable
+            it('Sets the name of borrow pool token', async () => {
+                expect(await borrowable.name()).to.eq('Cygnus: Borrow');
+            });
+
+            it('Has the default exchange rate of 1e18', async () => {
+                expect(await borrowable.exchangeRateStored()).to.eq(BigInt(1e18));
+            });
+
+            it('Has a total supply of 0', async () => {
+                expect(await borrowable.totalSupply()).to.eq(0);
+            });
+
+            it('Has a total balance of 0', async () => {
+                expect(await borrowable.totalBalance()).to.eq(0);
+            });
+
+            it('Sets the underling asset as DAI', async () => {
+                expect(await borrowable.underlying()).to.eq(dai.address);
+            });
+        });
     });
 
     describe('Deployment of pools from factory', function () {
@@ -241,24 +137,6 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
         it('Deploys borrowable pool', async () => {
             expect(await borrowable.name()).to.eq('Cygnus: Borrow');
         });
-
-        // To remove the MINIMUM LIQUIDITY factor for the rest of lenders
-        it('Deposits the first dai in borrow contract', async () => {
-            await dai.connect(lenderFirstDepositor).approve(router.address, max);
-
-            await router
-                .connect(lenderFirstDepositor)
-                .mint(borrowable.address, BigInt(10000e18), lenderFirstDepositor._address, max);
-        });
-
-        // To remove the MINIMUM LIQUIDITY factor for the rest of lenders
-        it('Deposits the first LP Token in collateral contract', async () => {
-            await joeAvaxLP.connect(borrowerFirstDepositor).approve(router.address, max);
-
-            await router
-                .connect(borrowerFirstDepositor)
-                .mintCollateral(collateral.address, BigInt(1e18), borrowerFirstDepositor._address, max, '0x');
-        });
     });
 
     describe('Borrower deposits LP Token for CygLP', function () {
@@ -267,15 +145,15 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
             await expect(
                 router
                     .connect(borrower)
-                    .mintCollateral(collateral.address, BigInt(10e18), borrower._address, max, '0x'),
+                    .mint(collateral.address, BigInt(10e18), borrower._address, max),
             ).to.be.reverted;
         });
 
         // Approve Router in LP
         it('Approves router in LP contract', async () => {
-            await joeAvaxLP.connect(borrower).approve(router.address, max);
+            await lpToken.connect(borrower).approve(router.address, max);
 
-            expect(await joeAvaxLP.allowance(borrower._address, router.address)).to.eq(max);
+            expect(await lpToken.allowance(borrower._address, router.address)).to.eq(max);
         });
 
         // Mint tokens
@@ -283,7 +161,7 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
             await expect(
                 router
                     .connect(borrower)
-                    .mintCollateral(collateral.address, BigInt(10e18), borrower._address, max, '0x'),
+                    .mint(collateral.address, BigInt(10e18), borrower._address, max),
             )
                 .to.emit(collateral, 'Mint')
                 .withArgs(router.address, borrower._address, BigInt(10e18), BigInt(10e18));
@@ -295,7 +173,7 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
         });
 
         it('Borrower reinvests rewards in void', async () => {
-            await expect(voidx.connect(borrower).chargeVoid()).to.emit(voidx, 'RechargeVoid');
+            await expect(collateral.connect(borrower).reinvestRewards_y7b()).to.emit(voidx, 'RechargeVoid');
         });
     });
 
@@ -329,7 +207,7 @@ context('CYGNUS COLLATERAL: DEPOSIT LP TOKEN & REDEEM CYGLP', function () {
             expect(await collateral.balanceOf(borrower._address)).to.be.eq(0);
 
             // Check that borrower has the same LP Token balance they had before interacting with Cygnus
-            expect(await joeAvaxLP.balanceOf(borrower._address)).to.be.gt(borrowerInitialLPBalance);
+            expect(await lpToken.balanceOf(borrower._address)).to.be.gt(borrowerInitialLPBalance);
         });
     });
 });

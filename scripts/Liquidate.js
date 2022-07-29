@@ -53,13 +53,10 @@ async function deploy() {
      
       ******************************************************************************************************/
 
-    console.log('----------------------------------------------------------------------------------------------');
-
     // Price of 1 LP Token of joe/avax in dai
     const oneLPToken = await collateral.getLPTokenPrice();
 
     console.log('Price of LP Token                          | %s DAI', (await oneLPToken) / 1e18);
-
     console.log('----------------------------------------------------------------------------------------------');
     console.log('Borrower deposits 100 LPs, Lender deposits 5000 DAI');
     console.log('----------------------------------------------------------------------------------------------');

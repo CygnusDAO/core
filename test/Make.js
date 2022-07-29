@@ -11,7 +11,7 @@ const ethers = hre.ethers;
  /              SETUP OF ALL CYGNUS CONTRACTS                /
  /                                                           /
  ////////////////////////////////////////////////////////////*/
-module.exports = async function make() {
+module.exports = async function Make() {
     // Addresses in this chain //
 
     // 1. LP Token address -----------------------------------------------------
@@ -36,20 +36,6 @@ module.exports = async function make() {
 
     // Name
     const orbiterName = 'TraderJoe';
-
-    ///////////////////////////////// OPTIONAL /////////////////////////////////
-    // ---------------------------- Cygnus Void --------------------------------
-
-    // Dex router
-    const voidRouter = '0x60ae616a2155ee3d9a68541ba4544862310933d4';
-    // Masterchef for this LP Token
-    const masterChef = '0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F';
-    // reward token
-    const rewardToken = '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd';
-    // Pool ID in the masterchef
-    const pid = 6;
-    // Dex swap fee
-    const swapFee = 997;
 
     // ═══════════════════ 0. SETUP ══════════════════════════════════════════════════════════
 
@@ -154,5 +140,5 @@ module.exports = async function make() {
     const collateral = await ethers.getContractAt('CygnusCollateral', shuttle.collateral, owner);
 
     // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
-    return [oracle, factory, router, borrowable, collateral, dai, lpToken, voidRouter, masterChef, rewardToken, pid, swapFee];
+    return [oracle, factory, router, borrowable, collateral, dai, lpToken];
 };

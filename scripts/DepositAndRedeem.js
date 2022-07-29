@@ -46,19 +46,14 @@ async function deploy() {
       ******************************************************************************************************/
 
     console.log('Borrower`s LP balance before mint    | %s LPs', (await lpToken.balanceOf(borrower._address)) / 1e18);
-    console.log('Borrower`s DAI balance before mint   | %s DAI', (await lpToken.balanceOf(lender._address)) / 1e18);
     console.log('Lender`s DAI balance before mint     | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);
-
-    console.log('------------------------------------------------------------------------------');
-    console.log('Borrow');
-    console.log('------------------------------------------------------------------------------');
-
-    console.log('Total Balance of borrowable before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
-    console.log('Total Balance of collateral before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
 
     console.log('------------------------------------------------------------------------------');
     console.log('Borrower deposits 100 LPs, Lender deposits 4000 DAI');
     console.log('------------------------------------------------------------------------------');
+
+    console.log('Total Balance of borrowable before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
+    console.log('Total Balance of collateral before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
 
     // Borrower: Approve router in LP and mint CygLP
     await lpToken.connect(borrower).approve(router.address, max);
@@ -68,12 +63,12 @@ async function deploy() {
     await dai.connect(lender).approve(router.address, max);
     await router.connect(lender).mint(borrowable.address, BigInt(4000e18), lender._address, max);
 
+    console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
+    console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
+
     // Borrow
     await borrowable.connect(borrower).borrowApprove(router.address, max);
     await router.connect(borrower).borrow(borrowable.address, BigInt(300e18), borrower._address, max, '0x');
-
-    console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
-    console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
 
     console.log('Borrower`s DAI balance after borrow  | %s DAI', (await dai.balanceOf(borrower._address)) / 1e18);
     console.log('Lenders`s DAI balance after deposit  | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);

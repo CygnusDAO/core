@@ -73,10 +73,14 @@ async function deploy() {
     console.log('Borrower`s DAI balance before borrow | %s DAI', daiBalanceBorrower / 1e18);
     console.log('Borrower`s CygLP bal. before borrow  | %s CygLP', cygLPBalanceBorrower / 1e18);
 
+    console.log('----------------------------------------------------------------------------------------------');
+    console.log('BORROW 100 DAI');
+    console.log('----------------------------------------------------------------------------------------------');
+
     // Borrower: Approve borrow
     await borrowable.connect(borrower).borrowApprove(router.address, max);
     // Borrower: Borrow
-    await router.connect(borrower).borrow(borrowable.address, BigInt(1e18), borrower._address, max, '0x');
+    await router.connect(borrower).borrow(borrowable.address, BigInt(100e18), borrower._address, max, '0x');
 
     let daiBalanceBorrowerAfter = await dai.balanceOf(borrower._address);
     let cygLPBalanceBorrowerAfter = await collateral.balanceOf(borrower._address);
