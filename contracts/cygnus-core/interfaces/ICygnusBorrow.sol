@@ -103,9 +103,4 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
      *  @notice Overrides the exchange rate of `CygnusTerminal` for borrow contracts to mint reserves
      */
     function exchangeRate() external override returns (uint256);
-
-    /**
-     *  @notice Overrides the sync of `CygnusTerminal`
-     */
-    function sync() external override;
 }

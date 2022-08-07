@@ -130,7 +130,12 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         }
 
         // Calculate new borrow balance with the interest index
-        return PRBMath.mulDiv(uint256(borrowSnapshot.principal), borrowIndex, borrowSnapshot.interestIndex);
+        return
+            PRBMath.mulDiv(
+                uint256(borrowSnapshot.principal),
+                uint256(borrowIndex),
+                uint256(borrowSnapshot.interestIndex)
+            );
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

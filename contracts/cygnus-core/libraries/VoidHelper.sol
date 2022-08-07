@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
+pragma solidity >=0.8.4;
 
 import "./PRBMath.sol";
 import "./IErc20.sol";
@@ -7,8 +8,6 @@ import "./IErc20.sol";
  *  @title VoidHelper
  *  @dev Provides functions for harvesting and reinvesting rewards (if any)
  */
-pragma solidity >=0.8.4;
-
 library VoidHelper {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. STORAGE

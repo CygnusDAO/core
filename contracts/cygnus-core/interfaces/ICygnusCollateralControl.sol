@@ -21,16 +21,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      */
     error CygnusCollateralControl__ParameterNotInRange(uint256 minRange, uint256 maxRange, uint256 value);
 
-    /**
-     *  @custom:error CygnusOracleAlreadySet Emitted when the new oracle address is the same as the current oracle
-     */
-    error CygnusCollateralControl__CygnusOracleAlreadySet(address currentOracle, address newOracle);
-
-    /**
-     *  @custom:error VoidCantBeZero Emitted when the void is the zero address
-     */
-    error CygnusCollateralControl__VoidCantBeZero();
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════  
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -84,44 +74,58 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     // ────────────── Important Addresses ─────────────
 
     /**
-     *  @return The address of AlbireoTokenB (if available).
+     *  @return cygnusDai The address of the Cygnus borrow contract for this collateral which has DAI
      */
     function cygnusDai() external view returns (address);
 
     /**
-     *  @notice Not immutable in case we need to update oracle from factory
-     *  @return The address of the Cygnus Price Oracle
+     *  @return cygnusNebulaOracle The address of the Cygnus Price Oracle
      */
     function cygnusNebulaOracle() external view returns (IChainlinkNebulaOracle);
 
     // ────────────── Current Pool Rates ──────────────
 
     /**
-     *  @return The current liquidation incentive for this shuttle, default at 5%.
+     *  @return debtRatio The current debt ratio for this shuttle, default at 95%
+     */
+    function debtRatio() external view returns (uint256);
+
+    /**
+     *  @return liquidationIncentive The current liquidation incentive for this shuttle, default at 5%
      */
     function liquidationIncentive() external view returns (uint256);
 
     /**
-     *  @return The current liquidation fee the protocol keeps from each liquidation, default at 0%.
+     *  @return liquidationFee The current liquidation fee the protocol keeps from each liquidation, default at 0%
      */
     function liquidationFee() external view returns (uint256);
 
     // ──────────── Min/Max rates allowed ─────────────
 
     /**
-     *  @notice Set a minimum to for lender protection
-     *  @return The minimum liquidation incentive for liquidators, equivalent to 2% of collateral
+     *  @notice Set a minimum for borrow protection
+     *  @return DEBT_RATIO_MIN Minimum debt ratio at which the collateral becomes liquidatable
+     */
+    function DEBT_RATIO_MIN() external pure returns (uint256);
+
+    /**
+     *  @return DEBT_RATIO_MAX Maximum debt ratio at which the collateral becomes liquidatable
+     */
+    function DEBT_RATIO_MAX() external pure returns (uint256);
+
+    /**
+     *  @return LIQUIDATION_INCENTIVE_MIN The minimum liquidation incentive for liquidators that can be set
      */
     function LIQUIDATION_INCENTIVE_MIN() external pure returns (uint256);
 
     /**
-     *  @return The maximum liquidation incentive for liquidators, equivalent to 20% of collateral
+     *  @return LIQUIDATION_INCENTIVE_MAX The maximum liquidation incentive for liquidators that can be set
      */
     function LIQUIDATION_INCENTIVE_MAX() external pure returns (uint256);
 
     /**
      *  @notice No minimum as the default is 0
-     *  @return Maximum fee the protocol is allowed to keep from each liquidation, equivalent to 20%
+     *  @return LIQUIDATION_FEE_MAX Maximum fee the protocol is keeps from each liquidation
      */
     function LIQUIDATION_FEE_MAX() external pure returns (uint256);
 
@@ -133,11 +137,11 @@ interface ICygnusCollateralControl is ICygnusTerminal {
 
     /**
      *  @notice 👽
-     *  @notice Updates price oracle with the factory's latest oracle if necessary
-     *  @dev Factory must be updated with the new oracle first
+     *  @notice Updates the debt ratio for the shuttle
+     *  @param  newDebtRatio The new requested point at which a loan is liquidatable
      *  @custom:security non-reentrant
      */
-    function setNebulaOracle() external;
+    function setDebtRatio(uint256 newDebtRatio) external;
 
     /**
      *  @notice 👽

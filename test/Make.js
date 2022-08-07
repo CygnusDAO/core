@@ -6,6 +6,8 @@ const path = require('path');
 const hre = require('hardhat');
 const ethers = hre.ethers;
 
+const Users = require('./Users.js');
+
 /*////////////////////////////////////////////////////////////
  /                                                           /
  /              SETUP OF ALL CYGNUS CONTRACTS                /
@@ -40,7 +42,7 @@ module.exports = async function Make() {
     // ═══════════════════ 0. SETUP ══════════════════════════════════════════════════════════
 
     // Admin and ReservesManager
-    [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
+    [owner, daoReserves, safeAddress1] = await ethers.getSigners();
 
     // Make contract
     const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/dai.json')).toString();
@@ -88,18 +90,18 @@ module.exports = async function Make() {
 
     const factory = await Factory.deploy(
         owner.address,
-        daoReservesManager.address,
+        daoReserves.address,
         daiAddress,
         nativeAddress,
         oracle.address,
     );
 
     // Orbiter
-    const orbiter = await factory.setNewOrbiter(orbiterName, deneb.address, albireo.address);
+    const orbiter = await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
 
     console.log('Cygnus Factory     | %s', factory.address);
     console.log('──────────────────────────────────────────────────────────────────────────────');
-    console.log('Cygnus Reserves    | %s', await factory.vegaTokenManager());
+    console.log('Cygnus Reserves    | %s', await factory.daoReserves());
     console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // ═══════════════════ 5. ROUTER ══════════════════════════════════════════════════════════
@@ -124,7 +126,7 @@ module.exports = async function Make() {
     // Shuttle with LP Token address from setup
     await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier, kinkMultiplier);
 
-    const shuttle = await factory.getShuttles(lpToken.address);
+    const shuttle = await factory.getShuttles(lpToken.address, 0);
 
     // ═══════════════════════════════════════════════════════════════════════════════════════
 
@@ -132,7 +134,6 @@ module.exports = async function Make() {
     console.log('──────────────────────────────────────────────────────────────────────────────');
     console.log('Cygnus Borrowable  | %s', shuttle.cygnusDai);
     console.log('──────────────────────────────────────────────────────────────────────────────');
-
 
     // Borrowable and collateral contracts
     const borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.cygnusDai, owner);

@@ -7,8 +7,7 @@ import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
 
 // Libraries
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
-import { VoidHelper } from "./libraries/VoidHelper.sol";
+import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
@@ -96,18 +95,22 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
      *  @dev This function should only be called from `CygnusBorrow` contracts only
      *  @inheritdoc ICygnusCollateral
      */
-    function seizeDeneb(
+    function seizeCygLP(
         address liquidator,
         address borrower,
         uint256 repayAmount
-    ) external override returns (uint256 denebAmount) {
-        // @custom:error CantLiquidateSelf Avoid liquidating self
+    ) external override returns (uint256 cygLPAmount) {
+        /// @custom:error CantLiquidateSelf Avoid liquidating self
         if (_msgSender() == borrower) {
             revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower });
         }
-        // @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
+        /// @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
         else if (_msgSender() != cygnusDai) {
             revert CygnusCollateral__MsgSenderNotCygnusDai({ sender: _msgSender(), borrowable: cygnusDai });
+        }
+        /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
+        else if (repayAmount == 0) {
+            revert CygnusCollateral__CantLiquidateZero();
         }
 
         // Get user's liquidity or shortfall
@@ -118,38 +121,41 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             revert CygnusCollateral__NotLiquidatable({ userLiquidity: liquidity, userShortfall: 0 });
         }
 
-        // Get price from the oracle
-        uint256 denebPrice = getLPTokenPrice();
+        // Get price from oracle
+        uint256 lpTokenPrice = getLPTokenPrice();
 
         // Factor in liquidation incentive and current exchange rate to add/decrease collateral token balance
-        denebAmount = (repayAmount.div(denebPrice) * liquidationIncentive) / exchangeRate();
+        cygLPAmount = (repayAmount.div(lpTokenPrice) * liquidationIncentive) / exchangeRate();
 
         // Decrease borrower's balance of cygnus collateral tokens
-        balances[borrower] -= denebAmount;
+        balances[borrower] -= cygLPAmount;
 
         // Increase liquidator's balance of cygnus collateral tokens
-        balances[liquidator] += denebAmount;
+        balances[liquidator] += cygLPAmount;
 
         // Take into account protocol fee
-        uint256 denebFee;
+        uint256 cygnusFee;
 
         // Check for protocol fee
         if (liquidationFee > 0) {
             // Get the liquidation fee amount that is kept by the protocol
-            denebFee = denebAmount.mul(liquidationFee);
+            cygnusFee = cygLPAmount.mul(liquidationFee);
 
             // Assign reserves account
-            address vegaTokenManager = ICygnusFactory(hangar18).vegaTokenManager();
+            address daoReserves = ICygnusFactory(hangar18).daoReserves();
 
             // update borrower's balance
-            balances[borrower] -= denebFee;
+            balances[borrower] -= cygnusFee;
 
             // update reserve's balance
-            balances[vegaTokenManager] += denebFee;
+            balances[daoReserves] += cygnusFee;
+
+            /// @custom:event Transfer
+            emit Transfer(borrower, daoReserves, cygnusFee);
         }
 
-        /// @custom:event SeizeCollateral
-        emit SeizeCollateral(borrower, liquidator, denebAmount, denebFee);
+        /// @custom:event Transfer
+        emit Transfer(borrower, liquidator, cygLPAmount);
     }
 
     /**
@@ -157,18 +163,14 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function redeemDeneb(
+    function flashRedeemAltair(
         address redeemer,
         uint256 redeemAmount,
         bytes calldata data
     ) external override nonReentrant update {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (redeemAmount <= 0) {
-            revert CygnusCollateral__CantRedeemZero({
-                sender: _msgSender(),
-                origin: tx.origin,
-                redeemAmount: redeemAmount
-            });
+            revert CygnusCollateral__CantRedeemZero();
         }
         /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
         else if (redeemAmount > totalBalance) {
@@ -188,24 +190,24 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), redeemAmount, data);
         }
 
-        // Total balance of deneb tokens in this contract
-        uint256 denebTokens = balanceOf(address(this));
+        // Total balance of CygLP tokens in this contract
+        uint256 cygLPTokens = balanceOf(address(this));
 
         // Calculate user's redeem (amount * scale / exch)
-        uint256 redeemableDeneb = redeemAmount.div(exchangeRate());
+        uint256 redeemableAmount = redeemAmount.div(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if there's less tokens than declared
-        if (denebTokens < redeemableDeneb) {
+        if (cygLPTokens < redeemableAmount) {
             revert CygnusCollateral__InsufficientRedeemAmount({
-                denebTokens: denebTokens,
-                redeemableDeneb: redeemableDeneb
+                cygLPTokens: cygLPTokens,
+                redeemableAmount: redeemableAmount
             });
         }
 
         // Burn tokens and emit a Transfer event
-        burnInternal(address(this), denebTokens);
+        burnInternal(address(this), cygLPTokens);
 
         /// @custom:event RedeemCollateral
-        emit RedeemCollateral(_msgSender(), redeemer, redeemAmount, denebTokens);
+        emit RedeemCollateral(_msgSender(), redeemer, redeemAmount, cygLPTokens);
     }
 }

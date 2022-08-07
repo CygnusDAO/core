@@ -58,7 +58,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     // From underlying/factory
 
     /**
-     *  @notice Address of the chain's native token
+     *  @notice Address of the chain's native token (ie WETH)
      */
     address private immutable nativeToken;
 
@@ -109,7 +109,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override REINVEST_REWARD = 0.025e18;
+    uint256 public constant override REINVEST_REWARD = 0.02e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -166,6 +166,15 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             // solhint-disable-next-line
             revert CygnusCollateralChef__OnlyEOAAllowed({ sender: _msgSender(), origin: tx.origin });
         }
+    }
+
+    /**
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return This contract's balance
+     */
+    function contractBalanceOf(address token) private view returns (uint256) {
+        return IErc20(token).balanceOf(address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -271,7 +280,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             address bonusRewardToken = isNative ? nativeToken : address(bonusRewarder.rewardToken());
 
             // Get the balance of the bonus reward token
-            uint256 bonusRewardBalance = bonusRewardToken.contractBalanceOf();
+            uint256 bonusRewardBalance = contractBalanceOf(bonusRewardToken);
 
             // If we have any, swap everything to this shuttle's rewardsToken
             if (bonusRewardBalance > 0) {
@@ -280,7 +289,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         }
 
         // Return this contract's total rewards balance
-        return rewardsToken.contractBalanceOf();
+        return contractBalanceOf(rewardsToken);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -290,19 +299,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @dev Overrides CygnusTerminal
      */
     function updateInternal() internal override(CygnusTerminal) {
-        // Get total balance held by this contract
-        if (!voidActivated) {
-            // Update from terminal
-            super.updateInternal();
-        }
-        // Else return our balance held in the masterchef
-        else {
-            // prettier-ignore
-            (totalBalance, /* reward debt */) = rewarder.userInfo(pid, address(this));
+        // Get this contracts deposited LP amount
+        (uint256 rewarderBalance, ) = rewarder.userInfo(pid, address(this));
 
-            /// @custom:event Sync
-            emit Sync(totalBalance);
-        }
+        // Store to totalBalance
+        totalBalance = rewarderBalance;
+
+        /// @custom:event Sync
+        emit Sync(totalBalance);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -362,7 +366,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
         // ─────────────────────── 1. Withdraw all rewards
-
+        // Get current rewards accrued
         uint256 currentRewards = getRewardsPrivate();
 
         // If none accumulated return and do nothing
@@ -370,7 +374,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             return;
         }
 
-        // ─────────────────────── 2. Send reward to the reinvestor
+        // ─────────────────────── 2. Send reward to the reinvestor and whoever created strategy
 
         // Calculate reward for user (rewards harvested * REINVEST_REWARD)
         uint256 eoaReward = currentRewards.mul(REINVEST_REWARD);
@@ -380,8 +384,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         // ─────────────────────── 3. Convert all rewardsToken to token0 or token1
 
+        // Sort tokens
         address tokenA;
-
         address tokenB;
 
         // Check if rewards token is already token0 or token1 from LP
@@ -426,6 +430,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         // ─────────────────────── 5. Stake the LP Token
 
+        // Deposit in rewarder
         rewarder.deposit(pid, liquidity);
 
         /// @custom:event RechargeVoid
@@ -437,38 +442,32 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function mint(address minter)
-        external
-        override(ICygnusTerminal)
-        nonReentrant
-        update
-        returns (uint256 cygnusMintTokens)
-    {
+    function mint(address recipient) external override(ICygnusTerminal) nonReentrant update returns (uint256 shares) {
         // Get current balance
-        uint256 balance = IErc20(underlying).balanceOf(address(this));
+        uint256 assets = IErc20(underlying).balanceOf(address(this));
 
         // Check for pools with deposit fees
         (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
 
         // Deposit in rewader
-        rewarder.deposit(pid, balance);
+        rewarder.deposit(pid, assets);
 
         // Check balance after deposit
         (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
 
         // (amount * scale) / exchangeRate
-        cygnusMintTokens = (totalBalanceAfter - totalBalanceBefore).div(exchangeRate());
+        shares = (totalBalanceAfter - totalBalanceBefore).div(exchangeRate());
 
-        /// custom:error CantMintZero Avoid minting no tokens
-        if (cygnusMintTokens <= 0) {
-            revert CygnusTerminal__CantMintZero(cygnusMintTokens);
+        /// custom:error CantMintZero Avoid minting 0 shares
+        if (shares <= 0) {
+            revert CygnusTerminal__CantMintZeroShares();
         }
 
         // Mint tokens and emit Transfer event
-        mintInternal(minter, cygnusMintTokens);
+        mintInternal(recipient, shares);
 
         /// @custom:event Mint
-        emit Mint(_msgSender(), minter, balance, cygnusMintTokens);
+        emit Mint(_msgSender(), recipient, assets, shares);
     }
 
     /**
@@ -476,37 +475,45 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(address holder)
-        external
-        override(ICygnusTerminal)
-        nonReentrant
-        update
-        returns (uint256 redeemAmount)
-    {
+    function redeem(address recipient) external override(ICygnusTerminal) nonReentrant update returns (uint256 assets) {
         // Get current balance
-        uint256 cygnusRedeemTokens = balanceOf(address(this));
+        uint256 shares = balanceOf(address(this));
 
         // Get the initial amount * exchange rate / scale
-        redeemAmount = cygnusRedeemTokens.mul(exchangeRate());
+        assets = shares.mul(exchangeRate());
 
-        /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
-        if (redeemAmount <= 0) {
-            revert CygnusTerminal__CantRedeemZero(redeemAmount);
+        /// @custom:error CantRedeemZeroAssets Avoid redeeming 0 assets
+        if (assets <= 0) {
+            revert CygnusTerminal__CantRedeemZeroAssets();
         }
-        /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
-        else if (redeemAmount > totalBalance) {
-            revert CygnusTerminal__RedeemAmountInvalid({ invalidAmount: redeemAmount, contractBalance: totalBalance });
+        /// @custom:error RedeemAmountInvalid Avoid redeeming more than totalBalance
+        else if (assets > totalBalance) {
+            revert CygnusTerminal__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
         }
 
         // Burn initial amount and emit Transfer event
-        burnInternal(address(this), cygnusRedeemTokens);
+        burnInternal(address(this), shares);
 
-        rewarder.withdraw(pid, redeemAmount);
+        // Withdraw from rewarder
+        rewarder.withdraw(pid, assets);
 
         // Optimistically transfer redeemed tokens
-        IErc20(underlying).safeTransfer(holder, redeemAmount);
+        IErc20(underlying).safeTransfer(recipient, shares);
 
         /// @custom:event Redeem
-        emit Redeem(_msgSender(), holder, redeemAmount, cygnusRedeemTokens);
+        emit Redeem(_msgSender(), recipient, assets, shares);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralVoid
+     */
+    function sweepToken(address tokenIn, address tokenOut) external override nonReentrant cygnusAdmin {
+        // custom:error CantSweepUnderlying Avoid sweeping underlying
+        if (tokenIn == underlying) {
+            revert CygnusCollateralVoid__CantSweepUnderlying({ tokenIn: tokenIn, underlying: underlying });
+        }
+
+        // Convert `token` to `rewardsToken`
+        swapTokensPrivate(tokenIn, tokenOut, IErc20(tokenIn).balanceOf(address(this)));
     }
 }

@@ -167,9 +167,12 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
         });
 
         // Check user's liquidity
-        it('Borrower takes out more than his collateral available at 80% debt ratio: FAIL { Insufficient_Liquidity  }', async () => {
+        it('Borrower takes out more than his collateral available at 95% debt ratio: FAIL { Insufficient_Liquidity  }', async () => {
             // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
+            const liquidationIncentive = await collateral.liquidationIncentive();
+
+            const maxBorrow = BigInt(collateralInDai.liquidity) * BigInt(1e18) / BigInt(liquidationIncentive);
 
             // Maximum the borrower can take out
             const maxLiquiditySlightlyMore = BigInt(collateralInDai.liquidity) + BigInt(0.01e18);

@@ -77,7 +77,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library SafeErc20 Low level handling of Erc20 tokens (mint, redeem, sync, skim)
+     *  @custom:library SafeErc20 Low level handling of Erc20 tokens
      */
     using SafeErc20 for IErc20;
 
@@ -152,21 +152,10 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            5. NON-CONSTANT FUNCTIONS
+            5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    /**
-     *  @notice Updates this contract's total balance in terms of its underlying
-     */
-    function updateInternal() internal virtual {
-        // Match totalBalance state to balanceOf this contract
-        totalBalance = IErc20(underlying).balanceOf(address(this));
-
-        /// @custom:event Sync
-        emit Sync(totalBalance);
-    }
 
     /**
      *  @notice Internal check for admins only, checks factory for admin
@@ -177,7 +166,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
         if (_msgSender() != admin) {
-            revert CygnusTerminal__MsgSenderNotAdmin({ caller: _msgSender(), factoryAdmin: admin });
+            revert CygnusTerminal__MsgSenderNotAdmin({ sender: _msgSender(), factoryAdmin: admin });
         }
     }
 
@@ -198,6 +187,31 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Updates this contract's total balance in terms of its underlying
+     */
+    function updateInternal() internal virtual {
+        // Match totalBalance state to balanceOf this contract
+        totalBalance = IErc20(underlying).balanceOf(address(this));
+
+        /// @custom:event Sync
+        emit Sync(totalBalance);
+    }
+
+    /**
+     *  @notice Internal hook for deposits into strategies
+     *  @param depositAmount The amount of assets to deposit into the strategy
+     */
+    function afterDeposit(uint256 depositAmount) internal virtual {}
+
+    /**
+     *  @notice Internal hook for withdrawals from strategies
+     *  @param withdrawAmount The amount of shares to withdraw from the strategy
+     */
+    function beforeWithdraw(uint256 withdrawAmount) internal virtual {}
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -205,26 +219,29 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function mint(address minter) external virtual override nonReentrant update returns (uint256 cygnusMintTokens) {
+    function mint(address recipient) external virtual override nonReentrant update returns (uint256 shares) {
         // Get current balance
         uint256 balance = IErc20(underlying).balanceOf(address(this));
 
         // Substract from totalBalance to get deposit amount
-        uint256 deposit = balance - totalBalance;
+        uint256 assets = balance - totalBalance;
 
-        // (amount * scale) / exchangeRate
-        cygnusMintTokens = deposit.div(exchangeRate());
+        // Get the amount of shares to mint
+        shares = assets.div(exchangeRate());
 
-        /// custom:error CantMintZero Avoid minting no tokens
-        if (cygnusMintTokens <= 0) {
-            revert CygnusTerminal__CantMintZero(cygnusMintTokens);
+        /// custom:error CantMintZeroShares Avoid minting 0 shares
+        if (shares <= 0) {
+            revert CygnusTerminal__CantMintZeroShares();
         }
 
         // Mint tokens and emit Transfer event
-        mintInternal(minter, cygnusMintTokens);
+        mintInternal(recipient, shares);
+
+        // Deposit into this strategy (if any)
+        afterDeposit(assets);
 
         /// @custom:event Mint
-        emit Mint(_msgSender(), minter, deposit, cygnusMintTokens);
+        emit Mint(_msgSender(), recipient, assets, shares);
     }
 
     /**
@@ -232,46 +249,32 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(address holder) external virtual override nonReentrant update returns (uint256 redeemAmount) {
+    function redeem(address recipient) external virtual override nonReentrant update returns (uint256 assets) {
         // Get current balance
-        uint256 cygnusRedeemTokens = balanceOf(address(this));
+        uint256 shares = balanceOf(address(this));
 
-        // Get the initial amount * exchange rate / scale
-        redeemAmount = cygnusRedeemTokens.mul(exchangeRate());
+        // Get the amount of redeemable assets
+        assets = shares.mul(exchangeRate());
 
-        /// @custom:error CantBurnZero Avoid redeem unless is positive amount
-        if (redeemAmount <= 0) {
-            revert CygnusTerminal__CantRedeemZero(redeemAmount);
+        /// @custom:error CantRedeemZeroAssets Avoid redeeming 0 assets
+        if (assets <= 0) {
+            revert CygnusTerminal__CantRedeemZeroAssets();
         }
-        /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
-        else if (redeemAmount > totalBalance) {
-            revert CygnusTerminal__RedeemAmountInvalid({ invalidAmount: redeemAmount, contractBalance: totalBalance });
+        /// @custom:error RedeemAmountInvalid Avoid redeeming more assets than our total balance
+        else if (assets > totalBalance) {
+            revert CygnusTerminal__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
         }
+
+        // Withdraw from this strategy (if any)
+        beforeWithdraw(assets);
 
         // Burn initial amount and emit Transfer event
-        burnInternal(address(this), cygnusRedeemTokens);
+        burnInternal(address(this), shares);
 
         // Optimistically transfer redeemed tokens
-        IErc20(underlying).safeTransfer(holder, redeemAmount);
+        IErc20(underlying).safeTransfer(recipient, assets);
 
         /// @custom:event Redeem
-        emit Redeem(_msgSender(), holder, redeemAmount, cygnusRedeemTokens);
-    }
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
-     */
-    function skim(address recipient) external override nonReentrant {
-        // Uniswap's function to force real balance to match totalBalance
-        IErc20(underlying).safeTransfer(recipient, balanceOf(address(this)) - totalBalance);
-    }
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
-     */
-    function sync() external virtual override nonReentrant {
-        updateInternal();
+        emit Redeem(_msgSender(), recipient, assets, shares);
     }
 }

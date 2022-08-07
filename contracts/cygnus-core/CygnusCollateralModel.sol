@@ -60,18 +60,21 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         // Collateral Deposited * LP Token price
         uint256 collateralInDai = amountCollateral.mul(lpTokenPrice);
 
+        // Adjust to max debt ratio for this shuttle
+        uint256 adjustedCollateralInDai = collateralInDai.mul(debtRatio);
+
         // Collateral needed for the borrowed amount
         uint256 collateralNeededInDai = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Never underflows
         unchecked {
             // If account has collateral available to borrow against, return liquidity and 0 shortfall
-            if (collateralInDai >= collateralNeededInDai) {
-                return (collateralInDai - collateralNeededInDai, 0);
+            if (adjustedCollateralInDai >= collateralNeededInDai) {
+                return (adjustedCollateralInDai - collateralNeededInDai, 0);
             }
             // else, return 0 liquidity and the account's shortfall
             else {
-                return (0, collateralNeededInDai - collateralInDai);
+                return (0, collateralNeededInDai - adjustedCollateralInDai);
             }
         }
     }
@@ -147,7 +150,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Account for 0 collateral to avoid divide by 0
-        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai);
+        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai).div(debtRatio);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -165,7 +168,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 accountBorrows
     ) external view override returns (bool) {
         // Gas savings
-        address _borrowDAITokenA = cygnusDai;
+        address borrowContract = cygnusDai;
 
         /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
         if (borrowableToken != cygnusDai) {
@@ -176,7 +179,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         }
 
         // Amount of DAI
-        uint256 cygnusDaiAmount = borrowableToken == _borrowDAITokenA ? accountBorrows : type(uint256).max;
+        uint256 cygnusDaiAmount = borrowableToken == borrowContract ? accountBorrows : type(uint256).max;
 
         // prettier-ignore
         (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, cygnusDaiAmount);

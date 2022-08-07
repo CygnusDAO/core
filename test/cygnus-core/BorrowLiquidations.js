@@ -59,6 +59,8 @@ context('BORROW DAI: NO LEVERAGE LIQUIDATIONS', function () {
         // Initial DAI and LP balances for lender and borrower
         lenderInitialDaiBalance = await dai.balanceOf(lender._address);
         borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
+        // Get initial dai balance
+        borrowerInitialDaiBalance = (await dai.balanceOf(borrower._address)) / 1e18;
 
         console.log('------------------------------------------------------------------------------');
         console.log('Lender   | %s | Balance: %s DAI', lender._address, lenderInitialDaiBalance / 1e18);
@@ -75,9 +77,6 @@ context('BORROW DAI: NO LEVERAGE LIQUIDATIONS', function () {
         // Borrower deposits 10 LP tokens
         await lpToken.connect(borrower).approve(router.address, max);
         await router.connect(borrower).mint(collateral.address, borrowerDeposit, borrower._address, max);
-
-        // Get initial dai balance
-        borrowerInitialDaiBalance = (await dai.balanceOf(borrower._address)) / 1e18;
     });
 
     /*

@@ -38,13 +38,8 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
     // Strategy
     let voidRouter, masterChef, rewardToken, pid, swapFee;
 
-    let lenderInitialDaiBalance; // Balance before depositing and interacting with Cygnus
-    let lenderFinalDaiBalance; // Balance after interacting and redeeming
-    const lenderDeposit = BigInt(2000e18); // 2000 DAI
-
-    let borrowerInitialDaiBalance; // Balance before depositing and interacting with Cygnus
-    let borrowerFinalDaiBalance; // Balance after interacting and redeeming
-    const borrowerDeposit = BigInt(10e18); // 10 LP Tokens
+    // 100 LPs
+    let borrowerDeposit = BigInt(100e18);
 
     before(async () => {
         // Cygnus contracts and underlyings
@@ -68,16 +63,6 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
 
         await collateral.chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
 
-        // Lender deposits 10000 DAI
-        await dai.connect(lender).approve(router.address, max);
-        await router.connect(lender).mint(borrowable.address, lenderDeposit, lender._address, max);
-
-        // Borrower deposits 10 LP tokens
-        await lpToken.connect(borrower).approve(router.address, max);
-        await router.connect(borrower).mint(collateral.address, borrowerDeposit, borrower._address, max);
-
-        // Get initial dai balance
-        borrowerInitialDaiBalance = (await dai.balanceOf(borrower._address)) / 1e18;
     });
 
     describe('When Cygnus factory deploys collateral and borrow contracts', function () {
@@ -171,10 +156,6 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
         it('Borrower has CygLP in wallet', async () => {
             expect(await collateral.balanceOf(borrower._address)).to.eq(BigInt(10e18));
         });
-
-        it('Borrower reinvests rewards in void', async () => {
-            await expect(collateral.connect(borrower).reinvestRewards_y7b()).to.emit(voidx, 'RechargeVoid');
-        });
     });
 
     describe('Borrower redeems CygLP for LP Token without borrowing', function () {
@@ -200,14 +181,6 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             await expect(
                 router.connect(borrower).redeem(collateral.address, BigInt(10e18), borrower._address, max, '0x'),
             ).to.emit(collateral, 'Redeem');
-        });
-
-        it('LP Token Balance of borrower is slightly more than before Cygnus due to compounding', async () => {
-            // Check that CygLP balance of borrower is 0
-            expect(await collateral.balanceOf(borrower._address)).to.be.eq(0);
-
-            // Check that borrower has the same LP Token balance they had before interacting with Cygnus
-            expect(await lpToken.balanceOf(borrower._address)).to.be.gt(borrowerInitialLPBalance);
         });
     });
 });

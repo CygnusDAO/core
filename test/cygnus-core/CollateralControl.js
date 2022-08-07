@@ -1,152 +1,92 @@
+// Hardhat
+const chai = require('chai');
+const { solidity } = require('ethereum-waffle');
+const { expect } = chai;
+const hre = require('hardhat');
+
 // Node
 const fs = require('fs');
 const path = require('path');
 
-// Hardhat
-const chai = require('chai');
-const hre = require('hardhat');
-const { solidity } = require('ethereum-waffle');
-const { expect } = chai;
+// Ethers
+const addressZero = ethers.constants.AddressZero;
+const max = ethers.constants.MaxUint256;
 
-// Custom Errors
-const { CygnusCollateralErrors } = require('./errors/CygnusCollateralErrors.js');
-const { CygnusTerminalErrors } = require('./errors/CygnusTerminalErrors.js');
+// Custom
+const Make = require('../Make.js');
+const Users = require('../Users.js');
 
+// Matchers
 chai.use(solidity);
 
 /*
- *  Tests for control functions of Cygnus collateral contracts. Checks for:
+ *  Tests for control functions of Cygnus borrow contracts. Checks for:
  *  - Factory admin
- *  - Default CygnusCollateral.sol state params (liq incentive, liq fee, debt ratio)
+ *  - Default CygnusBorrow.sol state params (shuttleMultiplier, kink, base rate, etc.)
  *  - Admin only functions
  *  - Min/Max parameters
- *  - Cygnus borrow contract
- *  - Default oracle and oracle updates
- *
+ *  - Cygnus collateral contract
+ *  - Reserves manager contract
  */
-describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
-    /*  ─────────────────────────────────────────── constants ──────────────────────────────────────────────  */
+context('CygnusBorrowControl.sol - Admin control and updatable parameters', function () {
+    // dai and LP Token contracts
+    let dai, lpToken;
 
-    // Max digit in a uint256
-    const max = ethers.constants.MaxUint256;
+    // Cygnus Contracts
+    let oracle, factory, router, borrowable, collateral;
 
-    // 0 address
-    const addressZero = ethers.constants.AddressZero;
+    // Main accounts that interact with Cygnus during this test
+    let owner, daoReservesManager, safeAddress1, borrower, lender;
 
-    // DAI
-    const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
-
-    // NATIVE
-    const nativeToken = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
-
-    /*  ─────────────────────────────────────── External Contracts ─────────────────────────────────────────  */
-
-    // Underlying LP Token - JOE/AVAX
-    const joeAvaxLPAddress = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
-
-    // Chainlink V3 Aggregators
-    // DAI
-    const daiAggregator = '0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300';
-    // Joe
-    const joeAggregator = '0x02D35d3a8aC3e1626d3eE09A78Dd87286F5E8e3a';
-    // Avax
-    const avaxAggregator = '0x0A77230d17318075983913bC2145DB16C7366156';
-
-    /*  ──────────────────────────────────────────── Defaults ─────────────────────────────────────────────  */
-
-    // Cygnus Collateral Defaults
-    const defaultDebtRatio = BigInt(0.8e18);
-
-    const defaultLiquidationIncentive = BigInt(1.05e18);
-
-    const defaultLiquidationFee = BigInt(0);
-
-    /*  ────────────────────────────────────────── Lending Pool ───────────────────────────────────────────  */
-
-    // Cygnus Collateral customs
-    const shuttleBaseRate = BigInt(0.05e18);
-
-    const shuttleKinkRate = BigInt(0.75e18);
-
-    const shuttleMultiplier = BigInt(0.15e18);
-
-    /*  ─────────────────────────────────────────── Addresses ─────────────────────────────────────────────  */
-
-    // Price Oracle
-    let nebula, newNebula, evenNewerNebula;
-
-    // Admin, reservesManager, factory
-    let owner, safeAddress1, factory;
-
-    // Collateral contract
-    let collateral, collateralMock;
-
-    // Object containing lending pool info: borrow, collateral, lp token, oracle, id
-    let shuttle;
-
+    // Make Cygnus lending pool and get random Users (safe address1, lender, borrower)
     before(async () => {
-        [owner, safeAddress1] = await ethers.getSigners();
+        // Cygnus contracts and underlyings
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
-        // Borrow
-        const Albireo = await ethers.getContractFactory('CygnusAlbireo');
-        // Collateral
-        const Deneb = await ethers.getContractFactory('CygnusDeneb');
+        // Users
+        [owner, daoReservesManager, safeAddress1, lender, borrower] = await Users();
 
-        // Address of Borrow Deployer
-        const albireo = await Albireo.deploy();
-        // Address of Collateral Deployer
-        const deneb = await Deneb.deploy();
+        // Initial DAI and LP balances for lender and borrower
+        lenderInitialDaiBalance = await dai.balanceOf(lender._address);
+        borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
 
-        // Oracle
-        const Nebula = await ethers.getContractFactory('ChainlinkNebulaOracle');
-        // Address of Oracle
-        nebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
-        // Address of Oracle V2
-        newNebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
-        // Address of Oracle V3
-        evenNewerNebula = await Nebula.deploy('0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300');
+        console.log('------------------------------------------------------------------------------');
+        console.log('  DAI Balance of lender   | %s DAI', lenderInitialDaiBalance / 1e18);
+        console.log('------------------------------------------------------------------------------');
+        console.log('  LP Balance of borrower  | %s LPs', borrowerInitialLPBalance / 1e18);
+        console.log('------------------------------------------------------------------------------');
+    });
 
-        // First nebula
-        await nebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
-        // Dummy checks in case need oracle update - Initialize oracle V2 eth/avax pair
-        await newNebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
-        // Initialize oracle V3 eth/avax pair
-        await evenNewerNebula.initializeNebula(joeAvaxLPAddress, joeAggregator, avaxAggregator);
+    describe('When the borrow contract is deployed', function () {
+        /*
+         *  Check for default state. Receives parameters from the object
+         */
+        // Exchange rate
+        it('Has the default exchangeRateStored', async () => {
+            expect(await borrowable.exchangeRateStored()).to.eq(BigInt(1e18));
+        });
 
-        // Factory
-        const Factory = await ethers.getContractFactory('CygnusFactory');
+        // Reserve factor
+        it('Has the default reserveFactor', async () => {
+            expect(await borrowable.reserveFactor()).to.eq(BigInt(0.05e18));
+        });
 
-        // Address of Factory
-        factory = await Factory.deploy(
-            owner.address,
-            safeAddress1.address,
-            daiAddress,
-            nativeToken,
-            deneb.address,
-            albireo.address,
-            nebula.address,
-        );
+        // Factory address
+        it('Sets the factory address in the constructor', async () => {
+            expect(await borrowable.hangar18()).to.eq(factory.address);
+        });
 
-        //console.log(factory.address);
+        // Borrowable underlying
+        it('Sets underlying as DAI.e contract in the constructor', async () => {
+            expect(await borrowable.underlying()).to.eq(dai.address);
+        });
 
-        // Deploy joe/avax shuttle
-        const Shuttle = await factory.deployShuttle(
-            joeAvaxLPAddress,
-            shuttleBaseRate,
-            shuttleMultiplier,
-            shuttleKinkRate,
-        );
+        // Collateral contract
+        it('Sets the Cygnus collateral contract in the constructor', async () => {
+            let shuttle = await factory.getShuttles(lpToken.address);
 
-        // Get the shuttle obj
-        shuttle = await factory.getShuttles(joeAvaxLPAddress);
-
-        //console.log(shuttle);
-
-        const MockC = await ethers.getContractFactory('MockCygnusCollateral');
-
-        collateral = await MockC.deploy(factory.address, joeAvaxLPAddress, shuttle.cygnusAlbireo);
-
-        //console.log(collateral.address);
+            expect(await borrowable.collateral()).to.eq(shuttle.collateral);
+        });
     });
 
     /* ════════════════════════════ DEFAULT STATE ════════════════════════════ */
@@ -166,19 +106,14 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
             expect(await factory.admin()).to.eq(owner.address);
         });
 
-        // 80% Debt Ratio
-        it('Checks debt ratio is set to default', async () => {
-            expect(await collateral.debtRatio()).to.eq(defaultDebtRatio);
-        });
-
         // 5% Liquidation Incentive
         it('Checks liquidation incentive is set to default', async () => {
-            expect(await collateral.liquidationIncentive()).to.eq(defaultLiquidationIncentive);
+            expect(await collateral.liquidationIncentive()).to.eq(BigInt(1.05e18));
         });
 
         // 0% liquidation fee
         it('Checks liquidation fee is set to default', async () => {
-            expect(await collateral.liquidationFee()).to.eq(defaultLiquidationFee);
+            expect(await collateral.liquidationFee()).to.eq(0);
         });
 
         // Factory
@@ -192,7 +127,7 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
 
         // Borrow contract
         it('Sets cygnus borrow contract', async () => {
-            expect(await collateral.albireoDAI()).to.eq(await shuttle.cygnusAlbireo);
+            expect(await collateral.cygnusDai()).to.eq(await shuttle.cygnusAlbireo);
         });
 
         // Oracle
@@ -239,19 +174,6 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
             expect(await collateral.cygnusNebulaOracle()).to.eq(evenNewerNebula.address);
         });
 
-        // debtRatio
-        it('Sets a new debt ratio and emits {NewDebtRatio} event', async () => {
-            const oldDebtRatio = await collateral.debtRatio();
-
-            const newDebtRatio = BigInt(0.86e18);
-
-            await expect(collateral.setDebtRatio(newDebtRatio))
-                .to.emit(collateral, 'NewDebtRatio')
-                .withArgs(oldDebtRatio, newDebtRatio);
-
-            expect(await collateral.debtRatio()).to.eq(newDebtRatio);
-        });
-
         // liquidationIncentive
         it('Sets a new liquidation incentive and emits {NewLiquidationIncentive} event', async () => {
             const oldLiq = await collateral.liquidationIncentive();
@@ -289,21 +211,7 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
          */
         it('Sets a new factory oracle:FAIL {CygnusFactory__CygnusAdminOnly}', async () => {
             // Update oracle in factory first
-            await expect(factory.connect(safeAddress1).setNewNebulaOracle(newNebula.address)).to.be.revertedWith(
-                CygnusTerminalErrors.MSG_SENDER_NOT_ADMIN_FACTORY + `("${safeAddress1.address}")`,
-            );
-        });
-
-        it('Sets a new debt ratio:FAIL {CygnusTerminal__CygnusAdminOnly}', async () => {
-            const oldDebtRatio = await collateral.debtRatio();
-
-            const newDebtRatio = BigInt(0.81e18);
-
-            await expect(collateral.connect(safeAddress1).setDebtRatio(newDebtRatio)).to.be.revertedWith(
-                CygnusTerminalErrors.MSG_SENDER_NOT_ADMIN,
-            );
-
-            expect(await collateral.debtRatio()).to.eq(oldDebtRatio);
+            await expect(factory.connect(safeAddress1).setNewNebulaOracle(newNebula.address)).to.be.reverted;
         });
 
         it('Sets a new liquidation incentive:FAIL {CygnusTerminal__CygnusAdminOnly}', async () => {
@@ -311,9 +219,8 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
 
             const newLiquidationIncentive = BigInt(1.15e18);
 
-            await expect(
-                collateral.connect(safeAddress1).setLiquidationIncentive(newLiquidationIncentive),
-            ).to.be.revertedWith(CygnusTerminalErrors.MSG_SENDER_NOT_ADMIN);
+            await expect(collateral.connect(safeAddress1).setLiquidationIncentive(newLiquidationIncentive)).to.be
+                .reverted;
 
             expect(await collateral.liquidationIncentive()).to.eq(oldLiquidationIncentive);
         });
@@ -323,42 +230,19 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
 
             const newLiquidationFee = BigInt(0.1e18);
 
-            await expect(
-                (await collateral.connect(safeAddress1)).setLiquidationFee(newLiquidationFee),
-            ).to.be.revertedWith(CygnusTerminalErrors.MSG_SENDER_NOT_ADMIN);
+            await expect((await collateral.connect(safeAddress1)).setLiquidationFee(newLiquidationFee)).to.be.reverted;
 
             expect(await collateral.liquidationFee()).to.eq(oldLiquidationFee);
         });
     });
 
     describe('Updates parameters outside of ranges: ADMIN', function () {
-        /*
-         *
-         *  Admin updates parameters outside valid min/max ranges, all revert
-         *
-         *
-         */
-        it('Sets a new debt ratio:FAIL { CygnusCollateralControl__ParameterNotInRange }', async () => {
-            // collateral debt ratio
-            const oldDebtRatio = await collateral.debtRatio();
-
-            const newDebtRatio = BigInt(0.45e18);
-
-            await expect(collateral.setDebtRatio(newDebtRatio)).to.be.revertedWith(
-                CygnusCollateralErrors.PARAMETER_NOT_IN_RANGE,
-            );
-
-            expect(await collateral.debtRatio()).to.eq(oldDebtRatio);
-        });
-
         it('Sets a new liquidation fee:FAIL', async () => {
             const oldLiquidationFee = await collateral.liquidationFee();
 
             const newLiquidationFee = BigInt(0.21e18);
 
-            await expect(collateral.setLiquidationFee(newLiquidationFee)).to.be.revertedWith(
-                CygnusCollateralErrors.PARAMETER_NOT_IN_RANGE,
-            );
+            await expect(collateral.setLiquidationFee(newLiquidationFee)).to.be.reverted;
 
             expect(await collateral.liquidationFee()).to.eq(oldLiquidationFee);
         });
@@ -368,9 +252,7 @@ describe('CYGNUS COLLATERAL: ADMIN CONTROLS', function () {
 
             const newLiquidationIncentive = BigInt(1.21e18);
 
-            await expect(collateral.setLiquidationIncentive(newLiquidationIncentive)).to.be.revertedWith(
-                CygnusCollateralErrors.PARAMETER_NOT_IN_RANGE,
-            );
+            await expect(collateral.setLiquidationIncentive(newLiquidationIncentive)).to.be.reverted;
         });
     });
 });

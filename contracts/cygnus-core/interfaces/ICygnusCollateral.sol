@@ -28,6 +28,11 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     error CygnusCollateral__MsgSenderNotCygnusDai(address sender, address borrowable);
 
     /**
+     *  @custom:error CantLiquidateZero Emitted when the repayAmount is 0
+     */
+    error CygnusCollateral__CantLiquidateZero();
+
+    /**
      *  @custom:error NotLiquidatable Emitted when there is no shortfall
      */
     error CygnusCollateral__NotLiquidatable(uint256 userLiquidity, uint256 userShortfall);
@@ -45,12 +50,12 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     /**
      *  @custom:error CantRedeemZero Emitted when trying to redeem 0 tokens
      */
-    error CygnusCollateral__CantRedeemZero(address sender, address origin, uint256 redeemAmount);
+    error CygnusCollateral__CantRedeemZero();
 
     /**
      *  @custom:error InsufficientRedeemAmount Emitted when redeeming more than user balance of redeem Tokens
      */
-    error CygnusCollateral__InsufficientRedeemAmount(uint256 denebTokens, uint256 redeemableDeneb);
+    error CygnusCollateral__InsufficientRedeemAmount(uint256 cygLPTokens, uint256 redeemableAmount);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -68,11 +73,11 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     /**
      *  @param borrower The address of redeemer
      *  @param liquidator The address of the liquidator
-     *  @param denebAmount The amount being seized is the balance of
-     *  @param denebFee The protocol fee (if any)
+     *  @param cygLPAmount The amount being seized is the balance of
+     *  @param cygnusFee The protocol fee (if any)
      *  @custom:event Emitted when collateral is seized
      */
-    event SeizeCollateral(address borrower, address liquidator, uint256 denebAmount, uint256 denebFee);
+    event SeizeCollateral(address borrower, address liquidator, uint256 cygLPAmount, uint256 cygnusFee);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -95,11 +100,11 @@ interface ICygnusCollateral is ICygnusCollateralModel {
      *  @param borrower The address of the borrower
      *  @param repayAmount The number of collateral tokens to seize
      */
-    function seizeDeneb(
+    function seizeCygLP(
         address liquidator,
         address borrower,
         uint256 repayAmount
-    ) external returns (uint256 denebAmount);
+    ) external returns (uint256 cygLPAmount);
 
     /**
      *  @dev This should be called from `Altair` contract
@@ -108,7 +113,7 @@ interface ICygnusCollateral is ICygnusCollateralModel {
      *  @param data Calldata passed from router contract
      *  @custom:security non-reentrant
      */
-    function redeemDeneb(
+    function flashRedeemAltair(
         address redeemer,
         uint256 redeemAmount,
         bytes calldata data

@@ -13,8 +13,8 @@ const addressZero = ethers.constants.AddressZero;
 const max = ethers.constants.MaxUint256;
 
 // Custom
-const Make = require('../make.js');
-const Users = require('../users.js');
+const Make = require('../Make.js');
+const Users = require('../Users.js');
 
 // Matchers
 chai.use(solidity);
@@ -38,7 +38,7 @@ context('CygnusBorrowControl.sol - Admin control and updatable parameters', func
     // Main accounts that interact with Cygnus during this test
     let owner, daoReservesManager, safeAddress1, borrower, lender;
 
-    // Make Cygnus lending pool and get random users (safe address1, lender, borrower)
+    // Make Cygnus lending pool and get random Users (safe address1, lender, borrower)
     before(async () => {
         // Cygnus contracts and underlyings
         [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();

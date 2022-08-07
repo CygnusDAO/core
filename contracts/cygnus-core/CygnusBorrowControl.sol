@@ -62,7 +62,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public constant override BASE_RATE_MAX = 0.20e18;
+    uint256 public constant override BASE_RATE_MAX = 0.10e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -82,7 +82,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public constant override KINK_MULTIPLIER_MAX = 20;
+    uint256 public constant override KINK_MULTIPLIER_MAX = 10;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. CONSTRUCTOR

@@ -48,14 +48,19 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    IChainlinkNebulaOracle public override cygnusNebulaOracle;
+    IChainlinkNebulaOracle public immutable override cygnusNebulaOracle;
 
     // ────────────────────── Current pool rates  ───────────────────────
 
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override liquidationIncentive = 1.05e18;
+    uint256 public override debtRatio = 0.95e18;
+
+    /**
+     *  @inheritdoc ICygnusCollateralControl
+     */
+    uint256 public override liquidationIncentive = 1.025e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -63,6 +68,16 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     uint256 public override liquidationFee;
 
     // ──────────────────── Min/Max this pool allows  ────────────────────
+
+    /**
+     *  @inheritdoc ICygnusCollateralControl
+     */
+    uint256 public constant override DEBT_RATIO_MIN = 0.80e18;
+
+    /**
+     *  @inheritdoc ICygnusCollateralControl
+     */
+    uint256 public constant override DEBT_RATIO_MAX = 1e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -134,26 +149,18 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setNebulaOracle() external override cygnusAdmin nonReentrant {
-        // Assign oracle with factory's latest oracle, factory does zero address check
-        IChainlinkNebulaOracle newPriceOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();
+    function setDebtRatio(uint256 newDebtRatio) external override nonReentrant cygnusAdmin {
+        // Checks if new value is within ranges allowed. If false, reverts with custom error
+        validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
-        /// @custom:error CygnusNebulaDuplicate Avoid new oracle being the same as the old oracle
-        if (address(cygnusNebulaOracle) == address(newPriceOracle)) {
-            revert CygnusCollateralControl__CygnusOracleAlreadySet({
-                currentOracle: address(cygnusNebulaOracle),
-                newOracle: address(newPriceOracle)
-            });
-        }
+        // Valid, update
+        uint256 oldDebtRatio = debtRatio;
 
-        // Assign oracle for event
-        IChainlinkNebulaOracle _cygnusNebulaOracle = cygnusNebulaOracle;
+        // Update debt ratio
+        debtRatio = newDebtRatio;
 
-        // Update price oracle
-        cygnusNebulaOracle = newPriceOracle;
-
-        /// @custom:event NewPriceOracle
-        emit NewPriceOracle(_cygnusNebulaOracle, newPriceOracle);
+        /// @custom:event newDebtRatio
+        emit NewDebtRatio(oldDebtRatio, newDebtRatio);
     }
 
     /**
@@ -161,7 +168,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override cygnusAdmin nonReentrant {
+    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override nonReentrant cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
@@ -180,7 +187,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin nonReentrant {
+    function setLiquidationFee(uint256 newLiquidationFee) external override nonReentrant cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 

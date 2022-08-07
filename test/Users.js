@@ -13,7 +13,7 @@ module.exports = async function Users() {
     const [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
 
     // Lender
-    const lenderAddress = '0x277b09605debf23776e87aa4cebbf85d8a0da353';
+    const lenderAddress = '0x7851dc7cf893242dfb5fe283116d68cfb8a828fe';
 
     // Borrower
     const borrowerAddress = '0x0f1410a815105f4429a404d2101890aa11d97951';

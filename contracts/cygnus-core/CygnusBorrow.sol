@@ -63,10 +63,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             }
 
             // Mint new reserves and update the exchange rate
-            address vegaTokenManager = ICygnusFactory(hangar18).vegaTokenManager();
+            address daoReserves = ICygnusFactory(hangar18).daoReserves();
 
             // Safe internal mint
-            mintInternal(vegaTokenManager, newReserves);
+            mintInternal(daoReserves, newReserves);
 
             // Add reserves
             mintedReserves += newReserves;
@@ -76,10 +76,9 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
 
             // Return new exchange rate
             return newExchangeRate;
-        } else {
-            // Return the previous exchange rate
-            return _exchangeRate;
         }
+        // Else return the previous exchange rate
+        else return _exchangeRate;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -211,7 +210,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         uint256 actualRepayAmount = borrowerBalance < repayAmount ? borrowerBalance : repayAmount;
 
         // Amount to seize
-        denebAmount = ICygnusCollateral(collateral).seizeDeneb(liquidator, borrower, actualRepayAmount);
+        denebAmount = ICygnusCollateral(collateral).seizeCygLP(liquidator, borrower, actualRepayAmount);
 
         // Update borrows
         (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) = updateBorrowInternal(
@@ -232,10 +231,4 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             totalBorrowsStored
         );
     }
-
-    /**
-     *  @inheritdoc ICygnusBorrow
-     *  @custom:security non-reentrant
-     */
-    function sync() external override(ICygnusBorrow, ICygnusTerminal) nonReentrant update accrue {}
 }

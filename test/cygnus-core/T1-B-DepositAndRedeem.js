@@ -24,7 +24,7 @@ chai.use(solidity);
  *  Simple deposit and redeem for all borrow contracts
  *
  */
-context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
+context('Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI', function () {
 
     // Cygnus contracts + lp + dai
     let oracle, factory, router, borrowable, collateral, dai, lpToken
@@ -102,7 +102,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
     });
 
     // MINTS
-    describe('Lender deposits DAI', function () {
+    describe('Lender deposits DAI for CygDAI', function () {
         // Fail before approval
         it('Deposits dai in borrowable and mints CygDAI without approving router in Dai: FAIL { DAI_ERROR }', async () => {
             // DAI error
@@ -212,7 +212,7 @@ context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
             expect(await borrowable.exchangeRateStored()).to.eq(BigInt(1e18));
         });
 
-        it('Has the same exchange rate as initial (static call as borrow exchangeRate() is non-payable)', async () => {
+        it('Has the same exchange rate as initial (static call as borrow exchangeRate() accrues reserves)', async () => {
             expect(await borrowable.callStatic.exchangeRate()).to.eq(BigInt(1e18));
         });
     });
