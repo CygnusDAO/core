@@ -19,14 +19,14 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error InvalidRewardsToken The rewards token can't be the zero address
-     */
-    error CygnusCollateralChef__VoidAlreadyInitialized(address tokenReward);
-
-    /**
      *  @custom:error OnlyAccountsAllowed Avoid contracts
      */
     error CygnusCollateralChef__OnlyEOAAllowed(address sender, address origin);
+
+    /**
+     *  @custom:error InvalidRewardsToken The rewards token can't be the zero address
+     */
+    error CygnusCollateralChef__VoidAlreadyInitialized(address tokenReward);
 
     /**
      *  @custom:error NotNativeTokenSender Avoid receiving unless sender is native token
@@ -42,11 +42,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @custom:error CantMintZero Avoid redeeming 0 tokens
      */
     error CygnusCollateralVoid__CantMintZero(uint256 mintTokens);
-
-    /**
-     *  @custom:error CantSweepUnderlying Avoid sweeping underlying token
-     */
-    error CygnusCollateralVoid__CantSweepUnderlying(address tokenIn, address underlying);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -137,11 +132,4 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @custom:security non-reentrant
      */
     function reinvestRewards_y7b() external;
-
-    /**
-     *  @notice Converts any Erc20 token sent to this contract into more rewardsToken
-     *  @param tokenIn The address of the token that was sent to this contract and we are swapping
-     *  @param tokenOut The address of the token we are swapping to
-     */
-    function sweepToken(address tokenIn, address tokenOut) external;
 }

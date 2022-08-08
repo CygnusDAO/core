@@ -24,7 +24,7 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 import { Context } from "./utils/Context.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 
-// Borrow contract
+// Contracts
 import { CygnusBorrow } from "./CygnusBorrow.sol";
 
 /**
@@ -43,13 +43,13 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @custom:struct BorrowParameters Important parameters for the borrow contracts
+     *  @custom:struct BorrowParameters Important parameters for the borrow contracts and interest rate model
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
-     &  @custom:member baseRatePerYear The base rate per year for this shuttle
-     *  @custom:member farmApy The farm APY for this LP Token
-     *  @custom:member kinkUtilizationRate The kink utilization rate for this pool
+     &  @custom:member baseRatePerYear The base rate per year
+     *  @custom:member multiplier The multiplier per year
+     *  @custom:member kinkMultiplier The kink multiplier applied to the interest rate once util > kink
      */
     struct BorrowParameters {
         address factory;

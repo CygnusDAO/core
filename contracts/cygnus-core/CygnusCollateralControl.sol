@@ -5,6 +5,7 @@ pragma solidity >=0.8.4;
 import { ICygnusCollateralControl } from "./interfaces/ICygnusCollateralControl.sol";
 import { CygnusTerminal } from "./CygnusTerminal.sol";
 
+// Libraries
 import { Strings } from "./libraries/Strings.sol";
 
 // Interfaces
@@ -15,12 +16,13 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
- *  @notice Initializes Collateral Arm. Passes name, symbol and decimals to CygnusTerminal for the CygLP Token.
- *          This contract should be the only contract the Admin has control of (apart from initializing Void),
- *          specifically to set liquidation fees for the protocol, liquidation incentives for the liquidators,
- *          updating the oracle for this contract from the factory and the max debt ratio for this shuttle.
- *          The constructor assigns the factory address, the initial oracle, the underlying LP Token and cygnusDai
- *          (the Cygnus borrow contract for this collateral).
+ *  @notice Initializes Collateral Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygLP Token.
+ *          This contract should be the only contract the Admin has control of (apart from CygnusCollateralVoid),
+ *          specifically to set liquidation fees for the protocol, liquidation incentives for the liquidators
+ *          and setting and the debt ratio for this shuttle.
+ *
+ *          The constructor stores the borrowable address this pool is linked with, and only this address may
+ *          borrow the underlying.
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -28,7 +30,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library Strings Library used to append the name of the underlying LP Token to the CygLP token
+     *  @custom:library Strings Library used to append the names of token0 and token1 to the CygLP token
      */
     using Strings for string;
 
@@ -38,7 +40,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // ───────────────────── Important Addresses  ──────────────────────
+    // ──────────────────────────── Important Addresses
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -50,7 +52,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     IChainlinkNebulaOracle public immutable override cygnusNebulaOracle;
 
-    // ────────────────────── Current pool rates  ───────────────────────
+    // ───────────────────────────── Current pool rates
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -67,12 +69,12 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     uint256 public override liquidationFee;
 
-    // ──────────────────── Min/Max this pool allows  ────────────────────
+    // ─────────────────────── Min/Max this pool allows
 
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override DEBT_RATIO_MIN = 0.80e18;
+    uint256 public constant override DEBT_RATIO_MIN = 0.8e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -87,7 +89,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override LIQUIDATION_INCENTIVE_MAX = 1.20e18;
+    uint256 public constant override LIQUIDATION_INCENTIVE_MAX = 1.10e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl

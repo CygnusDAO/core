@@ -219,11 +219,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Create the path to swap from tokenIn to tokenOut
         address[] memory path = new address[](2);
 
-        // Assign tokenIn to path 0
-        path[0] = address(tokenIn);
-
-        // Assign tokenOut to path 1
-        path[1] = address(tokenOut);
+        // Create path for tokenIn to tokenOut
+        (path[0], path[1]) = (tokenIn, tokenOut);
 
         // Safe Approve router
         tokenIn.approveDexRouter(address(dexRouter), amount);
@@ -309,6 +306,30 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         emit Sync(totalBalance);
     }
 
+    /**
+     *  @notice Internal hook for deposits into strategies
+     *  @param assets The amount of assets to deposit into the strategy
+     */
+    function afterDeposit(
+        uint256 assets,
+        uint256 /* shares */
+    ) internal override {
+        // Deposit assets into the strategy
+        rewarder.deposit(pid, assets);
+    }
+
+    /**
+     *  @notice Internal hook for withdrawals from strategies
+     *  @param assets The amount of shares to withdraw from the strategy
+     */
+    function beforeWithdraw(
+        uint256 assets,
+        uint256 /* shares */
+    ) internal override {
+        // Withdraw assets from the strategy
+        rewarder.withdraw(pid, assets);
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -342,14 +363,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Swap fee for this dex
         dexSwapFee = dexSwapFeeVoid;
 
+        // Approve masterchef/rewarder in underlying
+        underlying.safeApprove(address(rewarderVoid), type(uint256).max);
+
         // Approve dex router in rewards token
         rewardsTokenVoid.safeApprove(address(dexRouterVoid), type(uint256).max);
 
         // Approve dex router in wavax
         nativeToken.safeApprove(address(dexRouterVoid), type(uint256).max);
-
-        // Approve masterchef/rewarder in underlying
-        underlying.safeApprove(address(rewarderVoid), type(uint256).max);
 
         // Activate
         voidActivated = true;
@@ -384,7 +405,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         // ─────────────────────── 3. Convert all rewardsToken to token0 or token1
 
-        // Sort tokens
+        // Placeholders to sort tokens
         address tokenA;
         address tokenB;
 
@@ -435,85 +456,5 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(address(this), _msgSender(), currentRewards, eoaReward);
-    }
-
-    /**
-     *  @dev This low level function should only be called from `Altair` contract only
-     *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
-     */
-    function mint(address recipient) external override(ICygnusTerminal) nonReentrant update returns (uint256 shares) {
-        // Get current balance
-        uint256 assets = IErc20(underlying).balanceOf(address(this));
-
-        // Check for pools with deposit fees
-        (uint256 totalBalanceBefore, ) = rewarder.userInfo(pid, address(this));
-
-        // Deposit in rewader
-        rewarder.deposit(pid, assets);
-
-        // Check balance after deposit
-        (uint256 totalBalanceAfter, ) = rewarder.userInfo(pid, address(this));
-
-        // (amount * scale) / exchangeRate
-        shares = (totalBalanceAfter - totalBalanceBefore).div(exchangeRate());
-
-        /// custom:error CantMintZero Avoid minting 0 shares
-        if (shares <= 0) {
-            revert CygnusTerminal__CantMintZeroShares();
-        }
-
-        // Mint tokens and emit Transfer event
-        mintInternal(recipient, shares);
-
-        /// @custom:event Mint
-        emit Mint(_msgSender(), recipient, assets, shares);
-    }
-
-    /**
-     *  @dev This low level function should only be called from `Altair` contract only
-     *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
-     */
-    function redeem(address recipient) external override(ICygnusTerminal) nonReentrant update returns (uint256 assets) {
-        // Get current balance
-        uint256 shares = balanceOf(address(this));
-
-        // Get the initial amount * exchange rate / scale
-        assets = shares.mul(exchangeRate());
-
-        /// @custom:error CantRedeemZeroAssets Avoid redeeming 0 assets
-        if (assets <= 0) {
-            revert CygnusTerminal__CantRedeemZeroAssets();
-        }
-        /// @custom:error RedeemAmountInvalid Avoid redeeming more than totalBalance
-        else if (assets > totalBalance) {
-            revert CygnusTerminal__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
-        }
-
-        // Burn initial amount and emit Transfer event
-        burnInternal(address(this), shares);
-
-        // Withdraw from rewarder
-        rewarder.withdraw(pid, assets);
-
-        // Optimistically transfer redeemed tokens
-        IErc20(underlying).safeTransfer(recipient, shares);
-
-        /// @custom:event Redeem
-        emit Redeem(_msgSender(), recipient, assets, shares);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     */
-    function sweepToken(address tokenIn, address tokenOut) external override nonReentrant cygnusAdmin {
-        // custom:error CantSweepUnderlying Avoid sweeping underlying
-        if (tokenIn == underlying) {
-            revert CygnusCollateralVoid__CantSweepUnderlying({ tokenIn: tokenIn, underlying: underlying });
-        }
-
-        // Convert `token` to `rewardsToken`
-        swapTokensPrivate(tokenIn, tokenOut, IErc20(tokenIn).balanceOf(address(this)));
     }
 }

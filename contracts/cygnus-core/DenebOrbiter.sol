@@ -24,7 +24,7 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 import { Context } from "./utils/Context.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 
-// Collateral contract
+// Contracts
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
 /**

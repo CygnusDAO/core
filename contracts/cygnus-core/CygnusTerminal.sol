@@ -179,7 +179,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply;
 
-        // If there is no supply for this token return initial rate, else (totalBalance * scale) / totalSupply
+        // If there is no supply for this token return initial rate
         return _totalSupply == 0 ? INITIAL_EXCHANGE_RATE : totalBalance.div(_totalSupply);
     }
 
@@ -202,79 +202,103 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
     /**
      *  @notice Internal hook for deposits into strategies
-     *  @param depositAmount The amount of assets to deposit into the strategy
+     *  @param assets The amount of assets deposited
+     *  @param shares The amount of shares minted
      */
-    function afterDeposit(uint256 depositAmount) internal virtual {}
+    function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
 
     /**
      *  @notice Internal hook for withdrawals from strategies
-     *  @param withdrawAmount The amount of shares to withdraw from the strategy
+     *  @param assets The amount of assets being withdrawn
+     *  @param shares The amount of shares burnt
      */
-    function beforeWithdraw(uint256 withdrawAmount) internal virtual {}
+    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This low level function should only be called from `Altair` contract only
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function mint(address recipient) external virtual override nonReentrant update returns (uint256 shares) {
-        // Get current balance
-        uint256 balance = IErc20(underlying).balanceOf(address(this));
-
-        // Substract from totalBalance to get deposit amount
-        uint256 assets = balance - totalBalance;
-
+    function deposit(uint256 assets, address recipient) external override nonReentrant update returns (uint256 shares) {
         // Get the amount of shares to mint
         shares = assets.div(exchangeRate());
 
-        /// custom:error CantMintZeroShares Avoid minting 0 shares
+        /// custom:error CantMintZeroShares Avoid minting no tokens
         if (shares <= 0) {
             revert CygnusTerminal__CantMintZeroShares();
         }
 
+        // Optimistically transfer tokens
+        IErc20(underlying).safeTransferFrom(_msgSender(), address(this), assets);
+
         // Mint tokens and emit Transfer event
         mintInternal(recipient, shares);
 
-        // Deposit into this strategy (if any)
-        afterDeposit(assets);
+        // Deposit assets into the strategy (if any)
+        afterDeposit(assets, shares);
 
-        /// @custom:event Mint
-        emit Mint(_msgSender(), recipient, assets, shares);
+        /// @custom:event Deposit
+        emit Deposit(_msgSender(), recipient, assets, shares);
     }
 
     /**
-     *  @dev This low level function should only be called from `Altair` contract only
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(address recipient) external virtual override nonReentrant update returns (uint256 assets) {
-        // Get current balance
-        uint256 shares = balanceOf(address(this));
+    function redeem(
+        uint256 shares,
+        address recipient,
+        address owner
+    ) external override nonReentrant update returns (uint256 assets) {
+        // Withdraw flow
+        if (_msgSender() != owner) {
+            // Check msg.sender's allowance
+            uint256 allowed = allowances[owner][_msgSender()]; // Saves gas for limited approvals.
 
-        // Get the amount of redeemable assets
+            // Reverts on underflow
+            if (allowed != type(uint256).max) allowances[owner][_msgSender()] = allowed - shares;
+        }
+
+        // Get the amount of assets to redeem
         assets = shares.mul(exchangeRate());
 
         /// @custom:error CantRedeemZeroAssets Avoid redeeming 0 assets
         if (assets <= 0) {
             revert CygnusTerminal__CantRedeemZeroAssets();
         }
-        /// @custom:error RedeemAmountInvalid Avoid redeeming more assets than our total balance
+        /// @custom:error RedeemAmountInvalid Avoid redeeming if theres insufficient cash
         else if (assets > totalBalance) {
             revert CygnusTerminal__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
         }
 
-        // Withdraw from this strategy (if any)
-        beforeWithdraw(assets);
+        // Withdraw assets from the strategy (if any)
+        beforeWithdraw(assets, shares);
 
-        // Burn initial amount and emit Transfer event
-        burnInternal(address(this), shares);
+        // Burn shares
+        burnInternal(owner, shares);
 
-        // Optimistically transfer redeemed tokens
+        // Optimistically transfer assets to recipient
         IErc20(underlying).safeTransfer(recipient, assets);
 
-        /// @custom:event Redeem
-        emit Redeem(_msgSender(), recipient, assets, shares);
+        /// @custom:event Withdraw
+        emit Withdraw(_msgSender(), recipient, owner, assets, shares);
+    }
+
+    /**
+     *  @notice Recovers any Erc20 sent to this contract except for the underlying token
+     *  @param token The address of the token that was sent to this contract
+     */
+    function sweepToken(address token) external override nonReentrant cygnusAdmin {
+        /// @custom:error CantSweepUnderlying Avoid sweeping underlying
+        if (token == underlying) {
+            revert CygnusTerminal__CantSweepUnderlying({ token: token, underlying: underlying });
+        }
+
+        // Balance this contract has of the erc20 token we are recovering
+        uint256 balance = IErc20(token).balanceOf(address(this));
+
+        // Transfer token
+        IErc20(token).transfer(_msgSender(), balance);
     }
 }

@@ -33,6 +33,11 @@ interface ICygnusTerminal is IErc20Permit {
      */
     error CygnusTerminal__MsgSenderNotAdmin(address sender, address factoryAdmin);
 
+    /**
+     *  @custom:error CantSweepUnderlying Emitted when trying to sweep the underlying from this contract
+     */
+    error CygnusTerminal__CantSweepUnderlying(address token, address underlying);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -52,17 +57,24 @@ interface ICygnusTerminal is IErc20Permit {
      *  @param shares Amount of pool tokens being minted
      *  @custom:event Mint Emitted when CygLP or CygDai pool tokens are minted
      */
-    event Mint(address indexed sender, address indexed recipient, uint256 assets, uint256 shares);
+    event Deposit(address indexed sender, address indexed recipient, uint256 assets, uint256 shares);
 
     /**
      *  @notice Logs when an asset is redeemed
      *  @param sender The address of `CygnusAltair` or the sender of the function call
-     *  @param recipient The address of the redeemer
-     *  @param assets The amount to redeem
-     *  @param shares The amount of PoolTokens burnt
+     *  @param recipient The address of the recipient of assets
+     *  @param owner The address of the owner of the pool tokens
+     *  @param assets The amount of assets to redeem
+     *  @param shares The amount of pool tokens burnt
      *  @custom:event Redeem Emitted when CygLP or CygDAI are redeemed
      */
-    event Redeem(address indexed sender, address indexed recipient, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed sender,
+        address indexed recipient,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
            3. CONSTANT FUNCTIONS
@@ -98,18 +110,31 @@ interface ICygnusTerminal is IErc20Permit {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This low level function should only be called from `CygnusAltair` contract only
+     *  @notice Deposits assets and mints shares to recipient
+     *  @param assets The amount of assets to deposit
      *  @param recipient Address of the minter
-     *  @return mintTokens Amount of pool tokens to mint
+     *  @return shares Amount of shares minted
      *  @custom:security non-reentrant
      */
-    function mint(address recipient) external returns (uint256 mintTokens);
+    function deposit(uint256 assets, address recipient) external returns (uint256 shares);
 
     /**
-     *  @dev This low level function should only be called from `CygnusAltair` contract only
-     *  @param recipient Address of the redeemer
-     *  @return redeemAmount The holder's shares
+     *  @notice Redeems and burn shares and returns underlying assets to recipient
+     *  @param shares The amount of shares to redeem for assets
+     *  @param recipient The address of the redeemer
+     *  @param owner The address of the account who owns the shares
+     *  @return assets Amount of assets redeemed
      *  @custom:security non-reentrant
      */
-    function redeem(address recipient) external returns (uint256 redeemAmount);
+    function redeem(
+        uint256 shares,
+        address recipient,
+        address owner
+    ) external returns (uint256 assets);
+
+    /**
+     *  @notice Recovers any ERC20 token accidentally sent to this contract. Sent to DAO reserves
+     *  @param token The address of the token we are recovering
+     */
+    function sweepToken(address token) external;
 }

@@ -9,12 +9,15 @@ import { CygnusTerminal } from "./CygnusTerminal.sol";
 import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
- *  @title  CygnusBorrowControl Contract for controlling borrow settings like interest base rate, kink utilization, etc.
+ *  @title  CygnusBorrowControl Contract for controlling borrow settings
  *  @author CygnusDAO
- *  @notice Initializes Borrow Arm. Passes name, symbol and decimals to CygnusTerminal for the CygDAI Token. The
- *          This contract should be the only contract the Cygnus admin has control of, specifically to set the borrow
- *          tracker which tracks individual borrows to reward users in any token (if there is any incentive), set the
- *          reserve factor, the kink utilization rate and the kink multiplier.
+ *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygDAI Token.
+ *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
+ *          borrow tracker which tracks individual borrows to reward users in any token (if there is any),
+ *          the reserve factor and the kink utilization rate.
+ *
+ *          The constructor stores the collateral address this pool is linked with, and only this address can
+ *          be used as collateral to borrow this contract`s underlying.
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygDAI", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -23,7 +26,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // ───────────────────── Important Addresses  ──────────────────────
+    // ──────────────────────────── Important Addresses
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -35,7 +38,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     address public override cygnusBorrowTracker;
 
-    // ────────────────────── Current pool rates  ───────────────────────
+    // ───────────────────────────── Current pool rates
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -50,14 +53,14 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override kinkUtilizationRate = 0.80e18;
+    uint256 public override kinkUtilizationRate = 0.85e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
     uint256 public override kinkMultiplier;
 
-    // ──────────────────── Min/Max this pool allows  ────────────────────
+    // ─────────────────────── Min/Max this pool allows
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -93,7 +96,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *          collateral contract for this borrow token. Interest rate model is assigned in the next child contract
      */
     constructor() {
-        // Get factory, underlying and collateral address and interest rate parameters for this shuttle
+        // Get factory, underlying and collateral adddresses
         // prettier-ignore
         (hangar18, underlying, collateral, /* base */, /* multiplier */, /* kink */) = IAlbireoOrbiter(_msgSender())
             .borrowParameters();

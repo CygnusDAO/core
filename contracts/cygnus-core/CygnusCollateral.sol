@@ -102,7 +102,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     ) external override returns (uint256 cygLPAmount) {
         /// @custom:error CantLiquidateSelf Avoid liquidating self
         if (_msgSender() == borrower) {
-            revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower });
+            revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower, liquidator: liquidator });
         }
         /// @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
         else if (_msgSender() != cygnusDai) {

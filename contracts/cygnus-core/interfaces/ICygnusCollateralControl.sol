@@ -26,23 +26,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Updated directly from the factory -> First update factory oracle then update shuttle
-     *  @notice Logs when the oracle is updated by admins
-     *  @param oldPriceOracle The address of the previous price oracle
-     *  @param newPriceOracle The address of the new price oracle for this shuttle
-     *  @custom:event Emitted when a new price oracle is set
-     */
-    event NewPriceOracle(IChainlinkNebulaOracle oldPriceOracle, IChainlinkNebulaOracle newPriceOracle);
-
-    /**
-     *  @notice Logs when the liquidation incentive is updated by admins
-     *  @param oldLiquidationIncentive The old incentive for liquidators taken from the collateral
-     *  @param newLiquidationIncentive The new liquidation incentive for this shuttle
-     *  @custom:event NewLiquidationIncentive Emitted when a new liquidation incentive is set
-     */
-    event NewLiquidationIncentive(uint256 oldLiquidationIncentive, uint256 newLiquidationIncentive);
-
-    /**
      *  @notice Logs when the debt ratio is updated by admins
      *  @param oldDebtRatio The old debt ratio at which the collateral was liquidatable in this shuttle
      *  @param newDebtRatio The new debt ratio for this shuttle
@@ -51,19 +34,19 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     event NewDebtRatio(uint256 oldDebtRatio, uint256 newDebtRatio);
 
     /**
+     *  @notice Logs when the liquidation incentive is updated by admins
+     *  @param oldLiquidationIncentive The old incentive for liquidators taken from the collateral
+     *  @param newLiquidationIncentive The new liquidation incentive for this shuttle
+     *  @custom:event NewLiquidationIncentive Emitted when a new liquidation incentive is set
+     */
+    event NewLiquidationIncentive(uint256 oldLiquidationIncentive, uint256 newLiquidationIncentive);
+    /**
      *  @notice Logs when the liquidation fee is updated by admins
      *  @param oldLiquidationFee The previous fee the protocol kept as reserves from each liquidation
      *  @param newLiquidationFee The new liquidation fee for this shuttle
      *  @custom:event NewLiquidationFee Emitted when a new liquidation fee is set
      */
     event NewLiquidationFee(uint256 oldLiquidationFee, uint256 newLiquidationFee);
-
-    /**
-     *  @notice Logs when a new void is set by admins
-     *  @param oldVoid The address of the previous void contract
-     *  @param newVoid The address of the new void contract
-     */
-    event NewCygnusVoid(address oldVoid, address newVoid);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -74,7 +57,7 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     // ────────────── Important Addresses ─────────────
 
     /**
-     *  @return cygnusDai The address of the Cygnus borrow contract for this collateral which has DAI
+     *  @return cygnusDai The address of the Cygnus borrow contract for this collateral which holds DAI
      */
     function cygnusDai() external view returns (address);
 
@@ -91,12 +74,12 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     function debtRatio() external view returns (uint256);
 
     /**
-     *  @return liquidationIncentive The current liquidation incentive for this shuttle, default at 5%
+     *  @return liquidationIncentive The current liquidation incentive for this shuttle
      */
     function liquidationIncentive() external view returns (uint256);
 
     /**
-     *  @return liquidationFee The current liquidation fee the protocol keeps from each liquidation, default at 0%
+     *  @return liquidationFee The current liquidation fee the protocol keeps from each liquidation
      */
     function liquidationFee() external view returns (uint256);
 

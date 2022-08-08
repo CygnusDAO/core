@@ -18,9 +18,9 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     error CygnusCollateral__InsufficientLiquidity(address from, address to, uint256 value);
 
     /**
-     *  @custom:error ValueExceedsBalance Emitted when the value of unlock is above user's total balance
+     *  @custom:error LiquiditingSelf Emitted when liquidator is borrower
      */
-    error CygnusCollateral__ValueExceedsBalance(uint256 redeemValue, uint256 redeemBalance);
+    error CygnusCollateral__CantLiquidateSelf(address borrower, address liquidator);
 
     /**
      *  @custom:error MsgSenderNotCygnusDai Emitted for liquidation when msg.sender is not borrowable.
@@ -38,19 +38,14 @@ interface ICygnusCollateral is ICygnusCollateralModel {
     error CygnusCollateral__NotLiquidatable(uint256 userLiquidity, uint256 userShortfall);
 
     /**
-     *  @custom:error LiquiditingSelf Emitted when liquidator is borrower
+     *  @custom:error CantRedeemZero Emitted when trying to redeem 0 tokens
      */
-    error CygnusCollateral__CantLiquidateSelf(address borrower);
+    error CygnusCollateral__CantRedeemZero();
 
     /**
      *  @custom:error RedeemAmountInvalid Emitted when redeeming more than pool's totalBalance
      */
     error CygnusCollateral__RedeemAmountInvalid(uint256 redeemAmount, uint256 totalBalance);
-
-    /**
-     *  @custom:error CantRedeemZero Emitted when trying to redeem 0 tokens
-     */
-    error CygnusCollateral__CantRedeemZero();
 
     /**
      *  @custom:error InsufficientRedeemAmount Emitted when redeeming more than user balance of redeem Tokens

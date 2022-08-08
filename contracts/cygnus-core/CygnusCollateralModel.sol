@@ -167,9 +167,6 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         address borrowableToken,
         uint256 accountBorrows
     ) external view override returns (bool) {
-        // Gas savings
-        address borrowContract = cygnusDai;
-
         /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
         if (borrowableToken != cygnusDai) {
             revert CygnusCollateralModel__BorrowableInvalid({
@@ -178,11 +175,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
             });
         }
 
-        // Amount of DAI
-        uint256 cygnusDaiAmount = borrowableToken == borrowContract ? accountBorrows : type(uint256).max;
-
         // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, cygnusDaiAmount);
+        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, accountBorrows);
 
         return shortfall == 0;
     }

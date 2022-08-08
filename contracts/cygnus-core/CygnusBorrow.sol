@@ -7,7 +7,7 @@ import { CygnusBorrowTracker } from "./CygnusBorrowTracker.sol";
 
 // Libraries
 import { SafeErc20 } from "./libraries/SafeErc20.sol";
-import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
@@ -25,12 +25,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library SafeErc20 For safe transfers of Erc20 tokens
+     *  @custom:library SafeErc20 Low level handling of Erc20 tokens
      */
     using SafeErc20 for IErc20;
 
     /**
-     *  @custom:library PRBMathUD60x18 for uint256 fixed point math, also imports the main library `PRBMath`
+     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
      */
     using PRBMathUD60x18 for uint256;
 
@@ -41,7 +41,8 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice mints reserves to CygnusReservesManager
+     *  @notice mints reserves to CygnusReservesManager. Uses the mintedReserves variable to keep internal track
+     *          of reserves instead of balanceOf
      *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
      *  @return Latest exchange rate
      */
