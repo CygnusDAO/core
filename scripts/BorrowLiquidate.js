@@ -64,12 +64,12 @@ async function deploy() {
     console.log('Borrower deposits 100 LPs, Lender deposits 1000 DAI');
 
     // Borrower: Approve router in LP and mint CygLP
-    await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
     // Lender: Approve router in dai and mint Cygdai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(1000e18), lender._address, max);
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(4000e18), lender._address);
 
     const daiBalanceBorrower = await dai.balanceOf(borrower._address);
     const cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);

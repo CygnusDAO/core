@@ -19,23 +19,13 @@ async function deploy() {
     let lenderDeposit = BigInt(1000e18);
 
     // Cygnus contracts and underlyings
-    let [
-        oracle,
-        factory,
-        router,
-        borrowable,
-        collateral,
-        dai,
-        lpToken,
-        voidRouter,
-        masterChef,
-        rewardToken,
-        pid,
-        swapFee,
-    ] = await make();
+    let [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
     // Users
-    [owner, daoReservesManager, safeAddress2, lender, borrower] = await users();
+    let [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
+
+    // Strategy
+    let [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
 
     // Initial dai Balance
     let lenderInitialDaiBalance = await dai.balanceOf(lender._address);
@@ -43,7 +33,7 @@ async function deploy() {
     // ═════════════════════ INITIALIZE VOID ═══════════════════════════════════════════════════════════════
 
     // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
-    await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, 6, 997);
+    await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
 
     /*******************************************************************************************************
    
@@ -67,13 +57,13 @@ async function deploy() {
     console.log('Borrower`s LP Balance before Cygnus        | %s', (await lpToken.balanceOf(borrower._address)) / 1e18);
     console.log('Lender`s DAI balance before Cygnus         | %s', (await dai.balanceOf(lender._address)) / 1e18);
 
-    // Borrower: Deposits 100 LP Token = ~740 usd
-    await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    // Borrower: Approve collateral in LP Token
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
-    // Lender: Deposits 1000 dai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(5000e18), lender._address, max);
+    // Lender: Approve borrowable in DAI
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(15000e18), lender._address);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('BEFORE LEVERAGE');
@@ -155,7 +145,7 @@ async function deploy() {
     const cygLPBalanceOfLiquidatorBeforeLiqui = await collateral.balanceOf(lender._address);
     const daiBalanceOfLiquidatorBeforeLiqui = await dai.balanceOf(lender._address);
 
-    console.log('Collateral`s totalBalance before liq       | %s LPs', collateralTotalBalanceBeforeLiqui / 1e18)
+    console.log('Collateral`s totalBalance before liq       | %s LPs', collateralTotalBalanceBeforeLiqui / 1e18);
     console.log('Borrower`s CygLP balance before liq        | %s CygLP', cygLPBalanceOfBorrowerBeforeLiqui / 1e18);
     console.log('Liquidator CygLP balance before liq        | %s CygLP', cygLPBalanceOfLiquidatorBeforeLiqui / 1e18);
     console.log('Liquidator DAI balance before liq          | %s DAI', daiBalanceOfLiquidatorBeforeLiqui / 1e18);
@@ -173,7 +163,7 @@ async function deploy() {
     const cygLPBalanceOfLiquidatorAfterLiqui = await collateral.balanceOf(lender._address);
     const daiBalanceOfLiquidatorAfterLiqui = await dai.balanceOf(lender._address);
 
-    console.log('Collateral`s totalBalance after liq        | %s LPs', collateralTotalBalanceAfterLiqui / 1e18)
+    console.log('Collateral`s totalBalance after liq        | %s LPs', collateralTotalBalanceAfterLiqui / 1e18);
     console.log('Borrower`s CygLP balance after liq         | %s CygLP', cygLPBalanceOfBorrowerAfterLiqui / 1e18);
     console.log('Liquidator balance of collateral after liq | %s CygLP', cygLPBalanceOfLiquidatorAfterLiqui / 1e18);
     console.log('Liquidator DAI balance after liq           | %s DAI', daiBalanceOfLiquidatorAfterLiqui / 1e18);

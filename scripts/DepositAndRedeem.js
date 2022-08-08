@@ -56,16 +56,20 @@ async function deploy() {
     console.log('Total Balance of collateral before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
 
     // Borrower: Approve router in LP and mint CygLP
-    await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
     // Lender: Approve router in dai and mint Cygdai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(4000e18), lender._address, max);
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(4000e18), lender._address);
+
+    let daiBalanceBorrower = await dai.balanceOf(borrower._address);
+    let cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
 
     console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
     console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
-
+    console.log('CygDai balanceOf Lender              | %s CygDai', daiBalanceBorrower / 1e18);
+    console.log('CygLP balanceOf Borrower             | %s CygLP', cygLPBalanceBorrower / 1e18);
     // Borrow
     await borrowable.connect(borrower).borrowApprove(router.address, max);
     await router.connect(borrower).borrow(borrowable.address, BigInt(300e18), borrower._address, max, '0x');
@@ -115,13 +119,13 @@ async function deploy() {
 
     // Redeem borrower
     const balanceBorrower = await collateral.balanceOf(borrower._address);
-    await collateral.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).redeem(collateral.address, balanceBorrower, borrower._address, max, '0x');
+    await collateral.connect(borrower).redeem(balanceBorrower, borrower._address, borrower._address);
+    // await collateral.connect(borrower).approve(router.address, max);
+    // await router.connect(borrower).redeem(collateral.address, balanceBorrower, borrower._address, max, '0x');
 
     // Redeem lender
     const balanceLender = await borrowable.balanceOf(lender._address);
-    await borrowable.connect(lender).approve(router.address, max);
-    await router.connect(lender).redeem(borrowable.address, balanceLender, lender._address, max, '0x');
+    await borrowable.connect(lender).redeem(balanceLender, lender._address, lender._address);
 
     // Should be a bit higher due to reinvest rewards
     console.log('Borrower`s LP balance after redeem   | %s LPs', (await lpToken.balanceOf(borrower._address)) / 1e18);

@@ -57,13 +57,16 @@ async function deploy() {
     console.log('Borrower deposits 100 LPs, Lender deposits 25,000  DAI');
     console.log('----------------------------------------------------------------------------------------------');
 
-    // Borrower: Deposits 100 LP Token = ~740 usd
+    // Borrower: Approve collateral in LP Token
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).approve(router.address, max);
+    await collateral.connect(borrower).approve(lpToken.address, max);
     await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
-    // Lender: Deposits 1000 dai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(15000e18), lender._address, max);
+    // Lender: Approve borrowable in DAI
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(15000e18), lender._address);
 
     console.log('BEFORE LEVERAGE');
     console.log('----------------------------------------------------------------------------------------------');
@@ -92,8 +95,13 @@ async function deploy() {
     let maxLiquidity = (BigInt(accountLiquidity.liquidity) * BigInt(1e18)) / BigInt(liqIncentive);
     console.log(maxLiquidity);
 
+    // Borrower
+    await lpToken.connect(borrower).approve(router.address, max);
+
     // Borrower 4x leverage (borrows DAI equivalent to 300 LP Tokens)
-    await router.connect(borrower).leverage(collateral.address, maxLiquidity * BigInt(10), borrower._address, max, '0x');
+    await router
+        .connect(borrower)
+        .leverage(collateral.address, maxLiquidity * BigInt(10), borrower._address, max, '0x');
 
     // Borrower`s borrow balance
     const borrowBalanceAfter = await borrowable.getBorrowBalance(borrower._address);
@@ -149,7 +157,7 @@ async function deploy() {
     // Deleverage up to original deposited amount + estimate of swap fees (0.3% for each swap and we're doing 6 swaps max)
     await collateral.connect(borrower).approve(router.address, max);
     const maxBalance = await collateral.balanceOf(borrower._address);
-    await router.connect(borrower).deleverage(collateral.address, BigInt(maxBalance), max, '0x');
+    await router.connect(borrower).deleverage(collateral.address, BigInt(maxBalance), max, '0x', { gasLimit: 9000000 });
 
     const newBalance = await collateral.balanceOf(borrower._address);
 
@@ -167,7 +175,7 @@ async function deploy() {
     console.log('Borrower`s CygLP balance after deleverage      | %s CygLP', finalDenebBalance / 1e18);
     console.log('Borrowable`s totalBalance after deleverage     | %s DAI', finalAlbireoBalance / 1e18);
     console.log('Collateral`s totalBalance after deleverage     | %s LP Tokens', totalBalanceD / 1e18);
-    
+
     console.log('Borrower`s DAI balance after deleverage        | %s DAI', daiBalanceBorrower);
 
     console.log('----------------------------------------------------------------------------------------------');
@@ -177,8 +185,7 @@ async function deploy() {
     const balanceCygDaiLender = await borrowable.balanceOf(lender._address);
 
     // Redeem CygDAI
-    await borrowable.connect(lender).approve(router.address, max);
-    await router.connect(lender).redeem(borrowable.address, balanceCygDaiLender, lender._address, max, '0x');
+    await borrowable.connect(lender).redeem(balanceCygDaiLender, lender._address, lender._address);
 
     const finalLPBalance = await lpToken.balanceOf(borrower._address);
     const finalDaiBalance = await dai.balanceOf(lender._address);

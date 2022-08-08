@@ -55,20 +55,21 @@ async function deploy() {
     console.log('Borrower deposits 100 LPs, Lender deposits 1000 DAI');
     console.log('----------------------------------------------------------------------------------------------');
 
-    // Borrower: Approve router in LP and mint CygLP
-    await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    // Borrower: Approve collateral in LP Token
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
-    // Lender: Approve router in dai and mint Cygdai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(1000e18), lender._address, max);
+    // Lender: Approve borrowable in DAI
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(15000e18), lender._address);
 
-    let daiBalanceBorrower = await dai.balanceOf(borrower._address);
+    let cygDaiBalanceLender = await borrowable.balanceOf(lender._address);
     let cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
 
-    // Check that we have dai
-    console.log('Borrower`s DAI balance before borrow | %s DAI', daiBalanceBorrower / 1e18);
-    console.log('Borrower`s CygLP bal. before borrow  | %s CygLP', cygLPBalanceBorrower / 1e18);
+    console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
+    console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
+    console.log('CygDai balanceOf Lender              | %s CygDai', cygDaiBalanceLender / 1e18);
+    console.log('CygLP balanceOf Borrower             | %s CygLP', cygLPBalanceBorrower / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('BORROW 100 DAI');

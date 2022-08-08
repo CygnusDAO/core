@@ -55,13 +55,13 @@ async function deploy() {
     console.log('Borrower`s LP Balance before Cygnus        | %s', (await lpToken.balanceOf(borrower._address)) / 1e18);
     console.log('Lender`s DAI balance before Cygnus         | %s', (await dai.balanceOf(lender._address)) / 1e18);
 
-    // Borrower: Deposits 100 LP Token = ~740 usd
-    await lpToken.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).mint(collateral.address, BigInt(100e18), borrower._address, max);
+    // Borrower: Approve collateral in LP Token
+    await lpToken.connect(borrower).approve(collateral.address, max);
+    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
-    // Lender: Deposits 10000 dai
-    await dai.connect(lender).approve(router.address, max);
-    await router.connect(lender).mint(borrowable.address, BigInt(13000e18), lender._address, max);
+    // Lender: Approve borrowable in DAI
+    await dai.connect(lender).approve(borrowable.address, max);
+    await borrowable.connect(lender).deposit(BigInt(15000e18), lender._address);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('BEFORE LEVERAGE');
