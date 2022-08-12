@@ -124,7 +124,7 @@ async function deploy() {
     console.log('Reinvestor`s totalBalance before reinvest  | %s JOE (or reward token)', reinvestorBalance / 1e18);
 
     // Increase 7 days
-    await time.increase(60 * 60 * 24 * 60);
+    await time.increase(60 * 60 * 24 * 110);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('60 Days pass...');
@@ -157,6 +157,8 @@ async function deploy() {
     console.log('Exchange Rate current: %s', (await collateral.exchangeRate()) / 1e18);
 
     // Checks that liquidate amount is never above borrowed balance in router (ie if user borrowed 20 dai, router will repay 20 dai, not 5000)
+    await dai.connect(lender).approve(router.address, max);
+
     await router
         .connect(lender)
         .liquidate(borrowable.address, BigInt(10000e18), borrower._address, lender._address, max);
@@ -168,6 +170,8 @@ async function deploy() {
     console.log('Borrower balance of collateral             | %s CygLP', borrowerBalanceCollAfterLiq / 1e18);
     console.log('Liquidator balance of collateral           | %s CygLP', lenderBalanceCollAfterLiq / 1e18);
     console.log('Borrow Balance of borrower                 | %s DAI', borrowBalanceAfterLiq / 1e18);
+
+    await collateral.connect(lender).redeem(lenderBalanceCollAfterLiq, lender._address, lender._address);
 }
 
 deploy();

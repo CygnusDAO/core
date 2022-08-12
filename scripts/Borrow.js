@@ -52,7 +52,7 @@ async function deploy() {
     console.log('----------------------------------------------------------------------------------------------');
     console.log('Price of LP Token                    | %s DAI', (await collateral.getLPTokenPrice()) / 1e18);
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('Borrower deposits 100 LPs, Lender deposits 1000 DAI');
+    console.log('Borrower deposits 100 LPs, Lender deposits 1600 DAI');
     console.log('----------------------------------------------------------------------------------------------');
 
     // Borrower: Approve collateral in LP Token
@@ -61,7 +61,7 @@ async function deploy() {
 
     // Lender: Approve borrowable in DAI
     await dai.connect(lender).approve(borrowable.address, max);
-    await borrowable.connect(lender).deposit(BigInt(15000e18), lender._address);
+    await borrowable.connect(lender).deposit(BigInt(1600e18), lender._address);
 
     let cygDaiBalanceLender = await borrowable.balanceOf(lender._address);
     let cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
@@ -72,7 +72,7 @@ async function deploy() {
     console.log('CygLP balanceOf Borrower             | %s CygLP', cygLPBalanceBorrower / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('BORROW 100 DAI');
+    console.log('BORROW MAX AMOUNT DAI');
     console.log('----------------------------------------------------------------------------------------------');
 
     // Max Borrow = accountLiquidity / liquidationIncentive
@@ -85,43 +85,54 @@ async function deploy() {
     await router.connect(borrower).borrow(borrowable.address, BigInt(maxBorrow), borrower._address, max, '0x');
 
     let daiBalanceBorrowerAfter = await dai.balanceOf(borrower._address);
-    let cygLPBalanceBorrowerAfter = await collateral.balanceOf(borrower._address);
+    let borrowablesDAIBalanceAfter = await borrowable.totalBalance();
 
     // Check that Borrower has dai
     console.log('Borrower`s DAI balance after borrow  | %s DAI', daiBalanceBorrowerAfter / 1e18);
-    console.log('Borrower`s CygLP bal. after borrow   | %s CygLP', cygLPBalanceBorrowerAfter / 1e18);
+    console.log('Borrowables DAI balance after borrow | %s DAI', borrowablesDAIBalanceAfter / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('BEFORE REINVEST REWARDS');
+    console.log('REINVEST REWARDS');
     console.log('----------------------------------------------------------------------------------------------');
 
-    let borrowersDebtRatioBeforeR = await collateral.getDebtRatio(borrower._address);
-    let collateralTotalBalanceBeforeR = await collateral.totalBalance();
-    let exchangeRateBeforeR = await collateral.exchangeRate();
+    // Create
+    const rewardTokenContract = await dai.attach(rewardToken);
 
-    // Check Users debt ratio
-    console.log('Borrowers debt ratio before reinvest | %s %', borrowersDebtRatioBeforeR / 1e16);
-    console.log('Total Balance of collateral before   | %s LPs', collateralTotalBalanceBeforeR / 1e18);
-    console.log('Exchange Rate of collateral before   | %s LPs', exchangeRateBeforeR / 1e18);
+    const reinvestorBalance = await rewardTokenContract.balanceOf(safeAddress2.address);
+    const balanceBeforeReinvest = await collateral.totalBalance();
 
-    console.log('----------------------------------------------------------------------------------------------');
-    console.log('AFTER REINVEST REWARDS (3 DAYS)');
-    console.log('----------------------------------------------------------------------------------------------');
+    console.log('Borrower`s debt ratio before reinvesting       | % %s', (await collateral.getDebtRatio(borrower._address)) / 1e16,);
+    console.log('Collateral`s totalBalance before reinvesting   | %s LP Tokens', balanceBeforeReinvest / 1e18);
+    console.log('Reinvestor`s balanceOf token before reinvest   | %s JOE (or other)', reinvestorBalance / 1e18);
 
+    // Increase 18 days
     await time.increase(60 * 60 * 24 * 3);
 
-    // Reinvest rewards
-    await collateral.reinvestRewards_y7b();
+    console.log('3 days pass.');
 
-    let borrowersDebtRatioAfterR = await collateral.getDebtRatio(borrower._address);
-    let collateralTotalBalanceAfterR = await collateral.totalBalance();
-    let exchangeRateAfterR = await collateral.exchangeRate();
+    await collateral.connect(safeAddress2).reinvestRewards_y7b();
 
-    console.log('Borrowers debt ratio after reinvest  | %s %', borrowersDebtRatioAfterR / 1e16);
-    console.log('Total Balance of collateral after    | %s LPs', collateralTotalBalanceAfterR / 1e18);
-    console.log('Exchange Rate of collateral after    | %s', exchangeRateAfterR / 1e18);
+    const reinvestorBalanceAfter = await rewardTokenContract.balanceOf(safeAddress2.address);
+    const balanceAfterReinvest = await collateral.totalBalance();
+
+    // Debt Ratio of borrower
+    console.log('Borrower`s debt ratio after reinvesting        | % %s', (await collateral.getDebtRatio(borrower._address)) / 1e16,);
+    console.log('Collateral`s totalBalance after reinvest       | %s LP Tokens', balanceAfterReinvest / 1e18);
+    console.log('Reinvestor`s balanceOf token after reinvest    | %s JOE (or other)', reinvestorBalanceAfter / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
+  /*
+
+    let r2 = await lpToken.getReserves();
+    console.log('Reserves: %s', r2);
+
+    let token0 = await lpToken.token0();
+    let token1 = await lpToken.token1();
+    let token0c = await lpToken.attach(token0);
+    let token1c = await lpToken.attach(token1);
+    console.log('Balance of token0: %s', await token0c.balanceOf(collateral.address));
+    console.log('Balance of token1: %s', await token1c.balanceOf(collateral.address));
+    */
 }
 
 deploy();
