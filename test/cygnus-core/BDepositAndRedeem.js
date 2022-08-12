@@ -104,21 +104,21 @@ context('Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI', function 
     // MINTS
     describe('Lender deposits DAI for CygDAI', function () {
         // Fail before approval
-        it('Deposits dai in borrowable and mints CygDAI without approving router in Dai: FAIL { DAI_ERROR }', async () => {
+        it('Deposits dai in borrowable and mints CygDAI without approving borrowable in DAI: FAIL { DAI_ERROR }', async () => {
             // DAI error
-            await expect(router.connect(lender).mint(borrowable.address, lenderDeposit, lender._address, max)).to.be
-                .reverted;
+            await expect(borrowable.connect(lender).deposit(lenderDeposit, lender._address)).to.be.reverted;
+
         });
 
-        it('Approves router in dai contract', async () => {
-            await dai.connect(lender).approve(router.address, max);
+        it('Approves borrowable in dai contract', async () => {
+            await dai.connect(lender).approve(borrowable.address, max);
 
-            expect(await dai.allowance(lender._address, router.address)).to.eq(max);
+            expect(await dai.allowance(lender._address, borrowable.address)).to.eq(max);
         });
 
         // Mint and transfer event
         it('Deposits dai in borrowable and mints CygDAI and emits { Mint }', async () => {
-            await expect(router.connect(lender).mint(borrowable.address, lenderDeposit, lender._address, max))
+            await expect(borrowable.connect(lender).deposit(lenderDeposit, lender._address))
                 .to.emit(borrowable, 'Mint')
                 .withArgs(router.address, lender._address, lenderDeposit, lenderDeposit);
         });

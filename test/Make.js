@@ -88,13 +88,7 @@ module.exports = async function Make() {
     // Factory
     const Factory = await ethers.getContractFactory('CygnusFactory');
 
-    const factory = await Factory.deploy(
-        owner.address,
-        daoReserves.address,
-        daiAddress,
-        nativeAddress,
-        oracle.address,
-    );
+    const factory = await Factory.deploy(owner.address, daoReserves.address, daiAddress, nativeAddress, oracle.address);
 
     // Orbiter
     const orbiter = await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
@@ -117,14 +111,12 @@ module.exports = async function Make() {
     // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
 
     // custom pool rates for the JoeAvax lending pool
-    const baseRate = BigInt(0.08e18);
+    const baseRate = BigInt(0.025e18);
 
-    const multiplier = BigInt(0.15e18);
-
-    const kinkMultiplier = BigInt(3);
+    const multiplier = BigInt(0.8e18);
 
     // Shuttle with LP Token address from setup
-    await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier, kinkMultiplier);
+    await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier);
 
     const shuttle = await factory.getShuttles(lpToken.address, 0);
 
@@ -132,11 +124,11 @@ module.exports = async function Make() {
 
     console.log('Cygnus Collateral  | %s', shuttle.collateral);
     console.log('──────────────────────────────────────────────────────────────────────────────');
-    console.log('Cygnus Borrowable  | %s', shuttle.cygnusDai);
+    console.log('Cygnus Borrowable  | %s', shuttle.borrowable);
     console.log('──────────────────────────────────────────────────────────────────────────────');
 
     // Borrowable and collateral contracts
-    const borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.cygnusDai, owner);
+    const borrowable = await ethers.getContractAt('CygnusBorrow', shuttle.borrowable, owner);
 
     const collateral = await ethers.getContractAt('CygnusCollateral', shuttle.collateral, owner);
 
