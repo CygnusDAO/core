@@ -52,7 +52,9 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
     mapping(address => BorrowSnapshot) internal borrowBalances;
 
     /**
-     *  @notice Internal variable to keep track of reserve mints used by CygnusBorrow contract to add to `totalReserves`
+     *  @notice Internal variable to keep track of reserve mints used by CygnusBorrow contract to add to
+     *          `totalReserves`. We keep track of it internally to avoid using `balanceOf` (could break accounting)
+     *           or avoid rounding errors by calculating with exchange rates
      */
     uint256 internal mintedReserves;
 
@@ -136,6 +138,16 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
                 uint256(borrowIndex),
                 uint256(borrowSnapshot.interestIndex)
             );
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusBorrowTracker
+     */
+    function utilizationRate() external view override returns (uint256) {
+        // Return the current utilization rate
+        return uint256(totalBorrows).div((totalBalance + uint256(totalBorrows)) - totalReserves);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -229,8 +241,8 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
             // Calculate the actual amount to decrease
             uint256 decreaseBorrowAmount = repayAmount - borrowAmount;
 
-            // If the decrease amount is >= user's prior borrows then user borrows is 0, else return the difference
             // Never underflows
+            // If the decrease amount is >= user's prior borrows then user borrows is 0, else return the difference
             unchecked {
                 accountBorrows = accountBorrowsPrior > decreaseBorrowAmount
                     ? accountBorrowsPrior - decreaseBorrowAmount
@@ -249,8 +261,8 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
             // Total protocol borrows and gas savings
             totalBorrowsStored = totalBorrows;
 
-            // Condition check to update protocols total borrows
             // Never underflows
+            // Condition check to update protocols total borrows
             unchecked {
                 totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount
                     ? totalBorrowsStored - actualDecreaseAmount
@@ -317,7 +329,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // 3. Calculate the interest accumulated in this time elapsed
         uint256 interestAccumulated = interestFactor.mul(totalBorrowsStored);
 
-        // 4. Add the interest accumulated to total borrows.
+        // 4. Add the interest accumulated to total borrows
         totalBorrowsStored += interestAccumulated;
 
         // 5. Add interest to total reserves (reserveFactor * interestAccumulated / scale) + reservesStored

@@ -23,7 +23,7 @@ import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
  *
  *          The same can be calculated but instead of returning a percentage will return the actual amount of the user's
  *          liquidity or shortfall but denominated in DAI, by calling `getAccountLiquidity`
- *          The last function `canBorrow` is called by the `cygnusDai` contract (the borrow arm) to confirm if a user
+ *          The last function `canBorrow` is called by the `borrowable` contract (the borrow arm) to confirm if a user
  *          can borrow or not.
  */
 contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
@@ -98,11 +98,11 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
 
         // User's Token A borrow balance
         if (borrowedAmount == type(uint256).max) {
-            borrowedAmount = ICygnusBorrowTracker(cygnusDai).getBorrowBalance(borrower);
+            borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
         }
 
         // (balance of borrower * present exchange rate) / scale
-        uint256 amountCollateral = balanceOf(borrower).mul(exchangeRate());
+        uint256 amountCollateral = balances[borrower].mul(exchangeRate());
 
         // Calculate user's liquidity or shortfall internally
         return collateralNeededInternal(amountCollateral, borrowedAmount);
@@ -138,13 +138,13 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      */
     function getDebtRatio(address borrower) external view override returns (uint256) {
         // Get the borrower's deposited collateral
-        uint256 amountCollateral = balanceOf(borrower).mul(exchangeRate());
+        uint256 amountCollateral = balances[borrower].mul(exchangeRate());
 
         // Multiply LP collateral by LP Token price
         uint256 collateralInDai = amountCollateral.mul(getLPTokenPrice());
 
         // The borrower's DAI debt
-        uint256 borrowedAmount = ICygnusBorrowTracker(cygnusDai).getBorrowBalance(borrower);
+        uint256 borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
 
         // Adjust borrowed admount with liquidation incentive
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
@@ -168,10 +168,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 accountBorrows
     ) external view override returns (bool) {
         /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
-        if (borrowableToken != cygnusDai) {
+        if (borrowableToken != borrowable) {
             revert CygnusCollateralModel__BorrowableInvalid({
                 invalidBorrowable: borrowableToken,
-                validBorrowable: cygnusDai
+                validBorrowable: borrowable
             });
         }
 

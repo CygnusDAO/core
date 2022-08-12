@@ -15,9 +15,9 @@ interface IAlbireoOrbiter {
      *  @return factory The address of the Cygnus factory assigned to `Hangar18`
      *  @return underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
      *  @return collateral The address of the Cygnus collateral contract for this borrow contract
+     *  @return shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @return baseRatePerYear The base rate per year for this shuttle
-     *  @return multiplier The multiplier per year
-     *  @return kinkMultiplier The increase to the multiplier once kink utilization is reached
+     *  @return multiplier The log10 of the farm APY
      */
     function borrowParameters()
         external
@@ -25,9 +25,9 @@ interface IAlbireoOrbiter {
             address factory,
             address underlying,
             address collateral,
+            uint256 shuttleId,
             uint256 baseRatePerYear,
-            uint256 multiplier,
-            uint256 kinkMultiplier
+            uint256 multiplier
         );
 
     /**
@@ -39,16 +39,16 @@ interface IAlbireoOrbiter {
      *  @notice Function to deploy the borrow contract of a lending pool
      *  @param underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
      *  @param collateral The address of the Cygnus collateral contract for this borrow contract
+     *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @param baseRatePerYear The base rate per year for this shuttle
-     *  @param multiplier The farm APY for this LP Token
-     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
+     *  @param multiplier The log10 of the farm APY
      *  @return cygnusDai The address of the new borrow contract
      */
     function deployAlbireo(
         address underlying,
         address collateral,
+        uint256 shuttleId,
         uint256 baseRatePerYear,
-        uint256 multiplier,
-        uint256 kinkMultiplier
+        uint256 multiplier
     ) external returns (address cygnusDai);
 }

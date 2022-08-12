@@ -58,7 +58,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override kinkMultiplier;
+    uint256 public override kinkMultiplier = 3;
 
     // ─────────────────────── Min/Max this pool allows
 
@@ -97,9 +97,14 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     constructor() {
         // Get factory, underlying and collateral adddresses
-        // prettier-ignore
-        (hangar18, underlying, collateral, /* base */, /* multiplier */, /* kink */) = IAlbireoOrbiter(_msgSender())
-            .borrowParameters();
+        (
+            hangar18,
+            underlying,
+            collateral,
+            shuttleId, /* baseRate */ /* multiplier */
+            ,
+
+        ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
 
         // Match initial exchange rate
         exchangeRateStored = INITIAL_EXCHANGE_RATE;
@@ -149,7 +154,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setCygnusBorrowTracker(address newBorrowTracker) external override cygnusAdmin nonReentrant {
+    function setCygnusBorrowTracker(address newBorrowTracker) external override nonReentrant cygnusAdmin {
         // Need the option of setting the borrow tracker as address(0) to remove rewards pool
         /// @custom:error BorrowTrackerAlreadySet Avoid Duplicate
         if (newBorrowTracker == cygnusBorrowTracker) {
@@ -174,7 +179,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin nonReentrant {
+    function setReserveFactor(uint256 newReserveFactor) external override nonReentrant cygnusAdmin {
         // Check if parameter is within range allowed
         validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
 
@@ -193,7 +198,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setKinkUtilizationRate(uint256 newKinkUtilizationRate) external override cygnusAdmin nonReentrant {
+    function setKinkUtilizationRate(uint256 newKinkUtilizationRate) external override nonReentrant cygnusAdmin {
         // Check if parameter is within range allowed
         validRange(KINK_UTILIZATION_RATE_MIN, KINK_UTILIZATION_RATE_MAX, newKinkUtilizationRate);
 

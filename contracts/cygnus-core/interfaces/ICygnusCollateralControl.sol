@@ -57,9 +57,9 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     // ────────────── Important Addresses ─────────────
 
     /**
-     *  @return cygnusDai The address of the Cygnus borrow contract for this collateral which holds DAI
+     *  @return borrowable The address of the Cygnus borrow contract for this collateral which holds DAI
      */
-    function cygnusDai() external view returns (address);
+    function borrowable() external view returns (address);
 
     /**
      *  @return cygnusNebulaOracle The address of the Cygnus Price Oracle

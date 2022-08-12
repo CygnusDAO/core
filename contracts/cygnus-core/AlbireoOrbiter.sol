@@ -28,7 +28,7 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusBorrow } from "./CygnusBorrow.sol";
 
 /**
- *  @title  CygnusAlbireo Contract that deploys the Cygnus Borrow arm of the lending pool
+ *  @title  AlbireoOrbiter Contract that deploys the Cygnus Borrow arm of the lending pool
  *  @author CygnusDAO
  *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys
  *          the borrow contract with the corresponding Cygnus collateral contract address. We pass
@@ -47,17 +47,17 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
-     &  @custom:member baseRatePerYear The base rate per year
-     *  @custom:member multiplier The multiplier per year
-     *  @custom:member kinkMultiplier The kink multiplier applied to the interest rate once util > kink
+     *  @custom:member shuttleId The ID for the shuttle we are deploying (shared by collateral/borrow)
+     *  @custom:member baseRatePerYear The base rate per year
+     *  @custom:member multiplier The log10 of the farm APY
      */
     struct BorrowParameters {
         address factory;
         address underlying;
         address collateral;
+        uint256 shuttleId;
         uint256 baseRatePerYear;
         uint256 multiplier;
-        uint256 kinkMultiplier;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -84,18 +84,18 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     function deployAlbireo(
         address underlying,
         address collateral,
+        uint256 shuttleId,
         uint256 baseRatePerYear,
-        uint256 multiplier,
-        uint256 kinkMultiplier
+        uint256 multiplier
     ) external override nonReentrant returns (address cygnusDai) {
         // Assign important addresses to pass to borrow contracts
         borrowParameters = BorrowParameters({
             factory: _msgSender(),
             underlying: underlying,
             collateral: collateral,
+            shuttleId: shuttleId,
             baseRatePerYear: baseRatePerYear,
-            multiplier: multiplier,
-            kinkMultiplier: kinkMultiplier
+            multiplier: multiplier
         });
 
         // Create Borrow contract

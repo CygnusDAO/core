@@ -28,7 +28,7 @@ import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { CygnusCollateral } from "./CygnusCollateral.sol";
 
 /**
- *  @title  CygnusDeneb Contract that deploys the Cygnus Collateral arm of the lending pool
+ *  @title  DenebOrbiter Contract that deploys the Cygnus Collateral arm of the lending pool
  *  @author CygnusDAO
  *  @notice The Collateral Deployer which starts the collateral arm of the lending pool. It deploys the collateral
  *          contract with the corresponding Cygnus borrow contract address, the factory and the underlying LP Token.
@@ -52,6 +52,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         address factory;
         address underlying;
         address cygnusDai;
+        uint256 shuttleId;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -75,17 +76,17 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IDenebOrbiter
      */
-    function deployDeneb(address underlying, address cygnusDai)
-        external
-        override
-        nonReentrant
-        returns (address collateral)
-    {
+    function deployDeneb(
+        address underlying,
+        address cygnusDai,
+        uint256 shuttleId
+    ) external override nonReentrant returns (address collateral) {
         // Assign important addresses to pass to collateral contracts
         collateralParameters = CollateralParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusDai: cygnusDai
+            cygnusDai: cygnusDai,
+            shuttleId: shuttleId
         });
 
         // Create Collateral contract

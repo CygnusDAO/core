@@ -83,23 +83,28 @@ interface ICygnusTerminal is IErc20Permit {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return totalBalance Total balance of this shuttle in terms of the underlying
+     *  @return totalBalance Total balance owned by this shuttle pool in terms of its underlying
      */
-    function totalBalance() external returns (uint256);
+    function totalBalance() external view returns (uint256);
 
     /**
      *  @return underlying The address of the underlying (LP Token for collateral contracts, DAI for borrow contracts)
      */
-    function underlying() external returns (address);
+    function underlying() external view returns (address);
 
     /**
-     *  @return hangar18 The address of the Cygnus Factory V1 contract 🛸
+     *  @return hangar18 The address of the Cygnus Factory contract used to deploy this shuttle  🛸
      */
-    function hangar18() external returns (address);
+    function hangar18() external view returns (address);
 
     /**
-     *  @notice Trick compiler for nonpayable function
-     *  @return exchangeRate The ratio at which 1 pool token can be redeemed for underlying amount
+     *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)
+     */
+    function shuttleId() external view returns (uint256);
+
+    /**
+     *  @notice Trick compiler for nonpayable function -> overriden by CygnusBorrow.sol
+     *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount
      */
     function exchangeRate() external returns (uint256);
 
@@ -119,7 +124,7 @@ interface ICygnusTerminal is IErc20Permit {
     function deposit(uint256 assets, address recipient) external returns (uint256 shares);
 
     /**
-     *  @notice Redeems and burn shares and returns underlying assets to recipient
+     *  @notice Redeems shares and returns assets to recipient
      *  @param shares The amount of shares to redeem for assets
      *  @param recipient The address of the redeemer
      *  @param owner The address of the account who owns the shares
@@ -133,8 +138,10 @@ interface ICygnusTerminal is IErc20Permit {
     ) external returns (uint256 assets);
 
     /**
-     *  @notice Recovers any ERC20 token accidentally sent to this contract. Sent to DAO reserves
+     *  @notice 👽
+     *  @notice Recovers any ERC20 token accidentally sent to this contract, sent to msg.sender
      *  @param token The address of the token we are recovering
+     *  @custom:security non-reentrant
      */
     function sweepToken(address token) external;
 }

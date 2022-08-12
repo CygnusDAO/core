@@ -87,7 +87,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @notice Returns this contract's void values (if activated) showing the masterchef address, pool id, etc.
      *  @return rewarder_ The address of the masterchef/rewarder
      *  @return pid_ The pool ID the collateral's underlying LP Token belongs to in the masterchef/rewarder
-     *  @return voidActivated_ Whether or not this contract has the void activated
      *  @return rewardsToken_ The address of the rewards token from the Dex
      *  @return dexSwapFee_ The fee the dex charges for swaps (divided by 1000 ie Uniswap charges 0.3%, swap fee is 997)
      *  @return dexRouter_ The address of the dex' router used to swap between tokens
@@ -98,7 +97,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
         returns (
             IMiniChef rewarder_,
             uint256 pid_,
-            bool voidActivated_,
             address rewardsToken_,
             uint256 dexSwapFee_,
             IDexRouter02 dexRouter_

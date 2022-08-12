@@ -158,7 +158,7 @@ interface ICygnusFactory {
      *  @param status Whether or not these orbiters are active and usable
      *  @param orbitersLength How many orbiter pairs we have (equals the amount of Dexes cygnus is using)
      *  @param orbitersName The name of the dex for these orbiters
-     *  @param collateralOrbiter The address of the collateral orbiter for this dex
+     *  @param denebOrbiter The address of the collateral orbiter for this dex
      *  @param borrowOrbiter The address of the borrow orbiter for this dex
      *
      */
@@ -166,7 +166,7 @@ interface ICygnusFactory {
         bool status,
         uint256 orbitersLength,
         string orbitersName,
-        IDenebOrbiter collateralOrbiter,
+        IDenebOrbiter denebOrbiter,
         IAlbireoOrbiter borrowOrbiter
     );
 
@@ -175,15 +175,15 @@ interface ICygnusFactory {
      *  @param status Bool representing whether or not these orbiters are usable
      *  @param orbiterId The ID of the collateral & borrow orbiters
      *  @param orbiterName The name of the dex these orbiters were for
-     *  @param cygnusDeneb The address of the deleted collateral orbiter
-     *  @param cygnusAlbireo The address of the deleted borrow orbiter
+     *  @param denebOrbiter The address of the deleted collateral orbiter
+     *  @param albireoOrbiter The address of the deleted borrow orbiter
      */
     event SwitchOrbiterStatus(
         bool status,
         uint256 orbiterId,
         string orbiterName,
-        IAlbireoOrbiter cygnusAlbireo,
-        IDenebOrbiter cygnusDeneb
+        IAlbireoOrbiter albireoOrbiter,
+        IDenebOrbiter denebOrbiter
     );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -198,30 +198,30 @@ interface ICygnusFactory {
      *  @custom:member status Whether or not these orbiters are active and usable
      *  @custom:member orbiterId The ID for this pair of orbiters
      *  @custom:member orbiterName The name of the dex
-     *  @custom:member cygnusDeneb The address of the collateral deployer contract
-     *  @custom:member cygnusAlbireo The address of the borrow deployer contract
+     *  @custom:member denebOrbiter The address of the collateral deployer contract
+     *  @custom:member albireoOrbiter The address of the borrow deployer contract
      */
     struct Orbiter {
         bool status;
         uint24 orbiterId;
         string orbiterName;
-        IAlbireoOrbiter cygnusAlbireo;
-        IDenebOrbiter cygnusDeneb;
+        IAlbireoOrbiter albireoOrbiter;
+        IDenebOrbiter denebOrbiter;
     }
 
     /**
      *  @custom:struct Shuttle Official record of pools deployed by this factory
      *  @custom:member launched Whether or not the lending pool is initialized
      *  @custom:member shuttleId The ID of the lending pool
+     *  @custom:member borrowable The address of the borrowing contract
      *  @custom:member collateral The address of the Cygnus collateral
-     *  @custom:member cygnusDai The address of the borrowing contract
-     *  @custom:member underlyingCollateral The address of the underlying collateral (LP Token)
-     *  @custom:member dai The address of the underlying albireo contract (DAI)
+     *  @custom:member borrowToken The address of the underlying of the borrow contract (DAI)
+     *  @custom:member lpTokenPair The address of the underlying of the collateral contract (LP Token)
      */
     struct Shuttle {
         bool launched;
         uint24 shuttleId;
-        address cygnusDai;
+        address borrowable;
         address collateral;
         address borrowToken;
         address lpTokenPair;
@@ -236,8 +236,8 @@ interface ICygnusFactory {
      *  @return status Whether or not these orbiters are active and usable
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return orbiterName The name of the dex
-     *  @return cygnusAlbireo The address of the borrow deployer contract
-     *  @return cygnusDeneb The address of the collateral deployer contract
+     *  @return albireoOrbiter The address of the borrow deployer contract
+     *  @return denebOrbiter The address of the collateral deployer contract
      */
     function getOrbiters(uint256 _orbiterId)
         external
@@ -246,8 +246,8 @@ interface ICygnusFactory {
             bool status,
             uint24 orbiterId,
             string memory orbiterName,
-            IAlbireoOrbiter cygnusAlbireo,
-            IDenebOrbiter cygnusDeneb
+            IAlbireoOrbiter albireoOrbiter,
+            IDenebOrbiter denebOrbiter
         );
 
     /**
@@ -261,8 +261,8 @@ interface ICygnusFactory {
             bool active,
             uint24 orbiterId,
             string memory orbiterName,
-            IAlbireoOrbiter cygnusAlbireo,
-            IDenebOrbiter cygnusDeneb
+            IAlbireoOrbiter albireoOrbiter,
+            IDenebOrbiter denebOrbiter
         );
 
     /**
@@ -271,7 +271,7 @@ interface ICygnusFactory {
      *  @param _orbiterId The ID of the orbiter for this LP Token
      *  @return launched Whether this pair exists or not
      *  @return shuttleId The ID of this shuttle
-     *  @return cygnusDai The address of the borrow contract
+     *  @return borrowable The address of the borrow contract
      *  @return collateral The address of the collateral contract
      *  @return borrowToken The address of the underlying borrow contract
      *  @return lpTokenPair The address of the collaterla's
@@ -283,7 +283,7 @@ interface ICygnusFactory {
         returns (
             bool launched,
             uint24 shuttleId,
-            address cygnusDai,
+            address borrowable,
             address collateral,
             address borrowToken,
             address lpTokenPair,
@@ -300,7 +300,7 @@ interface ICygnusFactory {
         returns (
             bool launched,
             uint24 shuttleId,
-            address cygnusDai,
+            address borrowable,
             address collateral,
             address borrowToken,
             address lpTokenPair,
@@ -371,7 +371,6 @@ interface ICygnusFactory {
      *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
      *  @param baseRate The interest rate model's base rate this shuttle uses
      *  @param multiplier The multiplier this shuttle uses for calculating the interest rate
-     *  @param kinkMultiplier The increase to farmApy once kink utilization is reached
      *  @return cygnusDai The address of the Cygnus borrow contract for this pool
      *  @return collateral The address of the Cygnus collateral contract for both borrow tokens
      *  @custom:security non-reentrant
@@ -380,21 +379,20 @@ interface ICygnusFactory {
         address lpTokenPair,
         uint256 orbiterId,
         uint256 baseRate,
-        uint256 multiplier,
-        uint256 kinkMultiplier
+        uint256 multiplier
     ) external returns (address cygnusDai, address collateral);
 
     /**
      *  @notice Sets the new orbiters to deploy collateral and borrow contracts and stores orbiters in storage
      *  @param name The name of the strategy OR the dex these orbiters are for
-     *  @param cygnusAlbireo the address of this orbiter's borrow deployer
-     *  @param cygnusDeneb The address of this orbiter's collateral deployer
+     *  @param albireoOrbiter the address of this orbiter's borrow deployer
+     *  @param denebOrbiter The address of this orbiter's collateral deployer
      *  @custom:security non-reentrant
      */
     function initializeOrbiter(
         string memory name,
-        IAlbireoOrbiter cygnusAlbireo,
-        IDenebOrbiter cygnusDeneb
+        IAlbireoOrbiter albireoOrbiter,
+        IDenebOrbiter denebOrbiter
     ) external;
 
     /**

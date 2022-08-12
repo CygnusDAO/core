@@ -45,15 +45,19 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *          core contracts, but instead are in charge of deploying the arms of core contracts with each other's
  *          addresses (borrow orbiter deploys the borrow arm with the collateral address, and vice versa).
  *
- *          Each orbiter has the bytecode of the collateral being deployed, and they may differ slighlty due
- *          to the strategy deployed (for example each masterchef is different, requiring different harvest
- *          strategy, staking mechanism, etc.) and each `CygnusCollateralVoid` would be different.
+ *          Orbiters = Strategies for the underlying assets
+ *
+ *          Each orbiter has the bytecode of the collateral/borrow contracts being deployed, and they may differ
+ *          slighlty due to the strategy deployed (for example each masterchef is different, requiring different
+ *          harvest strategy, staking mechanism, etc.). The only conract that should be modified from the core
+ *          contracts are `CygnusCollateralVoid` and `CygnusBorrowVoid`, and all functions should be made private.
  *          Ideally there should only be 1 orbiter per DEX (1 borrow && 1 collateral orbiter) or 1 per strategy.
  *
  *          This factory contract contains the records of all shuttles deployed by Cygnus. Every collateral/borrow
  *          contract reports back here to:
  *              - Check admin address (to increase debt ratios, update interest rate model, set void, etc.)
- *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol)
+ *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol) or to add
+ *                DAO liquidation fees if any (in CygnusCollateral.sol)
  */
 contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -203,7 +207,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Check if orbiters already exist
         for (uint256 i = 0; i < orbitersLength; i++) {
             /// @custom:error OrbiterAlreadySet Avoid setting the same orbiters twice
-            if (orbiter[i].cygnusDeneb == denebOrbiter && orbiter[i].cygnusAlbireo == albireoOrbiter) {
+            if (orbiter[i].denebOrbiter == denebOrbiter && orbiter[i].albireoOrbiter == albireoOrbiter) {
                 revert CygnusFactory__OrbiterAlreadySet({ orbiter: orbiter[i] });
             }
         }
@@ -282,9 +286,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         address lpTokenPair,
         uint256 orbiterId,
         uint256 baseRate,
-        uint256 multiplier,
-        uint256 kinkMultiplier
-    ) external override nonReentrant returns (address cygnusDai, address collateral) {
+        uint256 multiplier
+    ) external override nonReentrant returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
 
         // Load orbiter to memory
@@ -307,15 +310,21 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         address create2Collateral = CygnusPoolAddress.getCollateralContract(
             lpTokenPair,
             address(this),
-            address(orbiter.cygnusDeneb),
-            orbiter.cygnusDeneb.COLLATERAL_INIT_CODE_HASH()
+            address(orbiter.denebOrbiter),
+            orbiter.denebOrbiter.COLLATERAL_INIT_CODE_HASH()
         );
 
-        // Deploy borrow
-        cygnusDai = orbiter.cygnusAlbireo.deployAlbireo(dai, create2Collateral, baseRate, multiplier, kinkMultiplier);
+        // Deploy borrow contract
+        borrowable = orbiter.albireoOrbiter.deployAlbireo(
+            dai,
+            create2Collateral,
+            shuttle.shuttleId,
+            baseRate,
+            multiplier
+        );
 
-        // Deploy collateral
-        collateral = orbiter.cygnusDeneb.deployDeneb(lpTokenPair, cygnusDai);
+        // Deploy collateral contract
+        collateral = orbiter.denebOrbiter.deployDeneb(lpTokenPair, borrowable, shuttle.shuttleId);
 
         /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
         if (collateral != create2Collateral) {
@@ -343,7 +352,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         shuttle.collateral = collateral;
 
         // Add cygnus borrow contract to record
-        shuttle.cygnusDai = cygnusDai;
+        shuttle.borrowable = borrowable;
 
         // Add the address of the underlying albireo contract
         shuttle.lpTokenPair = lpTokenPair;
@@ -364,7 +373,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // getShuttles[lpTokenPair][orbiterId] = shuttle;
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(shuttle.shuttleId, cygnusDai, collateral, dai, lpTokenPair);
+        emit NewShuttleLaunched(shuttle.shuttleId, borrowable, collateral, dai, lpTokenPair);
     }
 
     /**
@@ -374,14 +383,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      */
     function initializeOrbiter(
         string memory orbiterName,
-        IAlbireoOrbiter cygnusAlbireo,
-        IDenebOrbiter cygnusDeneb
+        IAlbireoOrbiter albireoOrbiter,
+        IDenebOrbiter denebOrbiter
     ) external override {
         // Total orbiters
         uint256 totalOrbiters = allOrbiters.length;
 
         // Check if collateral orbiter already exists, reverts if it does
-        checkOrbitersInternal(cygnusAlbireo, cygnusDeneb, totalOrbiters);
+        checkOrbitersInternal(albireoOrbiter, denebOrbiter, totalOrbiters);
 
         // Orbiters, ID starts from 0 so length is alwyas 1 ahead from record
         Orbiter storage orbiter = getOrbiters[totalOrbiters];
@@ -393,10 +402,10 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         orbiter.orbiterName = orbiterName;
 
         // Borrow orbiter address
-        orbiter.cygnusAlbireo = cygnusAlbireo;
+        orbiter.albireoOrbiter = albireoOrbiter;
 
         // Collateral orbiter address
-        orbiter.cygnusDeneb = cygnusDeneb;
+        orbiter.denebOrbiter = denebOrbiter;
 
         // ID for this group of collateral/borrow orbiters
         orbiter.status = true;
@@ -405,7 +414,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         allOrbiters.push(orbiter);
 
         /// @custom:event InitializeOrbiters
-        emit InitializeOrbiters(true, totalOrbiters, orbiterName, cygnusDeneb, cygnusAlbireo);
+        emit InitializeOrbiters(true, totalOrbiters, orbiterName, denebOrbiter, albireoOrbiter);
     }
 
     /**
@@ -417,7 +426,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         ICygnusFactory.Orbiter storage orbiter = getOrbiters[orbiterId];
 
         /// @custom:error OrbiterNotSet Avoid switching on/off if orbiters are not set
-        if ((address(orbiter.cygnusDeneb) == address(0)) || address(orbiter.cygnusAlbireo) == address(0)) {
+        if ((address(orbiter.denebOrbiter) == address(0)) || address(orbiter.albireoOrbiter) == address(0)) {
             revert CygnusFactory__OrbitersNotSet({ orbiterId: orbiterId });
         }
 
@@ -429,8 +438,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
             orbiter.status,
             orbiter.orbiterId,
             orbiter.orbiterName,
-            orbiter.cygnusAlbireo,
-            orbiter.cygnusDeneb
+            orbiter.albireoOrbiter,
+            orbiter.denebOrbiter
         );
     }
 

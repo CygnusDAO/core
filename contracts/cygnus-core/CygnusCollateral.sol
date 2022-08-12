@@ -6,7 +6,7 @@ import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
 import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
 
 // Libraries
-import { SafeErc20 } from "./libraries/SafeErc20.sol";
+import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
@@ -26,14 +26,14 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library SafeErc20 Low level handling of Erc20 tokens (redeemCollateral)
-     */
-    using SafeErc20 for IErc20;
-
-    /**
      *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
      */
     using PRBMathUD60x18 for uint256;
+
+    /**
+     *  @custom:library SafeTransferLib Solady`s library for low level handling of Erc20 tokens
+     */
+    using SafeTransferLib for address;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
@@ -50,7 +50,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         address to,
         uint256 value
     ) internal override(Erc20) {
-        /// @custom:error CygnusCollateral__InsufficientLiquidity Avoid transfer if there's shortfall
+        /// @custom:error InsufficientLiquidity Avoid transfer if there's shortfall
         if (!canRedeem(from, value)) {
             revert CygnusCollateral__InsufficientLiquidity({ from: from, to: to, value: value });
         }
@@ -64,23 +64,23 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateral
      */
-    function canRedeem(address from, uint256 value) public view override returns (bool) {
+    function canRedeem(address borrower, uint256 redeemAmount) public view override returns (bool) {
         // Gas savings
-        uint256 balance = balanceOf(from);
+        uint256 cygLPBalance = balances[borrower];
 
         // Value can't be higher than account balance, return false
-        if (value > balance) {
+        if (redeemAmount > cygLPBalance) {
             return false;
         }
 
         // Update user's balance.
-        uint256 finalBalance = balance - value;
+        uint256 finalBalance = cygLPBalance - redeemAmount;
 
         // Calculate final balance against the underlying's exchange rate / scale
         uint256 amountCollateral = finalBalance.mul(exchangeRate());
 
         // Borrow balance, calls BorrowDAITokenA contract
-        uint256 amountDAI = ICygnusBorrowTracker(cygnusDai).getBorrowBalance(from);
+        uint256 amountDAI = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
 
         // prettier-ignore
         ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, amountDAI);
@@ -92,7 +92,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This function should only be called from `CygnusBorrow` contracts only
+     *  @dev This function should only be called from `CygnusBorrow` contracts only - No possible reentrancy
      *  @inheritdoc ICygnusCollateral
      */
     function seizeCygLP(
@@ -105,8 +105,8 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower, liquidator: liquidator });
         }
         /// @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
-        else if (_msgSender() != cygnusDai) {
-            revert CygnusCollateral__MsgSenderNotCygnusDai({ sender: _msgSender(), borrowable: cygnusDai });
+        else if (_msgSender() != borrowable) {
+            revert CygnusCollateral__MsgSenderNotCygnusDai({ sender: _msgSender(), borrowable: borrowable });
         }
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
         else if (repayAmount == 0) {
@@ -149,9 +149,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
 
             // update reserve's balance
             balances[daoReserves] += cygnusFee;
-
-            /// @custom:event Transfer
-            emit Transfer(borrower, daoReserves, cygnusFee);
         }
 
         /// @custom:event Transfer
@@ -177,21 +174,19 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             revert CygnusCollateral__RedeemAmountInvalid({ redeemAmount: redeemAmount, totalBalance: totalBalance });
         }
 
-        // Check if void is activated. If it is, withdraw redeemAmount, else the LP Tokens are held by contract
-        if (voidActivated) {
-            rewarder.withdraw(pid, redeemAmount);
-        }
+        // Withdraw hook to withdraw from the strategy (if any)
+        beforeWithdraw(redeemAmount, 0);
 
         // Optimistically transfer funds
-        IErc20(underlying).safeTransfer(redeemer, redeemAmount);
+        underlying.safeTransfer(redeemer, redeemAmount);
 
         // Pass data to router
         if (data.length > 0) {
-            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), redeemAmount, data);
+            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), redeemAmount, token0, token1, data);
         }
 
         // Total balance of CygLP tokens in this contract
-        uint256 cygLPTokens = balanceOf(address(this));
+        uint256 cygLPTokens = balances[address(this)];
 
         // Calculate user's redeem (amount * scale / exch)
         uint256 redeemableAmount = redeemAmount.div(exchangeRate());
@@ -206,8 +201,5 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
 
         // Burn tokens and emit a Transfer event
         burnInternal(address(this), cygLPTokens);
-
-        /// @custom:event RedeemCollateral
-        emit RedeemCollateral(_msgSender(), redeemer, redeemAmount, cygLPTokens);
     }
 }

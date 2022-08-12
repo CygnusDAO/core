@@ -61,16 +61,25 @@ contract CygnusBorrowInterest is ICygnusBorrowInterest, CygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Interest Rate model. Need to load the struct in 2 different instances as
-     *          baseRate, multiplier and kink are temp variables and factory, underlying and collateral are storage
+     *  @notice Constructs the Interest Rate model. Load the parameters passed from the factory again to initialize
+     *          the model.
      */
     constructor() {
-        // prettier-ignore
-        (/* factory */, /* underlying */ , /* collateral */, uint256 baseRate, uint256 multiplier, uint256 kink) = 
-          IAlbireoOrbiter(_msgSender()).borrowParameters();
+        (
+            ,
+            ,
+            ,
+            ,
+            /* factory */
+            /* underlying */
+            /* collateral */
+            /* shuttleId */
+            uint256 baseRate,
+            uint256 multiplier
+        ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
 
-        /// Update the interest rate model from the parameters passed and stored through CygnusBorrowControl
-        updateJumpRateModelInternal(baseRate, multiplier, kink);
+        // Update the interest rate model and do min/max checks from CygnusBorrowControl
+        updateJumpRateModelInternal(baseRate, multiplier, kinkMultiplier);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

@@ -22,7 +22,7 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
  *          and setting and the debt ratio for this shuttle.
  *
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
- *          borrow the underlying.
+ *          borrow DAI from the borrowable.
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -45,7 +45,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    address public immutable override cygnusDai;
+    address public immutable override borrowable;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -107,7 +107,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     constructor() {
         // Get important addresses from collateral deployer
-        (hangar18, underlying, cygnusDai) = IDenebOrbiter(_msgSender()).collateralParameters();
+        (hangar18, underlying, borrowable, shuttleId) = IDenebOrbiter(_msgSender()).collateralParameters();
 
         // Assign price oracle from factory
         cygnusNebulaOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();

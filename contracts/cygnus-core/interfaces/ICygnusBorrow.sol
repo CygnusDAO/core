@@ -81,12 +81,12 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
      *  @notice This low level function should only be called from `CygnusAltair` contract only
      *  @param borrower The address of the borrower being liquidated
      *  @param liquidator The address of the liquidator
-     *  @return seizeTokens The amount of tokens to liquidate
+     *  @return cygLPAmount The amount of tokens liquidated
      */
-    function liquidate(address borrower, address liquidator) external returns (uint256 seizeTokens);
+    function liquidate(address borrower, address liquidator) external returns (uint256 cygLPAmount);
 
     /**
-     *  @notice This low level function should only be called from Router contract only.
+     *  @notice This low level function should only be called from `CygnusAltair` contract only
      *  @param borrower The address of the Borrow contract.
      *  @param receiver The address of the receiver of the borrow amount.
      *  @param borrowAmount The amount of the underlying asset to borrow.
