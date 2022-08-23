@@ -6,7 +6,7 @@ import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 import { CygnusBorrowTracker } from "./CygnusBorrowTracker.sol";
 
 // Libraries
-import { SafeErc20 } from "./libraries/SafeErc20.sol";
+import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
@@ -27,7 +27,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     /**
      *  @custom:library SafeErc20 Low level handling of Erc20 tokens
      */
-    using SafeErc20 for IErc20;
+    using SafeTransferLib for address;
 
     /**
      *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
@@ -137,7 +137,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
 
         // Optimistically transfer borrowAmount to `receiver`
         if (borrowAmount > 0) {
-            IErc20(underlying).safeTransfer(receiver, borrowAmount);
+            underlying.safeTransfer(receiver, borrowAmount);
         }
 
         // For leverage functionality pass data to the router

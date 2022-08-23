@@ -258,12 +258,12 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     }
 
     /**
-     *  @notice Function to add liquidity to DEX
+     *  @notice Function to add liquidity, called after `optimalDepositA` to transfer the optimal amount and mint LP
      *  @param tokenA The address of the LP Token's token0
      *  @param tokenB The address of the LP Token's token1
      *  @param amountA The amount of token A to add as liquidity
      *  @param amountB The amount of token B to add as liquidity
-     *  @return liquidity The total liquidity amount added
+     *  @return liquidity The total LP Tokens minted
      */
     function addLiquidityPrivate(
         address tokenA,
@@ -316,7 +316,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /**
      *  @notice Syncs total balance of this contract from our deposits in the masterchef
-     *  @dev CygnusTerminal override
+     *  @notice CygnusTerminal override
      */
     function updateInternal() internal override(CygnusTerminal) {
         // Get this contracts deposited LP amount
@@ -333,7 +333,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Internal hook for deposits into strategies
      *  @param assets The amount of assets to deposit into the strategy
      */
-    function afterDeposit(uint256 assets, uint256) internal override {
+    function afterDepositInternal(uint256 assets, uint256) internal override {
         // Deposit assets into the strategy
         rewarder.deposit(pid, assets);
     }
@@ -342,7 +342,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Internal hook for withdrawals from strategies
      *  @param assets The amount of shares to withdraw from the strategy
      */
-    function beforeWithdraw(uint256 assets, uint256) internal override {
+    function beforeWithdrawInternal(uint256 assets, uint256) internal override {
         // Withdraw assets from the strategy
         rewarder.withdraw(pid, assets);
     }

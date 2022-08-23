@@ -3,10 +3,11 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusCollateralControl } from "./interfaces/ICygnusCollateralControl.sol";
-import { CygnusTerminal } from "./CygnusTerminal.sol";
+import { ICygnusTerminal, CygnusTerminal } from "./CygnusTerminal.sol";
 
 // Libraries
 import { Strings } from "./libraries/Strings.sol";
+import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
@@ -33,6 +34,11 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @custom:library Strings Library used to append the names of token0 and token1 to the CygLP token
      */
     using Strings for string;
+
+    /**
+     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
+     */
+    using PRBMathUD60x18 for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
@@ -74,12 +80,12 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override DEBT_RATIO_MIN = 0.8e18;
+    uint256 public constant override DEBT_RATIO_MIN = 0.80e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public constant override DEBT_RATIO_MAX = 1e18;
+    uint256 public constant override DEBT_RATIO_MAX = 1.00e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -123,6 +129,8 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
     /**
      *  @notice Checks if new parameter is within range when updating collateral settings
      *  @param min The minimum value allowed for this parameter
@@ -138,6 +146,19 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         if (parameter < min || parameter > max) {
             revert CygnusCollateralControl__ParameterNotInRange({ minRange: min, maxRange: max, value: parameter });
         }
+    }
+
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @notice CygnusTerminl overrides
+     */
+    function exchangeRate() public view virtual override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
+        // Gas savings if non-zero
+        uint256 _totalSupply = totalSupply;
+
+        // If there is no supply for this token return initial rate
+        return _totalSupply == 0 ? INITIAL_EXCHANGE_RATE : totalBalance.div(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

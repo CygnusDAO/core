@@ -17,7 +17,7 @@ module.exports = async function Make() {
     // Addresses in this chain //
 
     // 1. LP Token address -----------------------------------------------------
-    const lpTokenAddress = '0x454E67025631C065d3cFAD6d71E6892f74487a15';
+    const lpTokenAddress = '0x345f9581522ecd41c3b9ee5fbccacf98d17967eb';
 
     // 2. DAI address on this chain --------------------------------------------
     const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
@@ -111,9 +111,9 @@ module.exports = async function Make() {
     // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
 
     // custom pool rates for the JoeAvax lending pool
-    const baseRate = BigInt(0.025e18);
+    const baseRate = BigInt(0.00e18);
 
-    const multiplier = BigInt(0.8e18);
+    const multiplier = BigInt(0.04e18);
 
     // Shuttle with LP Token address from setup
     await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier);

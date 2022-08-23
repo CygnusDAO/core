@@ -133,9 +133,9 @@ async function deploy() {
     console.log('Reinvestor`s balanceOf token before reinvest   | %s JOE (or other)', reinvestorBalance / 1e18);
 
     // Increase 18 days
-    await time.increase(60 * 60 * 24 * 3);
+    await time.increase(60 * 60 * 24 * 10);
 
-    console.log('3 days pass.');
+    console.log('10 days pass');
 
     await collateral.connect(safeAddress2).reinvestRewards_y7b();
 

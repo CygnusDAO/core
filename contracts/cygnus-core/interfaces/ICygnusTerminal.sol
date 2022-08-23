@@ -103,7 +103,6 @@ interface ICygnusTerminal is IErc20Permit {
     function shuttleId() external view returns (uint256);
 
     /**
-     *  @notice Trick compiler for nonpayable function -> overriden by CygnusBorrow.sol
      *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount
      */
     function exchangeRate() external returns (uint256);

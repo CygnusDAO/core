@@ -3,7 +3,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusTerminal, ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
+import { ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
 
 // Interfaces
 import { IDexPair } from "./IDexPair.sol";

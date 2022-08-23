@@ -49,8 +49,10 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *
  *          Each orbiter has the bytecode of the collateral/borrow contracts being deployed, and they may differ
  *          slighlty due to the strategy deployed (for example each masterchef is different, requiring different
- *          harvest strategy, staking mechanism, etc.). The only conract that should be modified from the core
- *          contracts are `CygnusCollateralVoid` and `CygnusBorrowVoid`, and all functions should be made private.
+ *          harvest strategy, staking mechanism, etc.). The only contract that may differ between core contracts
+ *          is the `CygnusCollateralVoid`, where all functions are private or external, meaning no other contract
+ *          relies on it and can be left blank.
+ *
  *          Ideally there should only be 1 orbiter per DEX (1 borrow && 1 collateral orbiter) or 1 per strategy.
  *
  *          This factory contract contains the records of all shuttles deployed by Cygnus. Every collateral/borrow
@@ -126,7 +128,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Sets the cygnus admin/reservesManager/dai/native token/oracle addresses
+     *  @notice Sets the important addresses which pools report back here to check for
      *  @param _admin Address of the Cygnus Admin to update important protocol parameters
      *  @param _daoReserves Address of the contract that handles weighted forwarding of Erc20 tokens
      *  @param _dai Address of the DAI contract on this chain (different for mainnet, c-chain, etc.)
@@ -240,27 +242,30 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @notice Creates a record of each shuttle deployed by this contract
      *  @dev Prepares shuttle for deployment and stores each Shuttle struct
-     *  @param lpTokenPair Address of LP Token for this shuttle
+     *  @param lpTokenPair Address of the LP Token for this shuttle
+     *  @param orbiterId The orbiter ID used to deploy this shuttle
      */
-    function boardShuttle(address lpTokenPair, uint256 orbiterId) private {
+    function boardShuttle(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
         uint24 shuttleId = getShuttles[lpTokenPair][orbiterId].shuttleId;
 
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
         if (shuttleId != 0) {
+            // If we try to re-deploy the lending pool which actually has the ID of 0, the EVM will handle the revert
             revert CygnusFactory__ShuttleAlreadyDeployed({ id: shuttleId, lpTokenPair: lpTokenPair });
         }
 
         // Set all to default before deploying
-        getShuttles[lpTokenPair][orbiterId] = Shuttle(
-            false, // Initialized, default false until oracle is set
-            uint24(allShuttles.length), // Lending pool ID
-            address(0), // Borrow contract address
-            address(0), // Collateral address
-            address(0), // Underlying borrow asset (DAI)
-            address(0), // Underlying collateral asset (LP Token)
-            Orbiter(false, 0, "", IAlbireoOrbiter(address(0)), IDenebOrbiter(address(0)))
-        );
+        return
+            getShuttles[lpTokenPair][orbiterId] = Shuttle(
+                false, // Initialized, default false until oracle is set
+                uint24(allShuttles.length), // Lending pool ID
+                address(0), // Borrow contract address
+                address(0), // Collateral address
+                address(0), // Underlying borrow asset (DAI)
+                address(0), // Underlying collateral asset (LP Token)
+                Orbiter(false, 0, "", IAlbireoOrbiter(address(0)), IDenebOrbiter(address(0)))
+            );
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -269,7 +274,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *    Phase1: Orbiter check
      *              - Orbiters (deployers) are active and usable
      *    Phase2: Board shuttle check
-     *              - No shuttle with the same LP Token has been deployed before
+     *              - No shuttle with the same LP Token AND Orbiter has been deployed before
      *    Phase3: Deploy Collateral and Borrow contracts
      *              - Calculate address of the collateral and deploy borrow contract with calculated collateral address
      *              - Deploy the collateral contract with the deployed borrow address
@@ -299,10 +304,9 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         }
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
-        Shuttle storage shuttle = getShuttles[lpTokenPair][orbiterId];
-
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
-        boardShuttle(lpTokenPair, orbiterId);
+        // Load shuttle to storage
+        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
@@ -348,17 +352,17 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // No way back now, store shuttle in factory
 
-        // Add collateral contract to record
-        shuttle.collateral = collateral;
-
         // Add cygnus borrow contract to record
         shuttle.borrowable = borrowable;
 
-        // Add the address of the underlying albireo contract
-        shuttle.lpTokenPair = lpTokenPair;
+        // Add collateral contract to record
+        shuttle.collateral = collateral;
 
         // Add the address of the underlying albireo contract
         shuttle.borrowToken = dai;
+
+        // Add the address of the underlying albireo contract
+        shuttle.lpTokenPair = lpTokenPair;
 
         // Store orbiters struct in the shuttle struct
         shuttle.orbiter = orbiter;
@@ -366,11 +370,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // This specific lending pool is initialized can't be deployed again
         shuttle.launched = true;
 
-        // Push to struct of all shuttles deployed
+        // Push struct to array of all shuttles deployed
         allShuttles.push(shuttle);
-
-        // Link to mapping
-        // getShuttles[lpTokenPair][orbiterId] = shuttle;
 
         /// @custom:event NewShuttleLaunched
         emit NewShuttleLaunched(shuttle.shuttleId, borrowable, collateral, dai, lpTokenPair);
@@ -378,7 +379,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice Anyone may create their own strategy to deploy their own lending pool but admin reserves the right
-     *          to switch status, reverting future deployments
+     *          to switch status, reverting only future deployments (deployed pools remain active)
      *  @inheritdoc ICygnusFactory
      */
     function initializeOrbiter(

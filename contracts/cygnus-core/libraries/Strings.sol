@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 
-import { IErc20 } from "./IErc20.sol";
-import { IDexPair } from "./IDexPair.sol";
+import { IErc20 } from "../interfaces/IErc20.sol";
+import { IDexPair } from "../interfaces/IDexPair.sol";
 
 /**
  *  @title Strings

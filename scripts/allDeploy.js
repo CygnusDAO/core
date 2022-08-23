@@ -15,8 +15,11 @@ const { getAddress } = require('@ethersproject/address');
  * 6. Deploy Router with factory address
  */
 async function main() {
+
+    let path = `44'/60'/3'/0/0`;
+
     // Deployer
-    let deployer = new LedgerSigner(hre.ethers.provider);
+    let deployer = new LedgerSigner(hre.ethers.provider, path);
 
     let deployerAddress = await deployer.getAddress();
 

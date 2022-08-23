@@ -180,7 +180,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    function exchangeRate() public view virtual override returns (uint256) {
+    function exchangeRate() public virtual override returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply;
 
@@ -210,14 +210,14 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @param assets The amount of assets deposited
      *  @param shares The amount of shares minted
      */
-    function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
+    function afterDepositInternal(uint256 assets, uint256 shares) internal virtual {}
 
     /**
      *  @notice Internal hook for withdrawals from strategies
      *  @param assets The amount of assets being withdrawn
      *  @param shares The amount of shares burnt
      */
-    function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
+    function beforeWithdrawInternal(uint256 assets, uint256 shares) internal virtual {}
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -234,14 +234,14 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
             revert CygnusTerminal__CantMintZeroShares();
         }
 
-        // Optimistically transfer tokens
+        // Transfer underlying from sender to this contract
         underlying.safeTransferFrom(_msgSender(), address(this), assets);
 
         // Mint tokens and emit Transfer event
         mintInternal(recipient, shares);
 
         // Deposit assets into the strategy (if any)
-        afterDeposit(assets, shares);
+        afterDepositInternal(assets, shares);
 
         /// @custom:event Deposit
         emit Deposit(_msgSender(), recipient, assets, shares);
@@ -278,7 +278,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         }
 
         // Withdraw assets from the strategy (if any)
-        beforeWithdraw(assets, shares);
+        beforeWithdrawInternal(assets, shares);
 
         // Burn shares
         burnInternal(owner, shares);

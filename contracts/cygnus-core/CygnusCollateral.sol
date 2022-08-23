@@ -175,7 +175,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         }
 
         // Withdraw hook to withdraw from the strategy (if any)
-        beforeWithdraw(redeemAmount, 0);
+        beforeWithdrawInternal(redeemAmount, 0);
 
         // Optimistically transfer funds
         underlying.safeTransfer(redeemer, redeemAmount);

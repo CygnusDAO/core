@@ -49,7 +49,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
      *  @custom:member shuttleId The ID for the shuttle we are deploying (shared by collateral/borrow)
      *  @custom:member baseRatePerYear The base rate per year
-     *  @custom:member multiplier The log10 of the farm APY
+     *  @custom:member multiplier The slope of the interest rate
      */
     struct BorrowParameters {
         address factory;
