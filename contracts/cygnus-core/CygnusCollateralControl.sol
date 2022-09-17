@@ -23,17 +23,12 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
  *          and setting and the debt ratio for this shuttle.
  *
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
- *          borrow DAI from the borrowable.
+ *          borrow USDC from the borrowable.
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @custom:library Strings Library used to append the names of token0 and token1 to the CygLP token
-     */
-    using Strings for string;
 
     /**
      *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
@@ -43,6 +38,35 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    // ─────────────────────── Min/Max this pool allows
+
+    /**
+     *  @notice Minimum debt ratio at which the collateral becomes liquidatable
+     */
+    uint256 internal constant DEBT_RATIO_MIN = 0.80e18;
+
+    /**
+     *  @notice Maximum debt ratio at which the collateral becomes liquidatable
+     */
+    uint256 internal constant DEBT_RATIO_MAX = 1.00e18;
+
+    /**
+     *  @notice Minimum liquidation incentive for liquidators that can be set
+     */
+    uint256 internal constant LIQUIDATION_INCENTIVE_MIN = 1.00e18;
+
+    /**
+     *  @notice Maximum liquidation incentive for liquidators that can be set
+     */
+    uint256 internal constant LIQUIDATION_INCENTIVE_MAX = 1.10e18;
+
+    /**
+     *  @notice Maximum fee the protocol is keeps from each liquidation
+     */
+    uint256 internal constant LIQUIDATION_FEE_MAX = 0.10e18;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -75,33 +99,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     uint256 public override liquidationFee;
 
-    // ─────────────────────── Min/Max this pool allows
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override DEBT_RATIO_MIN = 0.80e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override DEBT_RATIO_MAX = 1.00e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override LIQUIDATION_INCENTIVE_MIN = 1.00e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override LIQUIDATION_INCENTIVE_MAX = 1.10e18;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    uint256 public constant override LIQUIDATION_FEE_MAX = 0.10e18;
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -112,14 +109,15 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *          contract, which is taken from the most current one in the factory.
      */
     constructor() {
-        // Get important addresses from collateral deployer
-        (hangar18, underlying, borrowable, shuttleId) = IDenebOrbiter(_msgSender()).collateralParameters();
+        // dummy vars
+        address factory;
+        address asset;
+
+        // Get factory, underlying, borrowable and lending pool id
+        (factory, asset, borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
 
         // Assign price oracle from factory
-        cygnusNebulaOracle = ICygnusFactory(hangar18).cygnusNebulaOracle();
-
-        // Set the symbol for this LP Token (`CygLP token0/token1`)
-        symbol = Strings.appendDeneb(underlying);
+        cygnusNebulaOracle = ICygnusFactory(factory).cygnusNebulaOracle();
 
         // Assurance
         totalSupply = 0;
@@ -151,14 +149,14 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @notice CygnusTerminl overrides
+     *  @notice CygnusTerminl override converting the function to view only
      */
     function exchangeRate() public view virtual override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply;
 
         // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? INITIAL_EXCHANGE_RATE : totalBalance.div(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalBalance.div(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

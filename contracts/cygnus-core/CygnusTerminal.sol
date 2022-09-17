@@ -19,7 +19,7 @@
 
      Smart contracts to `go long` on your LP Token.
 
-     Deposit LP Token, borrow DAI 
+     Deposit LP Token, borrow USDC
 
      Structure of all Cygnus Contracts
 
@@ -43,7 +43,7 @@
               └ External            
 
     @dev: This is a fork of Impermax with some small edits. It should only be tested with Solidity >=0.8 as some 
-          functions don't check for overflow/underflow and all errors are handled with the new `custom errors` 
+          functions don't check for overflow/underflow and all errors are handled with the new `custom errors`
           feature among other small things...                                                                    */
 
 // SPDX-License-Identifier: Unlicense
@@ -51,7 +51,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
-import { Erc20Permit } from "./Erc20Permit.sol";
+import { ERC20Permit } from "./ERC20Permit.sol";
 
 // Libraries
 import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
@@ -60,18 +60,21 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 // Interfaces
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
-import { IErc20 } from "./interfaces/IErc20.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
 import { IMiniChef } from "./interfaces/IMiniChef.sol";
+
+import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
+import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusTerminal
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
- *          to get the vault token (CygDAI for DAI deposits or CygLP for LP Token deposits).
+ *          to get the vault token (CygUSD for USDC deposits or CygLP for LP Token deposits).
  *          It follows similar functionality to UniswapV2Pair with some small differences.
  *          We added only the `deposit` and `redeem` functions from the erc-4626 standard to save on byte size.
  */
-contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
+contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -82,7 +85,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
     using PRBMathUD60x18 for uint256;
 
     /**
-     *  @custom:library SafeTransferLib Solady`s library for low level handling of Erc20 tokens
+     *  @custom:library SafeTransferLib Solady`s library for low level handling of ERC20 tokens
      */
     using SafeTransferLib for address;
 
@@ -90,34 +93,27 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    /**
-     *  @notice The initial exchange rate between underlying and pool tokens
-     */
-    uint256 internal constant INITIAL_EXCHANGE_RATE = 1e18;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusTerminal
      */
+    address public immutable override hangar18;
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    uint256 public immutable override shuttleId;
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    address public immutable override underlying;
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
     uint256 public override totalBalance;
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    address public override underlying;
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    address public override hangar18;
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    uint256 public override shuttleId;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -125,16 +121,52 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
 
     /**
      *  @notice Constructs tokens for both Collateral and Borrow arms
-     *  @dev We create another borrow permit for Borrow arm in CygnusBorrowApprove contract
-     *  @param name_ Erc20 name of the Borrow/Collateral token
-     *  @param symbol_ Erc20 symbol of the Borrow/Collateral token
+     *  @notice We have to do a try/catch if we want to store the underlying as immutable as both borrowable
+     *          and collateral call the same contract
+     *  @param name_ ERC20 name of the Borrow/Collateral token
+     *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
      *  @param decimals_ Decimals of the Borrow/Collateral token (always 18)
      */
     constructor(
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) Erc20Permit(name_, symbol_, decimals_) {}
+    ) ERC20Permit(name_, symbol_, decimals_) {
+        // Immutable factory
+        address factory;
+
+        // Immutable underlying
+        address asset;
+
+        // Immutable pool id
+        uint256 poolId;
+
+        // Try collateral parameters: factory, underlying, borrowable, shuttleId
+        try IDenebOrbiter(_msgSender()).collateralParameters() returns (address a, address b, address, uint256 d) {
+            // placeholder factory
+            factory = a;
+
+            // placeholder underlying
+            asset = b;
+
+            // placeholder shuttleId
+            poolId = d;
+        } catch {
+            // Catch borrowable parameters: factory, underlying, collateral, shuttleId, baseRate, multiplier
+            (factory, asset, , poolId, , ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
+        }
+
+        // Assign immutables to success call
+
+        // Cygnus Factory
+        hangar18 = factory;
+
+        // Underlying
+        underlying = asset;
+
+        // Lending pool ID (shared by both borrowable and collateral)
+        shuttleId = poolId;
+    }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. MODIFIERS
@@ -185,7 +217,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         uint256 _totalSupply = totalSupply;
 
         // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? INITIAL_EXCHANGE_RATE : totalBalance.div(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalBalance.div(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -193,17 +225,6 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    /**
-     *  @notice Updates this contract's total balance in terms of its underlying
-     */
-    function updateInternal() internal virtual {
-        // Match totalBalance state to balanceOf this contract
-        totalBalance = IErc20(underlying).balanceOf(address(this));
-
-        /// @custom:event Sync
-        emit Sync(totalBalance);
-    }
 
     /**
      *  @notice Internal hook for deposits into strategies
@@ -218,6 +239,17 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @param shares The amount of shares burnt
      */
     function beforeWithdrawInternal(uint256 assets, uint256 shares) internal virtual {}
+
+    /**
+     *  @notice Updates this contract's total balance in terms of its underlying
+     */
+    function updateInternal() internal virtual {
+        // Match totalBalance state to balanceOf this contract
+        totalBalance = IERC20(underlying).balanceOf(address(this));
+
+        /// @custom:event Sync
+        emit Sync(totalBalance);
+    }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -283,7 +315,7 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
         // Burn shares
         burnInternal(owner, shares);
 
-        // Optimistically transfer assets to recipient
+        // Transfer assets to recipient
         underlying.safeTransfer(recipient, assets);
 
         /// @custom:event Withdraw
@@ -295,14 +327,14 @@ contract CygnusTerminal is ICygnusTerminal, Erc20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function sweepToken(address token) external override nonReentrant update cygnusAdmin {
+    function sweepToken(address token) external override nonReentrant cygnusAdmin update {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
         if (token == underlying) {
             revert CygnusTerminal__CantSweepUnderlying({ token: token, underlying: underlying });
         }
 
         // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = IErc20(token).balanceOf(address(this));
+        uint256 balance = IERC20(token).balanceOf(address(this));
 
         // Transfer token
         token.safeTransfer(_msgSender(), balance);

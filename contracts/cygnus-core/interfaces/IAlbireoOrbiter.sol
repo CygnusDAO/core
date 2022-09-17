@@ -13,7 +13,7 @@ interface IAlbireoOrbiter {
     /**
      *  @notice Passing the struct parameters to the borrow contracts avoids setting constructor parameters
      *  @return factory The address of the Cygnus factory assigned to `Hangar18`
-     *  @return underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
+     *  @return underlying The address of the underlying borrow token (address of USDC)
      *  @return collateral The address of the Cygnus collateral contract for this borrow contract
      *  @return shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @return baseRatePerYear The base rate per year for this shuttle
@@ -37,7 +37,7 @@ interface IAlbireoOrbiter {
 
     /**
      *  @notice Function to deploy the borrow contract of a lending pool
-     *  @param underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
+     *  @param underlying The address of the underlying borrow token (address of USDc)
      *  @param collateral The address of the Cygnus collateral contract for this borrow contract
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @param baseRatePerYear The base rate per year for this shuttle

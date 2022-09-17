@@ -2,25 +2,25 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IErc20 } from "./interfaces/IErc20.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
 import { Context } from "./utils/Context.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 
-/// @title Erc20
+/// @title ERC20
 /// @author Paul Razvan Berg
-contract Erc20 is IErc20, Context, ReentrancyGuard {
+contract ERC20 is IERC20, Context, ReentrancyGuard {
     /// PUBLIC STORAGE ///
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     string public override name;
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     string public override symbol;
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     uint8 public immutable override decimals;
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     uint256 public override totalSupply;
 
     /// INTERNAL STORAGE ///
@@ -34,9 +34,9 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
     /// CONSTRUCTOR ///
 
     ///  they can only be set once during construction.
-    /// @param name_ Erc20 name of this token.
-    /// @param symbol_ Erc20 symbol of this token.
-    /// @param decimals_ Erc20 decimal precision of this token.
+    /// @param name_ ERC20 name of this token.
+    /// @param symbol_ ERC20 symbol of this token.
+    /// @param decimals_ ERC20 decimal precision of this token.
     constructor(
         string memory name_,
         string memory symbol_,
@@ -49,45 +49,31 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
 
     /// PUBLIC CONSTANT FUNCTIONS ///
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     function allowance(address owner, address spender) public view override returns (uint256) {
         return allowances[owner][spender];
     }
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     function balanceOf(address account) public view virtual override returns (uint256) {
         return balances[account];
     }
 
     /// PUBLIC NON-CONSTANT FUNCTIONS ///
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
         approveInternal(_msgSender(), spender, amount);
         return true;
     }
 
-    /// @inheritdoc IErc20
-    function decreaseAllowance(address spender, uint256 subtractedAmount) public virtual override returns (bool) {
-        uint256 newAllowance = allowances[_msgSender()][spender] - subtractedAmount;
-        approveInternal(_msgSender(), spender, newAllowance);
-        return true;
-    }
-
-    /// @inheritdoc IErc20
-    function increaseAllowance(address spender, uint256 addedAmount) public virtual override returns (bool) {
-        uint256 newAllowance = allowances[_msgSender()][spender] + addedAmount;
-        approveInternal(_msgSender(), spender, newAllowance);
-        return true;
-    }
-
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
         transferInternal(_msgSender(), recipient, amount);
         return true;
     }
 
-    /// @inheritdoc IErc20
+    /// @inheritdoc IERC20
     function transferFrom(
         address sender,
         address recipient,
@@ -97,7 +83,7 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
 
         uint256 currentAllowance = allowances[sender][_msgSender()];
         if (currentAllowance < amount) {
-            revert Erc20__InsufficientAllowance(currentAllowance, amount);
+            revert ERC20__InsufficientAllowance(currentAllowance, amount);
         }
         unchecked {
             approveInternal(sender, _msgSender(), currentAllowance - amount);
@@ -122,10 +108,10 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
         uint256 amount
     ) internal virtual {
         if (owner == address(0)) {
-            revert Erc20__ApproveOwnerZeroAddress();
+            revert ERC20__ApproveOwnerZeroAddress();
         }
         if (spender == address(0)) {
-            revert Erc20__ApproveSpenderZeroAddress();
+            revert ERC20__ApproveSpenderZeroAddress();
         }
 
         allowances[owner][spender] = amount;
@@ -141,7 +127,7 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
     /// - `holder` must have at least `amount` tokens.
     function burnInternal(address holder, uint256 burnAmount) internal {
         if (holder == address(0)) {
-            revert Erc20__BurnZeroAddress();
+            revert ERC20__BurnZeroAddress();
         }
 
         // Burn the tokens.
@@ -163,7 +149,7 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
     /// - The beneficiary's balance and the total supply cannot overflow.
     function mintInternal(address beneficiary, uint256 mintAmount) internal virtual {
         if (beneficiary == address(0)) {
-            revert Erc20__MintZeroAddress();
+            revert ERC20__MintZeroAddress();
         }
 
         /// Mint the new tokens.
@@ -190,15 +176,15 @@ contract Erc20 is IErc20, Context, ReentrancyGuard {
         uint256 amount
     ) internal virtual {
         if (sender == address(0)) {
-            revert Erc20__TransferSenderZeroAddress();
+            revert ERC20__TransferSenderZeroAddress();
         }
         if (recipient == address(0)) {
-            revert Erc20__TransferRecipientZeroAddress();
+            revert ERC20__TransferRecipientZeroAddress();
         }
 
         uint256 senderBalance = balances[sender];
         if (senderBalance < amount) {
-            revert Erc20__InsufficientBalance(senderBalance, amount);
+            revert ERC20__InsufficientBalance(senderBalance, amount);
         }
         unchecked {
             balances[sender] = senderBalance - amount;

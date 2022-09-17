@@ -13,7 +13,7 @@ import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
 import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
-import { IErc20, Erc20 } from "./Erc20.sol";
+import { IERC20, ERC20 } from "./ERC20.sol";
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 
@@ -31,7 +31,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     using PRBMathUD60x18 for uint256;
 
     /**
-     *  @custom:library SafeTransferLib Solady`s library for low level handling of Erc20 tokens
+     *  @custom:library SafeTransferLib Solady`s library for low level handling of ERC20 tokens
      */
     using SafeTransferLib for address;
 
@@ -43,13 +43,13 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
 
     /**
      *  @notice Checks whether user has enough liquidity and calls safe internal transfer at CygnusTerminal
-     *  @notice Overrides Erc20
+     *  @notice Overrides ERC20
      */
     function transferInternal(
         address from,
         address to,
         uint256 value
-    ) internal override(Erc20) {
+    ) internal override(ERC20) {
         /// @custom:error InsufficientLiquidity Avoid transfer if there's shortfall
         if (!canRedeem(from, value)) {
             revert CygnusCollateral__InsufficientLiquidity({ from: from, to: to, value: value });
@@ -73,17 +73,17 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
             return false;
         }
 
-        // Update user's balance.
+        // Update user's balance
         uint256 finalBalance = cygLPBalance - redeemAmount;
 
         // Calculate final balance against the underlying's exchange rate / scale
         uint256 amountCollateral = finalBalance.mul(exchangeRate());
 
-        // Borrow balance, calls BorrowDAITokenA contract
-        uint256 amountDAI = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
+        // Get borrower's borrow balance from borrowable contract
+        uint256 borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
 
         // prettier-ignore
-        ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, amountDAI);
+        ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, borrowedAmount);
 
         // Return true if user has no shortfall
         return shortfall == 0;
@@ -104,9 +104,9 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         if (_msgSender() == borrower) {
             revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower, liquidator: liquidator });
         }
-        /// @custom:error MsgSenderNotCygnusDai Avoid unless msg sender is this shuttle's CygnusBorrow contract
+        /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         else if (_msgSender() != borrowable) {
-            revert CygnusCollateral__MsgSenderNotCygnusDai({ sender: _msgSender(), borrowable: borrowable });
+            revert CygnusCollateral__MsgSenderNotBorrowable({ sender: _msgSender(), borrowable: borrowable });
         }
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
         else if (repayAmount == 0) {

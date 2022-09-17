@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
-import "./IErc20.sol";
+import "./IERC20.sol";
 
 pragma solidity >=0.8.4;
 
@@ -45,5 +45,5 @@ interface IRewarder {
 
     function pendingTokens(address user) external view returns (uint256 pending);
 
-    function rewardToken() external view returns (IErc20);
+    function rewardToken() external view returns (IERC20);
 }

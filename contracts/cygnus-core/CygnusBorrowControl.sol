@@ -4,6 +4,7 @@ pragma solidity >=0.8.4;
 // Dependencies
 import { ICygnusBorrowControl } from "./interfaces/ICygnusBorrowControl.sol";
 import { CygnusTerminal } from "./CygnusTerminal.sol";
+import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
 import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
@@ -11,7 +12,7 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings
  *  @author CygnusDAO
- *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygDAI Token.
+ *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygUSDC Token.
  *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
  *          borrow tracker which tracks individual borrows to reward users in any token (if there is any),
  *          the reserve factor and the kink utilization rate.
@@ -19,10 +20,48 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *          The constructor stores the collateral address this pool is linked with, and only this address can
  *          be used as collateral to borrow this contract`s underlying.
  */
-contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygDAI", 18) {
+contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygUSD", 6) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+    /**
+     *  @custom:library PRBMathUD60x18 for uint256 fixed point math, also imports the main library `PRBMath`.
+     */
+    using PRBMathUD60x18 for uint256;
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    // ────────────────────── Min/Max this pool allows
+
+    /**
+     *  @notice Maximum base interest rate allowed (20%)
+     */
+    uint256 internal constant BASE_RATE_MAX = 0.10e18;
+
+    /**
+     *  @notice Maximum reserve factor that the protocol can keep as reserves
+     */
+    uint256 internal constant RESERVE_FACTOR_MAX = 0.20e18;
+
+    /**
+     *  @notice Minimum kink utilization point allowed, equivalent to 50%
+     */
+    uint256 internal constant KINK_UTILIZATION_RATE_MIN = 0.50e18;
+
+    /**
+     *  @notice Maximum Kink point allowed
+     */
+    uint256 internal constant KINK_UTILIZATION_RATE_MAX = 0.95e18;
+
+    /**
+     *  @notice Maximum Kink point allowed
+     */
+    uint256 internal constant KINK_MULTIPLIER_MAX = 10;
+
+    /**
+     *  @notice Used to calculate the per second interest rates
+     */
+    uint256 internal constant SECONDS_PER_YEAR = 31536000;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -36,7 +75,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    address public override cygnusBorrowTracker;
+    address public override cygnusBorrowRewarder;
 
     // ───────────────────────────── Current pool rates
 
@@ -53,61 +92,50 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
+    uint256 public override baseRatePerSecond;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public override multiplierPerSecond;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public override jumpMultiplierPerSecond;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
     uint256 public override kinkUtilizationRate = 0.85e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override kinkMultiplier = 3;
-
-    // ─────────────────────── Min/Max this pool allows
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override BASE_RATE_MAX = 0.10e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override RESERVE_FACTOR_MAX = 0.20e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override KINK_UTILIZATION_RATE_MIN = 0.50e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override KINK_UTILIZATION_RATE_MAX = 0.95e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public constant override KINK_MULTIPLIER_MAX = 10;
+    uint256 public override kinkMultiplier = 2;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            4. CONSTRUCTOR
+            3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Borrow arm of the pool. It assigns the factory, the underlying asset (DAI) and the
-     *          collateral contract for this borrow token. Interest rate model is assigned in the next child contract
+     *  @notice Constructs the Borrow arm of the pool. It assigns the factory, the underlying asset (USDC),
+     *          the collateral contract and the lending pool ID. Interest rate parameters get passed also and
+     *          and stored during deployment
      */
     constructor() {
-        // Get factory, underlying and collateral adddresses
-        (
-            hangar18,
-            underlying,
-            collateral,
-            shuttleId, /* baseRate */ /* multiplier */
-            ,
+        // Get base rate and multiplier from orbiter
+        uint256 baseRate;
+        uint256 multiplier;
 
-        ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
+        // Get factory, underlying, collateral and lending pool id
+        (, , collateral, , baseRate, multiplier) = IAlbireoOrbiter(_msgSender()).borrowParameters();
+
+        // Update the interest rate model and do min/max checks from CygnusBorrowControl
+        interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
 
         // Match initial exchange rate
-        exchangeRateStored = INITIAL_EXCHANGE_RATE;
+        exchangeRateStored = 1e18;
 
         // Assurance
         totalSupply = 0;
@@ -136,16 +164,55 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         }
     }
 
-    /**
-     *  @return The uint32 block timestamp
-     */
-    function getBlockTimestamp() internal view returns (uint32) {
-        return uint32(block.timestamp);
-    }
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
+
+    /**
+     *  @notice Updates the parameters of the interest rate model and writes to storage
+     *  @dev Does necessary checks internally. Reverts in case of failing checks
+     *  @param baseRatePerYear_ The approximate target base APR, as a mantissa (scaled by 1e18)
+     *  @param multiplierPerYear_ The rate of increase in interest rate wrt utilization (scaled by 1e18)
+     *  @param kinkMultiplier_ The increase to farmApy once kink utilization is reached
+     *  @param kinkUtilizationRate_ The point at which the jump multiplier takes effect
+     */
+    function interestRateModelInternal(
+        uint256 baseRatePerYear_,
+        uint256 multiplierPerYear_,
+        uint256 kinkMultiplier_,
+        uint256 kinkUtilizationRate_
+    ) private {
+        // Internal parameter check for base rate
+        validRange(0, BASE_RATE_MAX, baseRatePerYear_);
+
+        // Internal parameter check for kink rate
+        validRange(KINK_UTILIZATION_RATE_MIN, KINK_UTILIZATION_RATE_MAX, kinkUtilizationRate_);
+
+        // Internal parameter check for kink multiplier
+        validRange(1, KINK_MULTIPLIER_MAX, kinkMultiplier_);
+
+        // Calculate the Base Rate per second and update to storage
+        baseRatePerSecond = baseRatePerYear_ / SECONDS_PER_YEAR;
+
+        // Calculate the Farm Multiplier per second and update to storage
+        multiplierPerSecond = multiplierPerYear_.div(SECONDS_PER_YEAR * kinkUtilizationRate_);
+
+        // Update kink multiplier
+        kinkMultiplier = kinkMultiplier_;
+
+        // update kink utilization rate
+        kinkUtilizationRate = kinkUtilizationRate_;
+
+        // Calculate the Jump Multiplier per second and update to storage
+        jumpMultiplierPerSecond = PRBMath.mulDiv(multiplierPerYear_, kinkMultiplier_, SECONDS_PER_YEAR).div(
+            kinkUtilizationRate_
+        );
+
+        /// @custom:event NewInterestParameter
+        emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
+    }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -154,24 +221,26 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setCygnusBorrowTracker(address newBorrowTracker) external override nonReentrant cygnusAdmin {
-        // Need the option of setting the borrow tracker as address(0) to remove rewards pool
+    function setCygnusBorrowRewarder(address newBorrowRewarder) external override nonReentrant cygnusAdmin {
+        // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
+        // case it's inactive
+
         /// @custom:error BorrowTrackerAlreadySet Avoid Duplicate
-        if (newBorrowTracker == cygnusBorrowTracker) {
+        if (newBorrowRewarder == cygnusBorrowRewarder) {
             revert CygnusBorrowControl__BorrowTrackerAlreadySet({
-                currentTracker: cygnusBorrowTracker,
-                newTracker: newBorrowTracker
+                currentTracker: cygnusBorrowRewarder,
+                newTracker: newBorrowRewarder
             });
         }
 
         // Old borrow tracker
-        address oldBorrowTracker = cygnusBorrowTracker;
+        address oldBorrowRewarder = cygnusBorrowRewarder;
 
         // Checks admin before, assign borrow tracker
-        cygnusBorrowTracker = newBorrowTracker;
+        cygnusBorrowRewarder = newBorrowRewarder;
 
-        /// @custom:event NewCygnusBorrowTracker
-        emit NewCygnusBorrowTracker(oldBorrowTracker, newBorrowTracker);
+        /// @custom:event NewCygnusBorrowRewarder
+        emit NewCygnusBorrowRewarder(oldBorrowRewarder, newBorrowRewarder);
     }
 
     /**
@@ -198,17 +267,13 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setKinkUtilizationRate(uint256 newKinkUtilizationRate) external override nonReentrant cygnusAdmin {
-        // Check if parameter is within range allowed
-        validRange(KINK_UTILIZATION_RATE_MIN, KINK_UTILIZATION_RATE_MAX, newKinkUtilizationRate);
-
-        // Old kink utilization rate
-        uint256 oldKinkUtilizationRate = kinkUtilizationRate;
-
-        // Update kink utilization rate
-        kinkUtilizationRate = newKinkUtilizationRate;
-
-        /// @custom:event NewKinkUtilizationRate
-        emit NewKinkUtilizationRate(oldKinkUtilizationRate, newKinkUtilizationRate);
+    function setInterestRateModel(
+        uint256 baseRatePerYear,
+        uint256 multiplierPerYear,
+        uint256 kinkMultiplier_,
+        uint256 kinkUtilizationRate_
+    ) external override nonReentrant cygnusAdmin {
+        // Update Per second rates
+        interestRateModelInternal(baseRatePerYear, multiplierPerYear, kinkMultiplier_, kinkUtilizationRate_);
     }
 }

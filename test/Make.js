@@ -19,16 +19,16 @@ module.exports = async function Make() {
     // 1. LP Token address -----------------------------------------------------
     const lpTokenAddress = '0x345f9581522ecd41c3b9ee5fbccacf98d17967eb';
 
-    // 2. DAI address on this chain --------------------------------------------
-    const daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
+    // 2. USDC address on this chain --------------------------------------------
+    const usdcAddress = '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e';
 
     // 3. Native chain token ---------------------------------------------------
     const nativeAddress = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
 
     // 4. Chainlink aggregators ------------------------------------------------
 
-    // DAI aggregator
-    const daiAggregator = '0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300';
+    // USDC aggregator
+    const usdcAggregator = '0xF096872672F44d6EBA71458D74fe67F9a77a23B9';
     // Token0 from LP Token
     const token0Aggregator = '0x02D35d3a8aC3e1626d3eE09A78Dd87286F5E8e3a';
     // Token1 from LP Token
@@ -45,8 +45,8 @@ module.exports = async function Make() {
     [owner, daoReserves, safeAddress1] = await ethers.getSigners();
 
     // Make contract
-    const daiAbi = fs.readFileSync(path.resolve(__dirname, './abis/dai.json')).toString();
-    const dai = new ethers.Contract(daiAddress, daiAbi, owner);
+    const usdcAbi = fs.readFileSync(path.resolve(__dirname, './abis/usdc.json')).toString();
+    const usdc = new ethers.Contract(usdcAddress, usdcAbi, owner);
 
     const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, './abis/lptoken.json')).toString();
     const lpToken = new ethers.Contract(lpTokenAddress, lpTokenAbi, owner);
@@ -55,8 +55,8 @@ module.exports = async function Make() {
 
     const Oracle = await ethers.getContractFactory('ChainlinkNebulaOracle');
 
-    // Deploy with Chainlink's dai Aggregator
-    const oracle = await Oracle.deploy(daiAggregator);
+    // Deploy with Chainlink's USDC Aggregator
+    const oracle = await Oracle.deploy(usdcAggregator);
 
     // Initialize oracle, else the deployment for this lending pool fails
     await oracle.initializeNebula(lpTokenAddress, token0Aggregator, token1Aggregator);
@@ -88,7 +88,7 @@ module.exports = async function Make() {
     // Factory
     const Factory = await ethers.getContractFactory('CygnusFactory');
 
-    const factory = await Factory.deploy(owner.address, daoReserves.address, daiAddress, nativeAddress, oracle.address);
+    const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, oracle.address);
 
     // Orbiter
     const orbiter = await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
@@ -111,7 +111,7 @@ module.exports = async function Make() {
     // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
 
     // custom pool rates for the JoeAvax lending pool
-    const baseRate = BigInt(0.00e18);
+    const baseRate = BigInt(0.0e18);
 
     const multiplier = BigInt(0.04e18);
 
@@ -133,5 +133,5 @@ module.exports = async function Make() {
     const collateral = await ethers.getContractAt('CygnusCollateral', shuttle.collateral, owner);
 
     // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
-    return [oracle, factory, router, borrowable, collateral, dai, lpToken];
+    return [oracle, factory, router, borrowable, collateral, usdc, lpToken];
 };

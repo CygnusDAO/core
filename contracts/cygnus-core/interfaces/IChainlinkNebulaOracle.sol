@@ -13,27 +13,27 @@ interface IChainlinkNebulaOracle {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error PairIsInitialized Emitted when attempting to initialize an already initialized LP Token
+     *  @custom:error PairIsInitialized Reverts when attempting to initialize an already initialized LP Token
      */
     error ChainlinkNebulaOracle__PairAlreadyInitialized(address lpTokenPair);
 
     /**
-     *  @custom:error PairNotInitialized Emitted when attempting to get the price of an LP Token that is not initialized
+     *  @custom:error PairNotInitialized Reverts when attempting to get the price of an LP Token that is not initialized
      */
     error ChainlinkNebulaOracle__PairNotInitialized(address lpTokenPair);
 
     /**
-     *  @custom:error MsgSenderNotAdmin Emitted when attempting to access admin only methods
+     *  @custom:error MsgSenderNotAdmin Reverts when attempting to access admin only methods
      */
     error ChainlinkNebulaOracle__MsgSenderNotAdmin(address msgSender);
 
     /**
-     *  @custom:error AdminCantBeZero Emitted when attempting to set the admin if the pending admin is the zero address
+     *  @custom:error AdminCantBeZero Reverts when attempting to set the admin if the pending admin is the zero address
      */
     error ChainlinkNebulaOracle__AdminCantBeZero(address pendingAdmin);
 
     /**
-     *  @custom:error PendingAdminAlreadySet Emitted when attempting to set the same pending admin twice
+     *  @custom:error PendingAdminAlreadySet Reverts when attempting to set the same pending admin twice
      */
     error ChainlinkNebulaOracle__PendingAdminAlreadySet(address pendingAdmin);
 
@@ -48,7 +48,7 @@ interface IChainlinkNebulaOracle {
      *  @param lpTokenPair The address of the LP Token
      *  @param priceFeedA The address of the Chainlink's aggregator contract for this LP Token's token0
      *  @param priceFeedB The address of the Chainlink's aggregator contract for this LP Token's token1
-     *  @custom:event InitializeChainlinkNebula Emitted when an LP Token pair's price starts being tracked
+     *  @custom:event InitializeChainlinkNebula Logs when an LP Token pair's price starts being tracked
      */
     event InitializeChainlinkNebula(
         bool initialized,
@@ -64,7 +64,7 @@ interface IChainlinkNebulaOracle {
      *  @param lpTokenPair The contract address of the LP Token
      *  @param priceFeedA The contract address of Chainlink's aggregator contract for this LP Token's token0
      *  @param priceFeedB The contract address of the Chainlink's aggregator contract for this LP Token's token1
-     *  @custom:event DeleteChainlinkNebula Emitted when an LP Token pair is removed from this oracle
+     *  @custom:event DeleteChainlinkNebula Logs when an LP Token pair is removed from this oracle
      */
     event DeleteChainlinkNebula(
         uint24 oracleId,
@@ -78,7 +78,7 @@ interface IChainlinkNebulaOracle {
      *  @notice Logs when a new pending admin for the oracle is set
      *  @param oracleCurrentAdmin The address of the current oracle admin
      *  @param oraclePendingAdmin The address of the pending oracle admin
-     *  @custom:event NewNebulaPendingAdmin Emitted when a new pending admin is set, to be accepted by admin
+     *  @custom:event NewNebulaPendingAdmin Logs when a new pending admin is set, to be accepted by admin
      */
     event NewOraclePendingAdmin(address oracleCurrentAdmin, address oraclePendingAdmin);
 
@@ -86,7 +86,7 @@ interface IChainlinkNebulaOracle {
      *  @notice Logs when a new admin for the oracle is confirmed
      *  @param oracleOldAdmin The address of the old oracle admin
      *  @param oracleNewAdmin The address of the new oracle admin
-     *  @custom:event NewNebulaAdmin Emitted when the pending admin is confirmed as the new oracle admin
+     *  @custom:event NewNebulaAdmin Logs when the pending admin is confirmed as the new oracle admin
      */
     event NewOracleAdmin(address oracleOldAdmin, address oracleNewAdmin);
 
@@ -139,9 +139,9 @@ interface IChainlinkNebulaOracle {
     function symbol() external view returns (string memory);
 
     /**
-     *  @return The address of Chainlink's DAI oracle
+     *  @return The address of Chainlink's USDC oracle
      */
-    function dai() external view returns (AggregatorV3Interface);
+    function usdc() external view returns (AggregatorV3Interface);
 
     /**
      *  @return The address of the Cygnus admin
@@ -166,26 +166,26 @@ interface IChainlinkNebulaOracle {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @return The price of DAI with 18 decimals
+     *  @return The price of USDC with 18 decimals
      */
-    function daiPrice() external view returns (uint256);
+    function usdcPrice() external view returns (uint256);
 
     /**
-     *  @notice Gets the latest price of the LP Token denominated in DAI
+     *  @notice Gets the latest price of the LP Token denominated in USDC
      *  @notice LP Token pair must be initialized, else reverts with custom error
      *  @param lpTokenPair The address of the LP Token
-     *  @return lpTokenPrice The price of the LP Token denominated in DAI
+     *  @return lpTokenPrice The price of the LP Token denominated in USDC
      */
-    function lpTokenPriceDai(address lpTokenPair) external view returns (uint256 lpTokenPrice);
+    function lpTokenPriceUsdc(address lpTokenPair) external view returns (uint256 lpTokenPrice);
 
     /**
-     *  @notice Gets the latest price of the LP Token's token0 and token1 denominated in DAI
+     *  @notice Gets the latest price of the LP Token's token0 and token1 denominated in USDC
      *  @notice Used by Cygnus Altair contract to calculate optimal amount of leverage
      *  @param lpTokenPair The address of the LP Token
-     *  @return tokenPriceA The price of the LP Token's token0 denominated in DAI
-     *  @return tokenPriceB The price of the LP Token's token1 denominated in DAI
+     *  @return tokenPriceA The price of the LP Token's token0 denominated in USDC
+     *  @return tokenPriceB The price of the LP Token's token1 denominated in USDC
      */
-    function assetPricesDai(address lpTokenPair) external view returns (uint256 tokenPriceA, uint256 tokenPriceB);
+    function assetPricesUsdc(address lpTokenPair) external view returns (uint256 tokenPriceA, uint256 tokenPriceB);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

@@ -1,53 +1,52 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
-/// @title IErc20
+/// @title IERC20
 /// @author Paul Razvan Berg
-/// @notice Implementation for the Erc20 standard.
+/// @notice Implementation for the ERC20 standard.
 ///
 /// We have followed general OpenZeppelin guidelines: functions revert instead of returning
 /// `false` on failure. This behavior is nonetheless conventional and does not conflict with
-/// the with the expectations of Erc20 applications.
+/// the with the expectations of ERC20 applications.
 ///
 /// Additionally, an {Approval} event is emitted on calls to {transferFrom}. This allows
 /// applications to reconstruct the allowance for all accounts just by listening to said
 /// events. Other implementations of the Erc may not emit these events, as it isn't
 /// required by the specification.
-///
-/// Finally, the non-standard {decreaseAllowance} and {increaseAllowance} functions have been
-/// added to mitigate the well-known issues around setting allowances.
-///
+
+/// Removed increaseAllowance and decreaseAllowance
+
 /// @dev Forked from OpenZeppelin
 /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/token/ERC20/ERC20.sol
-interface IErc20 {
+interface IERC20 {
     /// CUSTOM ERRORS ///
 
     /// @notice Emitted when the owner is the zero address.
-    error Erc20__ApproveOwnerZeroAddress();
+    error ERC20__ApproveOwnerZeroAddress();
 
     /// @notice Emitted when the spender is the zero address.
-    error Erc20__ApproveSpenderZeroAddress();
+    error ERC20__ApproveSpenderZeroAddress();
 
     /// @notice Emitted when burning more tokens than are in the account.
-    error Erc20__BurnUnderflow(uint256 accountBalance, uint256 burnAmount);
+    error ERC20__BurnUnderflow(uint256 accountBalance, uint256 burnAmount);
 
     /// @notice Emitted when the holder is the zero address.
-    error Erc20__BurnZeroAddress();
+    error ERC20__BurnZeroAddress();
 
     /// @notice Emitted when the owner did not give the spender sufficient allowance.
-    error Erc20__InsufficientAllowance(uint256 allowance, uint256 amount);
+    error ERC20__InsufficientAllowance(uint256 allowance, uint256 amount);
 
     /// @notice Emitted when tranferring more tokens than there are in the account.
-    error Erc20__InsufficientBalance(uint256 senderBalance, uint256 amount);
+    error ERC20__InsufficientBalance(uint256 senderBalance, uint256 amount);
 
     /// @notice Emitted when the beneficiary is the zero address.
-    error Erc20__MintZeroAddress();
+    error ERC20__MintZeroAddress();
 
     /// @notice Emitted when the sender is the zero address.
-    error Erc20__TransferSenderZeroAddress();
+    error ERC20__TransferSenderZeroAddress();
 
     /// @notice Emitted when the recipient is the zero address.
-    error Erc20__TransferRecipientZeroAddress();
+    error ERC20__TransferRecipientZeroAddress();
 
     /// EVENTS ///
 
@@ -104,30 +103,6 @@ interface IErc20 {
     /// @return a boolean value indicating whether the operation succeeded.
     function approve(address spender, uint256 amount) external returns (bool);
 
-    /// @notice Atomically decreases the allowance granted to `spender` by the caller.
-    ///
-    /// @dev Emits an {Approval} event indicating the updated allowance.
-    ///
-    /// This is an alternative to {approve} that can be used as a mitigation for problems described
-    /// in {Erc20Interface-approve}.
-    ///
-    /// Requirements:
-    ///
-    /// - `spender` cannot be the zero address.
-    /// - `spender` must have allowance for the caller of at least `subtractedAmount`.
-    function decreaseAllowance(address spender, uint256 subtractedAmount) external returns (bool);
-
-    /// @notice Atomically increases the allowance granted to `spender` by the caller.
-    ///
-    /// @dev Emits an {Approval} event indicating the updated allowance.
-    ///
-    /// This is an alternative to {approve} that can be used as a mitigation for the problems described above.
-    ///
-    /// Requirements:
-    ///
-    /// - `spender` cannot be the zero address.
-    function increaseAllowance(address spender, uint256 addedAmount) external returns (bool);
-
     /// @notice Moves `amount` tokens from the caller's account to `recipient`.
     ///
     /// @dev Emits a {Transfer} event.
@@ -144,7 +119,7 @@ interface IErc20 {
     /// `is then deducted from the caller's allowance.
     ///
     /// @dev Emits a {Transfer} event and an {Approval} event indicating the updated allowance. This is
-    /// not required by the Erc. See the note at the beginning of {Erc20}.
+    /// not required by the Erc. See the note at the beginning of {ERC20}.
     ///
     /// Requirements:
     ///

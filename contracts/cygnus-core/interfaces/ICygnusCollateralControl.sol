@@ -26,25 +26,22 @@ interface ICygnusCollateralControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Logs when the debt ratio is updated by admins
      *  @param oldDebtRatio The old debt ratio at which the collateral was liquidatable in this shuttle
      *  @param newDebtRatio The new debt ratio for this shuttle
-     *  @custom:event NewDebtRatio Emitted when a new debt ratio is set
+     *  @custom:event NewDebtRatio Logs when the debt ratio is updated by admins
      */
     event NewDebtRatio(uint256 oldDebtRatio, uint256 newDebtRatio);
 
     /**
-     *  @notice Logs when the liquidation incentive is updated by admins
      *  @param oldLiquidationIncentive The old incentive for liquidators taken from the collateral
      *  @param newLiquidationIncentive The new liquidation incentive for this shuttle
-     *  @custom:event NewLiquidationIncentive Emitted when a new liquidation incentive is set
+     *  @custom:event NewLiquidationIncentive Logs when the liquidation incentive is updated by admins
      */
     event NewLiquidationIncentive(uint256 oldLiquidationIncentive, uint256 newLiquidationIncentive);
     /**
-     *  @notice Logs when the liquidation fee is updated by admins
      *  @param oldLiquidationFee The previous fee the protocol kept as reserves from each liquidation
      *  @param newLiquidationFee The new liquidation fee for this shuttle
-     *  @custom:event NewLiquidationFee Emitted when a new liquidation fee is set
+     *  @custom:event NewLiquidationFee Logs when the liquidation fee is updated by admins
      */
     event NewLiquidationFee(uint256 oldLiquidationFee, uint256 newLiquidationFee);
 
@@ -57,7 +54,7 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     // ────────────── Important Addresses ─────────────
 
     /**
-     *  @return borrowable The address of the Cygnus borrow contract for this collateral which holds DAI
+     *  @return borrowable The address of the Cygnus borrow contract for this collateral which holds USDC
      */
     function borrowable() external view returns (address);
 
@@ -84,33 +81,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     function liquidationFee() external view returns (uint256);
 
     // ──────────── Min/Max rates allowed ─────────────
-
-    /**
-     *  @notice Set a minimum for borrow protection
-     *  @return DEBT_RATIO_MIN Minimum debt ratio at which the collateral becomes liquidatable
-     */
-    function DEBT_RATIO_MIN() external pure returns (uint256);
-
-    /**
-     *  @return DEBT_RATIO_MAX Maximum debt ratio at which the collateral becomes liquidatable
-     */
-    function DEBT_RATIO_MAX() external pure returns (uint256);
-
-    /**
-     *  @return LIQUIDATION_INCENTIVE_MIN The minimum liquidation incentive for liquidators that can be set
-     */
-    function LIQUIDATION_INCENTIVE_MIN() external pure returns (uint256);
-
-    /**
-     *  @return LIQUIDATION_INCENTIVE_MAX The maximum liquidation incentive for liquidators that can be set
-     */
-    function LIQUIDATION_INCENTIVE_MAX() external pure returns (uint256);
-
-    /**
-     *  @notice No minimum as the default is 0
-     *  @return LIQUIDATION_FEE_MAX Maximum fee the protocol is keeps from each liquidation
-     */
-    function LIQUIDATION_FEE_MAX() external pure returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. NON-CONSTANT FUNCTIONS

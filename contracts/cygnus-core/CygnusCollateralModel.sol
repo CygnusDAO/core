@@ -1,3 +1,4 @@
+// solhint-disable avoid-tx-origin
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.4;
 
@@ -13,18 +14,20 @@ import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
 
 /**
  *  @title  CygnusCollateralModel Main contract in Cygnus that calculates a borrower's liquidity or shortfall
- *          in DAI (how much LP Token the user has deposited, and then we use the oracle to return what the LP
- *          Token deposited amount is worth in DAI)
+ *          in USDC (how much LP Token the user has deposited, and then we use the oracle to return what the LP
+ *          Token deposited amount is worth in USDC)
  *  @author CygnusDAO
  *  @notice Theres 2 main functions to calculate the liquidity of a user: `getDebtRatio` and `getAccountLiquidity`
- *          `getDebtRatio` will return the percentage of the loan divided by the user's collateral, scaled by 1e18.
- *          If `getDebtRatio` returns higher than the collateral contract's max `debtRatio` then the user has shortfall
- *          and can be liquidated.
+ *          `getDebtRatio` will return the percentage of the borrowed amount divided by the user's collateral, scaled
+ *          by 1e18. If `getDebtRatio` returns higher than 100% (or 1e18) then the user has shortfall and can be
+ *          liquidated.
  *
- *          The same can be calculated but instead of returning a percentage will return the actual amount of the user's
- *          liquidity or shortfall but denominated in DAI, by calling `getAccountLiquidity`
+ *          The same can be calculated with `getAccountLiquidity`, but instead of returning a percentage will return
+ *          the actual amount of the user's liquidity or shortfall denominated in USDC.
+ *
  *          The last function `canBorrow` is called by the `borrowable` contract (the borrow arm) to confirm if a user
- *          can borrow or not.
+ *          can borrow or not and can be called by anyone, returning `false` if the account has shortfall, otherwise
+ *          will return `true`.
  */
 contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -44,44 +47,45 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
 
     /**
      *  @notice Calculate collateral needed for a loan factoring in debt ratio and liq incentive
-     *  @param amountCollateral The collateral amount that is required for a loan
-     *  @param borrowedAmount The LP Token denominated in DAI
-     *  @return liquidity The account's liquidity in DAI, if any
-     *  @return shortfall The account's shortfall in DAI, if any
+     *  @param amountCollateral The collateral amount the borrower has deposited (CygLP * exchangeRate)
+     *  @param borrowedAmount The total amount of USDC the user has borrowed (can be 0)
+     *  @return liquidity The account's liquidity in USDC, if any
+     *  @return shortfall The account's shortfall in USDC, if any
      */
     function collateralNeededInternal(uint256 amountCollateral, uint256 borrowedAmount)
         internal
         view
         returns (uint256 liquidity, uint256 shortfall)
     {
-        // Get the price of 1 LP Token from the oracle, denominated in DAI
+        // Get the price of 1 LP Token from the oracle, denominated in USDC
         uint256 lpTokenPrice = getLPTokenPrice();
 
         // Collateral Deposited * LP Token price
-        uint256 collateralInDai = amountCollateral.mul(lpTokenPrice);
+        uint256 collateralInUsdc = amountCollateral.mul(lpTokenPrice);
 
-        // Adjust to max debt ratio for this shuttle
-        uint256 adjustedCollateralInDai = collateralInDai.mul(debtRatio);
+        // Adjust to this lending pool's current debt ratio parameter
+        uint256 adjustedCollateralInUsdc = collateralInUsdc.mul(debtRatio);
 
         // Collateral needed for the borrowed amount
-        uint256 collateralNeededInDai = borrowedAmount.mul(liquidationIncentive + liquidationFee);
+        uint256 collateralNeededInUsdc = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Never underflows
         unchecked {
             // If account has collateral available to borrow against, return liquidity and 0 shortfall
-            if (adjustedCollateralInDai >= collateralNeededInDai) {
-                return (adjustedCollateralInDai - collateralNeededInDai, 0);
+            if (adjustedCollateralInUsdc >= collateralNeededInUsdc) {
+                return (adjustedCollateralInUsdc - collateralNeededInUsdc, 0);
             }
             // else, return 0 liquidity and the account's shortfall
             else {
-                return (0, collateralNeededInDai - adjustedCollateralInDai);
+                return (0, collateralNeededInUsdc - adjustedCollateralInUsdc);
             }
         }
     }
 
     /**
+     *  @notice Called by CygnusCollateral when a liquidation takes place
      *  @param borrower Address of the borrower
-     *  @param borrowedAmount Borrowed amount of DAI by `borrower`
+     *  @param borrowedAmount Borrowed amount of USDC by `borrower`
      *  @return liquidity If user has more collateral than needed, return liquidity amount and 0 shortfall
      *  @return shortfall If user has less collateral than needed, return 0 liquidity and shortfall amount
      */
@@ -92,16 +96,15 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
-            // solhint-disable-next-line
             revert CygnusCollateralModel__BorrowerCantBeAddressZero({ sender: borrower, origin: tx.origin });
         }
 
-        // User's Token A borrow balance
+        // User's USDC borrow balance
         if (borrowedAmount == type(uint256).max) {
             borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
         }
 
-        // (balance of borrower * present exchange rate) / scale
+        // Get the CygLP balance of `borrower` and adjust with exchange rate (= how many LP Tokens the amount is worth)
         uint256 amountCollateral = balances[borrower].mul(exchangeRate());
 
         // Calculate user's liquidity or shortfall internally
@@ -114,8 +117,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateralModel
      */
     function getLPTokenPrice() public view override returns (uint256) {
-        // Get the price of 1 amount of the underlying in DAI
-        return cygnusNebulaOracle.lpTokenPriceDai(underlying);
+        // Get the price of 1 amount of the underlying in USDC
+        return cygnusNebulaOracle.lpTokenPriceUsdc(underlying);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -137,20 +140,20 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateralModel
      */
     function getDebtRatio(address borrower) external view override returns (uint256) {
-        // Get the borrower's deposited collateral
+        // Get the borrower's deposited LP Tokens and adjust with current exchange Rate
         uint256 amountCollateral = balances[borrower].mul(exchangeRate());
 
         // Multiply LP collateral by LP Token price
-        uint256 collateralInDai = amountCollateral.mul(getLPTokenPrice());
+        uint256 collateralInUsdc = amountCollateral.mul(getLPTokenPrice());
 
-        // The borrower's DAI debt
+        // The borrower's USDC debt
         uint256 borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
 
         // Adjust borrowed admount with liquidation incentive
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Account for 0 collateral to avoid divide by 0
-        return collateralInDai == 0 ? 0 : adjustedBorrowedAmount.div(collateralInDai).div(debtRatio);
+        return collateralInUsdc == 0 ? 0 : adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════

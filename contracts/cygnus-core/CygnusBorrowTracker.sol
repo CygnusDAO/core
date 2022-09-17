@@ -4,7 +4,6 @@ pragma solidity >=0.8.4;
 // Dependencies
 import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
 import { CygnusBorrowApprove } from "./CygnusBorrowApprove.sol";
-import { CygnusBorrowInterest } from "./CygnusBorrowInterest.sol";
 
 // Libraries
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
@@ -20,7 +19,7 @@ import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
  *          It is also used by CygnusCollateral contracts to get the borrow balance of each user to calculate current
  *          debt ratios, liquidity or shortfall
  */
-contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, CygnusBorrowApprove {
+contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -53,12 +52,13 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
 
     /**
      *  @notice Internal variable to keep track of reserve mints used by CygnusBorrow contract to add to
-     *          `totalReserves`. We keep track of it internally to avoid using `balanceOf` (could break accounting)
-     *           or avoid rounding errors by calculating with exchange rates
+     *          `totalReserves`. Keep track internally to avoid using `balanceOf` and break accounting
      */
     uint256 internal mintedReserves;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    // 2 memory slots on every accrual
 
     /**
      *  @inheritdoc ICygnusBorrowTracker
@@ -90,7 +90,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the borrow tracker
+     *  @notice Constructs the borrow tracker contract
      */
     constructor() {
         // Set initial borrow index to 1
@@ -115,6 +115,37 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice We keep this internal as our borrowRate state variable gets stored during accruals
+     *  @param cash Total current balance of assets this contract holds
+     *  @param borrows Total amount of borrowed funds
+     *  @param reserves Total amount the protocol keeps as reserves
+     */
+    function getBorrowRate(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) internal view returns (uint256) {
+        // Utilization rate (borrows * scale) / ((cash + borrows) - reserves)
+        uint256 util = borrows.div((cash + borrows) - reserves);
+
+        // If utilization <= kink return normal rate
+        if (util <= kinkUtilizationRate) {
+            return util.mul(multiplierPerSecond) + baseRatePerSecond;
+        }
+
+        // else return normal rate + kink rate
+        uint256 normalRate = kinkUtilizationRate.mul(multiplierPerSecond) + baseRatePerSecond;
+
+        // Get the excess utilization rate
+        uint256 excessUtil = util - kinkUtilizationRate;
+
+        // Return per second borrow rate
+        return excessUtil.mul(jumpMultiplierPerSecond) + normalRate;
+    }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -146,8 +177,18 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
      *  @inheritdoc ICygnusBorrowTracker
      */
     function utilizationRate() external view override returns (uint256) {
-        // Return the current utilization rate
+        // Return the current pool utilization rate
         return uint256(totalBorrows).div((totalBalance + uint256(totalBorrows)) - totalReserves);
+    }
+
+    /**
+     */
+    function supplyRate() external view returns (uint256) {
+        // Current burrow rate taking into account the reserve factor
+        uint256 rateToPool = uint256(borrowRate).mul(1e18 - reserveFactor);
+
+        // Return pool supply rate
+        return uint256(totalBorrows).div((totalBalance + totalBorrows) - totalReserves).mul(rateToPool);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -167,15 +208,15 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         uint256 accountBorrows,
         uint256 borrowIndexStored
     ) internal {
-        address _cygnusBorrowTracker = cygnusBorrowTracker;
+        address _cygnusBorrowRewarder = cygnusBorrowRewarder;
 
         // If not initialized return
-        if (_cygnusBorrowTracker == address(0)) {
+        if (_cygnusBorrowRewarder == address(0)) {
             return;
         }
 
         // Pass to farming pool
-        ICygnusFarmingPool(_cygnusBorrowTracker).trackBorrow(borrower, accountBorrows, borrowIndexStored);
+        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(borrower, accountBorrows, borrowIndexStored);
     }
 
     /**
@@ -338,7 +379,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowInterest, Cygn
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mul(borrowIndex);
 
-        // ─── Store values to storage: 2 memory slots with lastAccrualTime ─────
+        // ────── Store values: 2 memory slots with uint32 lastAccrualTime ──────
 
         // Store total borrows
         totalBorrows = uint128(totalBorrowsStored);

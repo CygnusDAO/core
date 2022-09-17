@@ -37,7 +37,7 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     /**
      *  @notice Safe private function which updates allowances after doing sufficient checks
      *  @param owner The address of the owner of the tokens
-     *  @param spender The address of the person given the allowance
+     *  @param spender The address of the account given the allowance
      *  @param amount The max amount of tokens the spender can spend
      */
     function borrowApproveInternal(
@@ -45,6 +45,7 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
         address spender,
         uint256 amount
     ) private {
+        // Store approve amount
         borrowAllowances[owner][spender] = amount;
 
         /// @custom:event BorrowApproved
@@ -52,6 +53,13 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     }
 
     /*  ────────────────────────────────────────────── Internal ────────────────────────────────────────────────  */
+
+    /**
+     *  @return The uint32 block timestamp
+     */
+    function getBlockTimestamp() internal view returns (uint32) {
+        return uint32(block.timestamp);
+    }
 
     /**
      *  @notice Internal function which does the sufficient checks to approve allowances
@@ -93,9 +101,9 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     /**
      *  @inheritdoc ICygnusBorrowApprove
      */
-    function borrowApprove(address spender, uint256 value) external override returns (bool) {
+    function borrowApprove(address spender, uint256 amount) external override returns (bool) {
         // Safe internal Approve
-        borrowApproveInternal(_msgSender(), spender, value);
+        borrowApproveInternal(_msgSender(), spender, amount);
 
         return true;
     }
@@ -112,45 +120,10 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
         bytes32 r,
         bytes32 s
     ) external override {
-        /// @custom:error OwnerZeroAddress Avoid owner being the zero address
-        if (owner == address(0)) {
-            revert CygnusBorrowApprove__OwnerZeroAddress({ owner: owner, spender: spender });
-        }
-        /// @custom:error SpenderZeroAddress Avoid spender being the zero address
-        else if (spender == address(0)) {
-            revert CygnusBorrowApprove__SpenderZeroAddress({ owner: owner, spender: spender });
-        }
-        /// @custom:error PermitExpired Avoid transacting past deadline
-        else if (deadline < getBlockTimestamp()) {
-            revert CygnusBorrowApprove__PermitExpired({
-                transactDeadline: deadline,
-                currentTimestamp: getBlockTimestamp()
-            });
-        }
+        // Call permit with the borrow permit typehash
+        permit(owner, spender, value, deadline, v, r, s, BORROW_PERMIT_TYPEHASH);
 
-        // It's safe to use unchecked here because the nonce cannot realistically overflow, ever.
-        bytes32 hashStruct;
-
-        unchecked {
-            hashStruct = keccak256(
-                abi.encode(BORROW_PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline)
-            );
-        }
-
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, hashStruct));
-
-        address recoveredOwner = ecrecover(digest, v, r, s);
-
-        /// @custom:error RecoveredOwnerZeroAddress Avoid the zero address being the recovered owner
-        if (recoveredOwner == address(0)) {
-            revert CygnusBorrowApprove__RecoveredOwnerZeroAddress(recoveredOwner);
-        }
-        /// @custom:error InvalidSignature Avoid invalid signature
-        else if (recoveredOwner != owner) {
-            revert CygnusBorrowApprove__InvalidSignature({ v: v, r: r, s: s });
-        }
-
-        // Finally approve internally
+        // If succeeds approve internally
         borrowApproveInternal(owner, spender, value);
     }
 }

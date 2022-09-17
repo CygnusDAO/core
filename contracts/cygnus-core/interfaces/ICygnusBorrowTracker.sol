@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.4;
 
-import { ICygnusBorrowInterest } from "./ICygnusBorrowInterest.sol";
 import { ICygnusBorrowApprove } from "./ICygnusBorrowApprove.sol";
 
-interface ICygnusBorrowTracker is ICygnusBorrowInterest, ICygnusBorrowApprove {
+interface ICygnusBorrowTracker is ICygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @param cashStored Total balance of this market.
-     *  @param interestAccumulated Interest accumulated since last update.
-     *  @param borrowIndexStored orrow index
-     *  @param totalBorrowsStored Total borrow balances.
-     *  @param borrowRateStored The current borrow rate.
-     *  @custom:event Emitted when interest is accrued.
+     *  @param cashStored Total balance of this lending pool's asset (USDC)
+     *  @param interestAccumulated Interest accumulated since last accrual
+     *  @param borrowIndexStored The latest stored borrow index
+     *  @param totalBorrowsStored Total borrow balances of this lending pool
+     *  @param borrowRateStored The current borrow rate
+     *  @custom:event AccrueInterest Logs when interest is accrued
      */
     event AccrueInterest(
         uint256 cashStored,
@@ -32,7 +31,7 @@ interface ICygnusBorrowTracker is ICygnusBorrowInterest, ICygnusBorrowApprove {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return totalReserves The current total DAI reserves stored for this lending pool
+     *  @return totalReserves The current total USDC reserves stored for this lending pool
      */
     function totalReserves() external view returns (uint128);
 
@@ -82,7 +81,7 @@ interface ICygnusBorrowTracker is ICygnusBorrowInterest, ICygnusBorrowApprove {
     function accrueInterest() external;
 
     /**
-     *  @notice Tracks borrows of each user for farming rewards and passes the borrow data to the farming pool
+     *  @notice Tracks borrows of each user for farming rewards and passes the borrow data back to the CYG Rewarder
      *  @param borrower Address of borrower
      */
     function trackBorrow(address borrower) external;

@@ -11,13 +11,14 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
     /**
-     *  @custom:error PriceTokenBInvalid Emitted when the borrower is the zero address
+     *  @custom:error PriceTokenBInvalid Reverts when the borrower is the zero address
      */
     error CygnusCollateralModel__BorrowerCantBeAddressZero(address sender, address origin);
 
     /**
-     *  @custom:error BorrowableInvalid Emitted when borrowable is not one of the pool's allowed borrow tokens.
+     *  @custom:error BorrowableInvalid Reverts when borrowable is not this collateral`s borrowable contract
      */
     error CygnusCollateralModel__BorrowableInvalid(address invalidBorrowable, address validBorrowable);
 
@@ -29,35 +30,34 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
 
     /**
      *  @notice Gets an account's liquidity or shortfall
-     *  @param borrower The address of the borrower.
-     *  @return liquidity The account's liquidity.
-     *  @return shortfall If user has no liquidity, return the shortfall.
+     *  @param borrower The address of the borrower
+     *  @return liquidity The account's liquidity in USDC
+     *  @return shortfall If user has no liquidity, return the shortfall in USDC
      */
     function getAccountLiquidity(address borrower) external returns (uint256 liquidity, uint256 shortfall);
 
     /**
      *  @notice Calls the oracle to return the price of the underlying LP Token of this shuttle
-     *  @return lpTokenPrice The price of 1 LP Token in DAI
+     *  @return lpTokenPrice The price of 1 LP Token in USDC
      */
     function getLPTokenPrice() external view returns (uint256 lpTokenPrice);
 
     /**
-     *  @notice Whether or not an account can borrow
-     *  @param borrower The address of the borrower.
-     *  @param borrowableToken The address of the token the user wants to borrow.
-     *  @param accountBorrows The amount the user wants to borrow.
-     *  @return Whether the account can borrow.
+     *  @notice Returns the debt ratio of a borrower, denoted by borrowed USDC / total collateral price in USDC
+     *  @param borrower The address of the borrower
+     *  @return borrowersDebtRatio The debt ratio of the borrower, with max being 1e18
+     */
+    function getDebtRatio(address borrower) external returns (uint256 borrowersDebtRatio);
+
+    /**
+     *  @param borrower The address of the borrower
+     *  @param borrowableToken The address of the borrowable contract the `borrower` wants to borrow from
+     *  @param accountBorrows The amount the user wants to borrow
+     *  @return Whether the account can borrow
      */
     function canBorrow_J2u(
         address borrower,
         address borrowableToken,
         uint256 accountBorrows
     ) external returns (bool);
-
-    /**
-     *  @notice Returns the debt ratio of a borrower, denoted by borrowed DAI / collateral price in DAI
-     *  @param borrower The address of the borrower
-     *  @return borrowersDebtRatio The debt ratio of the borrower, with max being 1 mantissa
-     */
-    function getDebtRatio(address borrower) external returns (uint256 borrowersDebtRatio);
 }

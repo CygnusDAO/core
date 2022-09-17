@@ -10,9 +10,10 @@ import { ICygnusTerminal, CygnusTerminal } from "./CygnusTerminal.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { IDexPair } from "./interfaces/IDexPair.sol";
 import { IDexRouter02 } from "./interfaces/IDexRouter.sol";
-import { IErc20 } from "./interfaces/IErc20.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
 import { IRewarder, IMiniChef } from "./interfaces/IMiniChef.sol";
 import { IWAVAX } from "./interfaces/IWAVAX.sol";
+import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 
 // Libraries
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
@@ -49,8 +50,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
-    // Constructor - Should always be constructed wtih these 3 variables
-
     /**
      *  @notice Address of the chain's native token (ie WETH)
      */
@@ -81,14 +80,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     IDexRouter02 private dexRouter;
 
     /**
-     *  @notice The fee this dex charges for each swap divided by 1000 (ie uniswap charges 0.3%, swap fee is 997)
-     */
-    uint256 private dexSwapFee;
-
-    /**
      *  @notice Address of the Masterchef/Rewarder contract
      */
     IMiniChef private rewarder;
+
+    /**
+     *  @notice The fee this dex charges for each swap divided by 1000 (ie uniswap charges 0.3%, swap fee is 997)
+     */
+    uint256 private dexSwapFee;
 
     /**
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
@@ -107,18 +106,24 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Cygnus Void contract which handles rewards reinvestments
-     *  @notice Assign token0 and token1 as the underlying is always a univ2 LP Token + assign this chain's nativeToken
+     *  @notice Constructs the Cygnus Void contract which handles rewards reinvestments.
+     *          !Important All voids *should* have this constructor declared, even if left empty
      */
     constructor() {
-        // Token0 of the underlying
-        token0 = IDexPair(underlying).token0();
+        address asset;
+        address factory;
 
-        // Token1 of the underlying
-        token1 = IDexPair(underlying).token1();
+        // Get factory, underlying, borrowable and lending pool id
+        (factory, asset, , ) = IDenebOrbiter(_msgSender()).collateralParameters();
+
+        // Token0 from the LP Token
+        token0 = IDexPair(asset).token0();
+
+        // Token1 from the LP Token
+        token1 = IDexPair(asset).token1();
 
         // This chains native token
-        nativeToken = ICygnusFactory(hangar18).nativeToken();
+        nativeToken = ICygnusFactory(factory).nativeToken();
     }
 
     /**
@@ -148,6 +153,24 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
+     *  @dev Compute optimal deposit amount of token0 to mint an LP Token
+     *  @param amountA amount of token A desired to deposit
+     *  @param reservesA Reserves of token A from the DEX
+     *  @param _dexSwapFee The fee charged by this dex for a swap (ie Uniswap = 997/1000 = 0.3%)
+     */
+    function optimalDepositA(
+        uint256 amountA,
+        uint256 reservesA,
+        uint256 _dexSwapFee
+    ) internal pure returns (uint256) {
+        uint256 a = (1000 + _dexSwapFee) * reservesA;
+        uint256 b = amountA * 1000 * reservesA * 4 * _dexSwapFee;
+        uint256 c = PRBMath.sqrt(a * a + b);
+        uint256 d = 2 * _dexSwapFee;
+        return (c - a) / d;
+    }
+
+    /**
      *  @notice Reverts if it is not considered a EOA
      */
     function checkEOA() private view {
@@ -165,26 +188,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @return This contract's balance
      */
     function contractBalanceOf(address token) private view returns (uint256) {
-        return IErc20(token).balanceOf(address(this));
-    }
-
-    /**
-     *  @dev Compute optimal deposit amount of token0 to mint an LP Token
-     *  @param amountA amount of token A desired to deposit
-     *  @param reservesA Reserves of token A from the DEX
-     *  @param _dexSwapFee The fee charged by this dex for a swap (ie Uniswap = 997/1000 = 0.3%)
-     */
-    function optimalDepositA(
-        uint256 amountA,
-        uint256 reservesA,
-        uint256 _dexSwapFee
-    ) internal pure returns (uint256) {
-        // Calculate with dex swap fee
-        uint256 a = (1000 + _dexSwapFee) * reservesA;
-        uint256 b = amountA * 1000 * reservesA * 4 * _dexSwapFee;
-        uint256 c = PRBMath.sqrt(a * a + b);
-        uint256 d = 2 * _dexSwapFee;
-        return (c - a) / d;
+        return IERC20(token).balanceOf(address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -198,14 +202,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         override
         returns (
             IMiniChef,
-            uint256,
+            IDexRouter02,
             address,
             uint256,
-            IDexRouter02
+            uint256
         )
     {
         // Return all the private storage variables from this contract
-        return (rewarder, pid, rewardsToken, dexSwapFee, dexRouter);
+        return (rewarder, dexRouter, rewardsToken, pid, dexSwapFee);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -225,7 +229,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         uint256 amount
     ) internal {
         // Check allowance for `router` - Return if the allowance is higher than amount
-        if (IErc20(token).allowance(address(this), router) >= amount) {
+        if (IERC20(token).allowance(address(this), router) >= amount) {
             return;
         }
 

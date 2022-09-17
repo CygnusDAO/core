@@ -12,7 +12,7 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
-import { IErc20 } from "./interfaces/IErc20.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
 
@@ -94,7 +94,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
         if (_totalSupply == 0) {
-            return INITIAL_EXCHANGE_RATE;
+            return 1e18;
         }
 
         // newExchangeRate = (totalBalance + totalBorrows - reserves) / totalSupply
@@ -146,7 +146,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         }
 
         // Get total balance of the underlying asset
-        uint256 balance = IErc20(underlying).balanceOf(address(this));
+        uint256 balance = IERC20(underlying).balanceOf(address(this));
 
         // Calculate the user's amount outstanding
         uint256 repayAmount = (balance + borrowAmount) - totalBalanceStored;
@@ -200,7 +200,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         returns (uint256 cygLPAmount)
     {
         // Latest balance after accrue's sync
-        uint256 balance = IErc20(underlying).balanceOf(address(this));
+        uint256 balance = IERC20(underlying).balanceOf(address(this));
 
         // Borrow balance
         uint256 borrowerBalance = getBorrowBalance(borrower);

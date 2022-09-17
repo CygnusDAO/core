@@ -12,37 +12,37 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error OwnerIsSpender Emitted when the owner is the spender
+     *  @custom:error OwnerIsSpender Reverts when the owner is the spender
      */
     error CygnusBorrowApprove__OwnerIsSpender(address owner, address spender);
 
     /**
-     *  @custom:error OwnerZeroAddress Emitted when the owner is the zero address
+     *  @custom:error OwnerZeroAddress Reverts when the owner is the zero address
      */
     error CygnusBorrowApprove__OwnerZeroAddress(address owner, address spender);
 
     /**
-     *  @custom:error SpenderZeroAddress Emitted when the spender is the zero address
+     *  @custom:error SpenderZeroAddress Reverts when the spender is the zero address
      */
     error CygnusBorrowApprove__SpenderZeroAddress(address owner, address spender);
 
     /**
-     *  @custom:error BorrowNotAllowed Emitted when borrowing above max allowance set
+     *  @custom:error BorrowNotAllowed Reverts when borrowing above max allowance set
      */
     error CygnusBorrowApprove__BorrowNotAllowed(uint256 borrowAllowance, uint256 borrowAmount);
 
     /**
-     *  @custom:error PermitExpired Emitted when the transaction permit is expired
+     *  @custom:error PermitExpired Reverts when the transaction permit is expired
      */
     error CygnusBorrowApprove__PermitExpired(uint256 transactDeadline, uint256 currentTimestamp);
 
     /**
-     *  @custom:error RecoveredOwnerZeroAddress Emitted when the recovered owner is the zero address
+     *  @custom:error RecoveredOwnerZeroAddress Reverts when the recovered owner is the zero address
      */
     error CygnusBorrowApprove__RecoveredOwnerZeroAddress(address recoveredOwner);
 
     /**
-     *  @custom:error InvalidSignature Emitted when the recovered owner does not match the actual owner
+     *  @custom:error InvalidSignature Reverts when the recovered owner does not match the actual owner
      */
     error CygnusBorrowApprove__InvalidSignature(uint8 v, bytes32 r, bytes32 s);
 
@@ -55,7 +55,7 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
      *  @param owner Indexed address of the owner of the tokens
      *  @param spender The address of the user being allowed to spend the tokens
      *  @param amount The maximum amount of tokens the spender may spend
-     *  @custom:event BorrowApproval Emitted when borrow allowance is updated
+     *  @custom:event BorrowApproval Logs when borrow allowance from owner to spender is updated
      */
     event BorrowApproval(address indexed owner, address spender, uint256 amount);
 
@@ -89,7 +89,7 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
      *  @param owner The address owner of the tokens
      *  @param spender The user allowed to spend the tokens
      *  @param value The maximum amount of tokens the spender may spend
-     *  @param deadline A future time...
+     *  @param deadline A future time
      *  @param v Must be a valid secp256k1 signature from the owner along with r and s
      *  @param r Must be a valid secp256k1 signature from the owner along with v and s
      *  @param s Must be a valid secp256k1 signature from the owner along with r and v
@@ -106,8 +106,8 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
 
     /**
      *  @param spender The user allowed to spend the tokens
-     *  @param value The amount of tokens approved to spend
-     *  @return Whether or not the borrow was approved
+     *  @param amount The amount of tokens approved to spend
+     *  @return Whether or not the borrow was successfuly approved
      */
-    function borrowApprove(address spender, uint256 value) external returns (bool);
+    function borrowApprove(address spender, uint256 amount) external returns (bool);
 }

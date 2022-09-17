@@ -47,6 +47,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
      *  @custom:member cygnusDai The address of the Cygnus borrow contract for this collateral
+     *  @custom:member shuttleId The unique id of this lending pool (shared by borrowable)
      */
     struct CollateralParameters {
         address factory;

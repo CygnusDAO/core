@@ -2,13 +2,13 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IErc20Permit } from "./IErc20Permit.sol";
+import { IERC20Permit } from "./IERC20Permit.sol";
 
 /**
  *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts
  *  @notice The interface for the CygnusTerminal contract allows minting/redeeming Cygnus pool tokens
  */
-interface ICygnusTerminal is IErc20Permit {
+interface ICygnusTerminal is IERC20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -43,30 +43,27 @@ interface ICygnusTerminal is IErc20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Logs when totalBalance is syncd to real balance
      *  @param totalBalance Total balance in terms of the underlying
-     *  @custom:event Sync Emitted when `totalBalance` is in sync with balanceOf(address(this)).
+     *  @custom:event Sync Logs when `totalBalance` is in sync with balanceOf(address(this)).
      */
     event Sync(uint256 totalBalance);
 
     /**
-     *  @notice Logs when an asset is minted
      *  @param sender The address of `CygnusAltair` or the sender of the function call
      *  @param recipient Address of the minter
      *  @param assets Amount of assets being deposited
      *  @param shares Amount of pool tokens being minted
-     *  @custom:event Mint Emitted when CygLP or CygDai pool tokens are minted
+     *  @custom:event Mint Logs when CygLP or CygUSD pool tokens are minted
      */
     event Deposit(address indexed sender, address indexed recipient, uint256 assets, uint256 shares);
 
     /**
-     *  @notice Logs when an asset is redeemed
-     *  @param sender The address of `CygnusAltair` or the sender of the function call
+     *  @param sender The address of the redeemer of the shares
      *  @param recipient The address of the recipient of assets
      *  @param owner The address of the owner of the pool tokens
      *  @param assets The amount of assets to redeem
      *  @param shares The amount of pool tokens burnt
-     *  @custom:event Redeem Emitted when CygLP or CygDAI are redeemed
+     *  @custom:event Redeem Logs when CygLP or CygUSD are redeemed
      */
     event Withdraw(
         address indexed sender,
@@ -83,12 +80,7 @@ interface ICygnusTerminal is IErc20Permit {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return totalBalance Total balance owned by this shuttle pool in terms of its underlying
-     */
-    function totalBalance() external view returns (uint256);
-
-    /**
-     *  @return underlying The address of the underlying (LP Token for collateral contracts, DAI for borrow contracts)
+     *  @return underlying The address of the underlying (LP Token for collateral contracts, USDC for borrow contracts)
      */
     function underlying() external view returns (address);
 
@@ -101,6 +93,11 @@ interface ICygnusTerminal is IErc20Permit {
      *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)
      */
     function shuttleId() external view returns (uint256);
+
+    /**
+     *  @return totalBalance Total balance owned by this shuttle pool in terms of its underlying
+     */
+    function totalBalance() external view returns (uint256);
 
     /**
      *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount
@@ -127,7 +124,7 @@ interface ICygnusTerminal is IErc20Permit {
      *  @param shares The amount of shares to redeem for assets
      *  @param recipient The address of the redeemer
      *  @param owner The address of the account who owns the shares
-     *  @return assets Amount of assets redeemed
+     *  @return assets Amount of assets returned to the user
      *  @custom:security non-reentrant
      */
     function redeem(

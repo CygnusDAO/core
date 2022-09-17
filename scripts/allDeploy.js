@@ -15,7 +15,6 @@ const { getAddress } = require('@ethersproject/address');
  * 6. Deploy Router with factory address
  */
 async function main() {
-
     let path = `44'/60'/3'/0/0`;
 
     // Deployer
@@ -36,9 +35,9 @@ async function main() {
     // Native AVAX
     let native = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7';
 
-    let daiAddress = '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70';
+    let usdcAddress = '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e';
 
-    let daiAggregator = '0x51D7180edA2260cc4F6e4EebB82FEF5c3c2B8300';
+    let usdcAggregator = '0xF096872672F44d6EBA71458D74fe67F9a77a23B9';
 
     // ═══════════════════ 2. COLLATERAL ORBITER
 
@@ -63,7 +62,7 @@ async function main() {
     // Oracle
     let NebulaFactory = await ethers.getContractFactory('ChainlinkNebulaOracle');
     let Nebula = await NebulaFactory.connect(deployer);
-    let nebula = await Nebula.deploy(daiAggregator);
+    let nebula = await Nebula.deploy(usdcAggregator);
 
     console.log('Nebula Oracle: %s', nebula.address);
 
@@ -71,13 +70,7 @@ async function main() {
 
     let CygnusFactory = await ethers.getContractFactory('CygnusFactory');
     let Factory = await CygnusFactory.connect(deployer);
-    let factory = await Factory.deploy(
-        deployerAddress,
-        deployerAddress,
-        daiAddress,
-        native,
-        nebula.address,
-    );
+    let factory = await Factory.deploy(deployerAddress, deployerAddress, usdcAddress, native, nebula.address);
 
     console.log('Cygnus Factory: %s', factory.address);
 

@@ -45,7 +45,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /**
      *  @custom:struct BorrowParameters Important parameters for the borrow contracts and interest rate model
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
-     *  @custom:member underlying The address of the underlying borrow token (address of DAI, USDc, etc.)
+     *  @custom:member underlying The address of the underlying borrow token (address of USDC)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
      *  @custom:member shuttleId The ID for the shuttle we are deploying (shared by collateral/borrow)
      *  @custom:member baseRatePerYear The base rate per year
@@ -87,7 +87,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
         uint256 shuttleId,
         uint256 baseRatePerYear,
         uint256 multiplier
-    ) external override nonReentrant returns (address cygnusDai) {
+    ) external override nonReentrant returns (address borrowable) {
         // Assign important addresses to pass to borrow contracts
         borrowParameters = BorrowParameters({
             factory: _msgSender(),
@@ -99,7 +99,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
         });
 
         // Create Borrow contract
-        cygnusDai = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateral, _msgSender())) }());
+        borrowable = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateral, _msgSender())) }());
 
         // Delete and refund some gas
         delete borrowParameters;

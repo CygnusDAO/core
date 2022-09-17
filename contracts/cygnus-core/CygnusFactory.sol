@@ -86,7 +86,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    Shuttle[] public override allShuttles;
+    address[] public override allShuttles;
 
     /**
      *  @inheritdoc ICygnusFactory
@@ -111,7 +111,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    address public immutable override dai;
+    address public immutable override usdc;
 
     /**
      *  @inheritdoc ICygnusFactory
@@ -131,14 +131,14 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @notice Sets the important addresses which pools report back here to check for
      *  @param _admin Address of the Cygnus Admin to update important protocol parameters
      *  @param _daoReserves Address of the contract that handles weighted forwarding of Erc20 tokens
-     *  @param _dai Address of the DAI contract on this chain (different for mainnet, c-chain, etc.)
+     *  @param _usdc Address of the USDC contract on this chain (different for mainnet, c-chain, etc.)
      *  @param _nativeToken The address of this chain's native token
      *  @param _cygnusNebulaOracle Address of the price oracle
      */
     constructor(
         address _admin,
         address _daoReserves,
-        address _dai,
+        address _usdc,
         address _nativeToken,
         IChainlinkNebulaOracle _cygnusNebulaOracle
     ) {
@@ -152,7 +152,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         nativeToken = _nativeToken;
 
         // Address of DAI on this factory's chain
-        dai = _dai;
+        usdc = _usdc;
 
         // Assign oracle used by all pools
         cygnusNebulaOracle = _cygnusNebulaOracle;
@@ -162,6 +162,9 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         /// @custom:event DaoReserves
         emit NewDaoReserves(address(0), _daoReserves);
+
+        /// @custom:event NewCygnusNebulaOracle
+        emit NewCygnusNebulaOracle(IChainlinkNebulaOracle(address(0)), _cygnusNebulaOracle);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -241,13 +244,13 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice Creates a record of each shuttle deployed by this contract
-     *  @dev Prepares shuttle for deployment and stores each Shuttle struct
+     *  @dev Prepares shuttle for deployment and stores the orbiter used for this Shuttle
      *  @param lpTokenPair Address of the LP Token for this shuttle
-     *  @param orbiterId The orbiter ID used to deploy this shuttle
+     *  @param orbiter The orbiter used to deploy this shuttle
      */
-    function boardShuttle(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
+    function boardShuttle(address lpTokenPair, Orbiter memory orbiter) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
-        uint24 shuttleId = getShuttles[lpTokenPair][orbiterId].shuttleId;
+        uint24 shuttleId = getShuttles[lpTokenPair][orbiter.orbiterId].shuttleId;
 
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
         if (shuttleId != 0) {
@@ -257,14 +260,12 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Set all to default before deploying
         return
-            getShuttles[lpTokenPair][orbiterId] = Shuttle(
+            getShuttles[lpTokenPair][orbiter.orbiterId] = Shuttle(
                 false, // Initialized, default false until oracle is set
                 uint24(allShuttles.length), // Lending pool ID
                 address(0), // Borrow contract address
                 address(0), // Collateral address
-                address(0), // Underlying borrow asset (DAI)
-                address(0), // Underlying collateral asset (LP Token)
-                Orbiter(false, 0, "", IAlbireoOrbiter(address(0)), IDenebOrbiter(address(0)))
+                orbiter
             );
     }
 
@@ -306,7 +307,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
         // Load shuttle to storage
-        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiterId);
+        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiter);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
@@ -320,7 +321,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Deploy borrow contract
         borrowable = orbiter.albireoOrbiter.deployAlbireo(
-            dai,
+            usdc,
             create2Collateral,
             shuttle.shuttleId,
             baseRate,
@@ -350,7 +351,10 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         //  ─────────────────────────────── Phase 5 ───────────────────────────────
 
-        // No way back now, store shuttle in factory
+        // Save addresses to storage and mark as launched. This LP Token with orbiter ID cannot be redeployed
+
+        // This specific lending pool is initialized can't be deployed again
+        shuttle.launched = true;
 
         // Add cygnus borrow contract to record
         shuttle.borrowable = borrowable;
@@ -358,23 +362,11 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Add collateral contract to record
         shuttle.collateral = collateral;
 
-        // Add the address of the underlying albireo contract
-        shuttle.borrowToken = dai;
-
-        // Add the address of the underlying albireo contract
-        shuttle.lpTokenPair = lpTokenPair;
-
-        // Store orbiters struct in the shuttle struct
-        shuttle.orbiter = orbiter;
-
-        // This specific lending pool is initialized can't be deployed again
-        shuttle.launched = true;
-
-        // Push struct to array of all shuttles deployed
-        allShuttles.push(shuttle);
+        // Push LP Token pair to array to keep count of pools deployed
+        allShuttles.push(lpTokenPair);
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(shuttle.shuttleId, borrowable, collateral, dai, lpTokenPair);
+        emit NewShuttleLaunched(shuttle.shuttleId, borrowable, collateral, usdc, lpTokenPair);
     }
 
     /**
