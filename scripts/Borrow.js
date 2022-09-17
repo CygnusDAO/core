@@ -18,7 +18,7 @@ const max = ethers.constants.MaxUint256;
 
 async function deploy() {
     // Cygnus contracts and underlyings
-    let [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
+    let [oracle, factory, router, borrowable, collateral, usdc, lpToken] = await Make();
 
     // Users
     let [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
@@ -35,44 +35,44 @@ async function deploy() {
 
     console.log('Borrower`s LP balance before Cyg     | %s LPs', (await lpToken.balanceOf(borrower._address)) / 1e18);
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('Borrower`s DAI balance before Cyg    | %s DAI', (await dai.balanceOf(borrower._address)) / 1e18);
+    console.log('Borrower`s USDC balance before Cyg    | %s USDC', (await usdc.balanceOf(borrower._address)) / 1e18);
     console.log('----------------------------------------------------------------------------------------------');
     console.log('Lender`s LP balance before Cyg       | %s LPs', (await lpToken.balanceOf(lender._address)) / 1e18);
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('Lender`s DAI balance before Cyg      | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);
+    console.log('Lender`s USDC balance before Cyg      | %s USDC', (await usdc.balanceOf(lender._address)) / 1e18);
 
     /*════════════════════════════════════════════════════════════════════════════════════════════════════
     
-                                   - Borrower Deposits 50 LP Tokens, 
-                                   - Lender deposits 1000 DAI,
-                                   - Borrower borrows 100 DAI
+                                   - Borrower Deposits 100 LP Tokens, 
+                                   - Lender deposits 1600 USDC,
+                                   - Borrower borrows max USDC
      
      ════════════════════════════════════════════════════════════════════════════════════════════════════*/
 
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('Price of LP Token                    | %s DAI', (await collateral.getLPTokenPrice()) / 1e18);
+    console.log('Price of LP Token                    | %s USDC', (await collateral.getLPTokenPrice()) / 1e6);
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('Borrower deposits 100 LPs, Lender deposits 1600 DAI');
+    console.log('Borrower deposits 100 LPs, Lender deposits 1600 USDC');
     console.log('----------------------------------------------------------------------------------------------');
 
     // Borrower: Approve collateral in LP Token
     await lpToken.connect(borrower).approve(collateral.address, max);
     await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
 
-    // Lender: Approve borrowable in DAI
-    await dai.connect(lender).approve(borrowable.address, max);
+    // Lender: Approve borrowable in USDC
+    await usdc.connect(lender).approve(borrowable.address, max);
     await borrowable.connect(lender).deposit(BigInt(1600e18), lender._address);
 
     let cygDaiBalanceLender = await borrowable.balanceOf(lender._address);
     let cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
 
-    console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
+    console.log('Total Balance of borrowable after    | %s USDC', (await borrowable.totalBalance()) / 1e6);
     console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
     console.log('CygDai balanceOf Lender              | %s CygDai', cygDaiBalanceLender / 1e18);
     console.log('CygLP balanceOf Borrower             | %s CygLP', cygLPBalanceBorrower / 1e18);
 
     console.log('----------------------------------------------------------------------------------------------');
-    console.log('BORROW MAX AMOUNT DAI');
+    console.log('BORROW MAX AMOUNT USDC');
     console.log('----------------------------------------------------------------------------------------------');
 
     // Max Borrow = accountLiquidity / liquidationIncentive
@@ -84,19 +84,19 @@ async function deploy() {
     await borrowable.connect(borrower).borrowApprove(router.address, max);
     await router.connect(borrower).borrow(borrowable.address, BigInt(maxBorrow), borrower._address, max, '0x');
 
-    let daiBalanceBorrowerAfter = await dai.balanceOf(borrower._address);
-    let borrowablesDAIBalanceAfter = await borrowable.totalBalance();
+    let usdcBalanceBorrowerAfter = await usdc.balanceOf(borrower._address);
+    let borrowablesUSDCBalanceAfter = await borrowable.totalBalance();
 
-    // Check that Borrower has dai
-    console.log('Borrower`s DAI balance after borrow  | %s DAI', daiBalanceBorrowerAfter / 1e18);
-    console.log('Borrowables DAI balance after borrow | %s DAI', borrowablesDAIBalanceAfter / 1e18);
+    // Check that Borrower has usdc
+    console.log('Borrower`s USDC balance after borrow  | %s USDC', usdcBalanceBorrowerAfter / 1e6);
+    console.log('Borrowables USDC balance after borrow | %s USDC', borrowablesUSDCBalanceAfter / 1e6);
 
     console.log('----------------------------------------------------------------------------------------------');
     console.log('REINVEST REWARDS');
     console.log('----------------------------------------------------------------------------------------------');
 
     // Create
-    const rewardTokenContract = await dai.attach(rewardToken);
+    const rewardTokenContract = await usdc.attach(rewardToken);
 
     const reinvestorBalance = await rewardTokenContract.balanceOf(safeAddress2.address);
     const balanceBeforeReinvest = await collateral.totalBalance();
