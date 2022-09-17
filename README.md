@@ -1,4 +1,5 @@
-![image](https://user-images.githubusercontent.com/97303883/175981010-f3e6cca7-c79a-48fa-b719-aa3daf7d4404.png)
+![image](https://user-images.githubusercontent.com/97303883/190872277-d0316e93-7865-4974-8f3f-8bc2d3c73be5.png)
+
 
 # **Cygnus Protocol**
 
