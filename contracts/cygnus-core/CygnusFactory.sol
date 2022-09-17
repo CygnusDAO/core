@@ -151,7 +151,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Address of the native token for this chain (ie WETH)
         nativeToken = _nativeToken;
 
-        // Address of DAI on this factory's chain
+        // Address of USDC on this factory's chain
         usdc = _usdc;
 
         // Assign oracle used by all pools

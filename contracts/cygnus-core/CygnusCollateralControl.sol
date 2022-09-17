@@ -6,7 +6,6 @@ import { ICygnusCollateralControl } from "./interfaces/ICygnusCollateralControl.
 import { ICygnusTerminal, CygnusTerminal } from "./CygnusTerminal.sol";
 
 // Libraries
-import { Strings } from "./libraries/Strings.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces

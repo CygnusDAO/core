@@ -132,10 +132,12 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         string memory symbol_,
         uint8 decimals_
     ) ERC20Permit(name_, symbol_, decimals_) {
-        // Immutable factory
+        // Placeholders
+
+        // Factory
         address factory;
 
-        // Immutable underlying
+        // underlying
         address asset;
 
         // Immutable pool id
@@ -145,25 +147,20 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         try IDenebOrbiter(_msgSender()).collateralParameters() returns (address a, address b, address, uint256 d) {
             // placeholder factory
             factory = a;
-
             // placeholder underlying
             asset = b;
-
             // placeholder shuttleId
             poolId = d;
         } catch {
             // Catch borrowable parameters: factory, underlying, collateral, shuttleId, baseRate, multiplier
             (factory, asset, , poolId, , ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
         }
-
         // Assign immutables to success call
 
         // Cygnus Factory
         hangar18 = factory;
-
         // Underlying
         underlying = asset;
-
         // Lending pool ID (shared by both borrowable and collateral)
         shuttleId = poolId;
     }

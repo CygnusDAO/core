@@ -111,7 +111,7 @@ async function deploy() {
   // Debt Ratio of borrower
   console.log(
     "Borrower`s debt ratio after x13 leverage       | % %s",
-    (await collateral.getDebtRatio(borrower._address)) / 1e6,
+    (await collateral.getDebtRatio(borrower._address)) / 1e16,
   );
 
   // CygLP balance of borrower
@@ -138,7 +138,7 @@ async function deploy() {
 
   console.log(
     "Borrower`s debt ratio before reinvesting       | % %s",
-    (await collateral.getDebtRatio(borrower._address)) / 1e6,
+    (await collateral.getDebtRatio(borrower._address)) / 1e16,
   );
   console.log("Collateral`s totalBalance before reinvesting   | %s LP Tokens", balanceBeforeReinvest / 1e18);
   console.log("Reinvestor`s balanceOf token before reinvest   | %s JOE (or other)", reinvestorBalance / 1e18);
@@ -156,7 +156,7 @@ async function deploy() {
   // Debt Ratio of borrower
   console.log(
     "Borrower`s debt ratio after reinvesting        | % %s",
-    (await collateral.getDebtRatio(borrower._address)) / 1e6,
+    (await collateral.getDebtRatio(borrower._address)) / 1e16,
   );
   console.log("Collateral`s totalBalance after reinvest       | %s LP Tokens", balanceAfterReinvest / 1e18);
   console.log("Reinvestor`s balanceOf token after reinvest    | %s JOE (or other)", reinvestorBalanceAfter / 1e18);
@@ -234,3 +234,4 @@ module.exports = {
     deploy,
 };
 */
+
