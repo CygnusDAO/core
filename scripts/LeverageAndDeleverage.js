@@ -1,5 +1,4 @@
 const hre = require("hardhat");
-
 const ethers = hre.ethers;
 
 // Custom
@@ -32,14 +31,15 @@ async function deploy() {
   // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
   await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
 
-  /********************************************************************************************************
+  /***********************************************************************************************************
    
     
-     CYGNUS INTERACTIONS - Connect to the router and test mint functions for borrow and collateral contracts.
-                           
+     CYGNUS INTERACTIONS - Connect to the router and leverage position by `_x`
     
      
      ********************************************************************************************************/
+
+  const _x = BigInt(3);
 
   // Price of 1 LP Token of joe/avax in usdc
   const oneLPToken = await collateral.getLPTokenPrice();
@@ -99,14 +99,14 @@ async function deploy() {
   await lpToken.connect(borrower).approve(router.address, max);
   await usdc.connect(borrower).approve(router.address, max);
 
-  // x12 leverage
+  // leverage by _x
   await router
     .connect(borrower)
-    .leverage(collateral.address, maxLiquidity * BigInt(12), borrower._address, max, "0x", { gasLimit: 9000000 });
+    .leverage(collateral.address, maxLiquidity * _x, borrower._address, max, "0x", { gasLimit: 9000000 });
 
   // Borrower`s borrow balance
   const borrowBalanceAfter = await borrowable.getBorrowBalance(borrower._address);
-  console.log("Borrower`s USDC debt after x13 leverage         | %s USDC", borrowBalanceAfter / 1e16);
+  console.log("Borrower`s USDC debt after x13 leverage         | %s USDC", borrowBalanceAfter / 1e6);
 
   // Debt Ratio of borrower
   console.log(
@@ -169,10 +169,11 @@ async function deploy() {
   await collateral.connect(borrower).approve(router.address, max);
   const maxBalance = await collateral.balanceOf(borrower._address);
   const owedDai = await borrowable.getBorrowBalance(borrower._address);
-  const deleverageAmount = BigInt((owedDai / oneLPToken) * 1e18) + BigInt(40e18);
+  const deleverageAmount = BigInt((owedDai / oneLPToken) * 1e18);
+
   await router
     .connect(borrower)
-    .deleverage(collateral.address, BigInt(deleverageAmount), max, "0x", { gasLimit: 9000000 });
+    .deleverage(collateral.address, BigInt(deleverageAmount) + BigInt(2e18), max, "0x", { gasLimit: 9000000 });
 
   const newBalance = await collateral.balanceOf(borrower._address);
 
@@ -191,18 +192,19 @@ async function deploy() {
   console.log("Borrowable`s totalBalance after deleverage     | %s USDC", finalAlbireoBalance / 1e6);
   console.log("Collateral`s totalBalance after deleverage     | %s LP Tokens", totalBalanceD / 1e18);
 
-  console.log("Borrower`s USDC balance after deleverage       | %s USDC", usdcBalanceBorrower);
+  console.log("Borrower`s USDC balance after deleverage       | %s USDC", usdcBalanceBorrower / 1e6);
 
   console.log("----------------------------------------------------------------------------------------------");
   console.log("REDEEM AND LEAVE CYGNUS FOREVER");
   console.log("----------------------------------------------------------------------------------------------");
 
-  const balanceCygDaiLender = await borrowable.balanceOf(lender._address);
+  // Redeem CygLP
   const balanceCygLPBorrower = await collateral.balanceOf(borrower._address);
+  await collateral.connect(borrower).redeem(balanceCygLPBorrower, borrower._address, borrower._address);
 
   // Redeem CygUSDC
+  const balanceCygDaiLender = await borrowable.balanceOf(lender._address);
   await borrowable.connect(lender).redeem(balanceCygDaiLender, lender._address, lender._address);
-  await collateral.connect(borrower).redeem(balanceCygLPBorrower, borrower._address, borrower._address);
 
   const finalLPBalance = await lpToken.balanceOf(borrower._address);
   const finalUsdcBalance = await usdc.balanceOf(lender._address);
@@ -220,12 +222,13 @@ async function deploy() {
 
   // Borrowables balance and supply
   // Only USDC left and CygUSD are dao reserves
-  let totalSupply = (await borrowable.totalSupply()) / 1e18;
+  let totalSupply = (await borrowable.totalSupply()) / 1e6;
   console.log("totalBalance of borrowable after full redeem   | %s USDC ", (await borrowable.totalBalance()) / 1e6);
-  console.log("totalSupply of borrowable after full redeem    | %s CygUSD", totalSupply);
+  console.log("totalSupply of borrowable after full redeem    | %s CygUSD", totalSupply / 1e6);
 
-  let reserves = (await borrowable.balanceOf(daoReservesManager.address)) / 1e6;
-  console.log("CygnusDAOReserves` balanceOf CygUSD            | %s CygUSD", reserves);
+  // await borrowable.exchangeRate();
+  // let reserves = (await borrowable.balanceOf(daoReservesManager.address)) / 1e6;
+  // console.log("CygnusDAOReserves` balanceOf CygUSD            | %s CygUSD", reserves);
 }
 
 deploy();
@@ -234,4 +237,3 @@ module.exports = {
     deploy,
 };
 */
-
