@@ -125,7 +125,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     /// Requirements:
     ///
     /// - `holder` must have at least `amount` tokens.
-    function burnInternal(address holder, uint256 burnAmount) internal {
+    function burnInternal(address holder, uint256 burnAmount) internal virtual {
         if (holder == address(0)) {
             revert ERC20__BurnZeroAddress();
         }

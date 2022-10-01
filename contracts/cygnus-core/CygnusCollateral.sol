@@ -42,21 +42,17 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks whether user has enough liquidity and calls safe internal transfer at CygnusTerminal
-     *  @notice Overrides ERC20
+     *  @notice Checks whether user has enough liquidity to redeem
+     *  @notice ERC20 Overrides
      */
-    function transferInternal(
-        address from,
-        address to,
-        uint256 value
-    ) internal override(ERC20) {
-        /// @custom:error InsufficientLiquidity Avoid transfer if there's shortfall
-        if (!canRedeem(from, value)) {
-            revert CygnusCollateral__InsufficientLiquidity({ from: from, to: to, value: value });
+    function burnInternal(address holder, uint256 burnAmount) internal override(ERC20) {
+        /// @custom:error InsufficientLiquidity Avoid burning supply if there's shortfall
+        if (!canRedeem(holder, burnAmount)) {
+            revert CygnusCollateral__InsufficientLiquidity({ from: holder, to: address(0), value: burnAmount });
         }
 
-        // Safe internal transfer
-        super.transferInternal(from, to, value);
+        // Safe internal burn
+        super.burnInternal(holder, burnAmount);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
