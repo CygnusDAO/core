@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
-
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -17,9 +16,9 @@ interface ICygnusCollateralControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error ParameterNotInRange Emitted when updating a collateral parameter outside of the range allowed
+     *  @custom:error ParameterNotInRange Reverts when the value is below min or above max
      */
-    error CygnusCollateralControl__ParameterNotInRange(uint256 minRange, uint256 maxRange, uint256 value);
+    error CygnusCollateralControl__ParameterNotInRange(uint256 min, uint256 max, uint256 value);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════  
             2. CUSTOM EVENTS

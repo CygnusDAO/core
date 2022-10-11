@@ -1,5 +1,4 @@
-// solhint-disable avoid-tx-origin
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -10,7 +9,7 @@ import { CygnusCollateralVoid } from "./CygnusCollateralVoid.sol";
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
-import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
+import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 
 /**
  *  @title  CygnusCollateralModel Main contract in Cygnus that calculates a borrower's liquidity or shortfall
@@ -96,12 +95,13 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
+            // solhint-disable avoid-tx-origin
             revert CygnusCollateralModel__BorrowerCantBeAddressZero({ sender: borrower, origin: tx.origin });
         }
 
         // User's USDC borrow balance
         if (borrowedAmount == type(uint256).max) {
-            borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
+            borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
         }
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate (= how many LP Tokens the amount is worth)
@@ -117,8 +117,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateralModel
      */
     function getLPTokenPrice() public view override returns (uint256) {
-        // Get the price of 1 amount of the underlying in USDC
-        return cygnusNebulaOracle.lpTokenPriceUsdc(underlying);
+        // Get the price of 1 amount of the underlying in USDC, adjust oracle price for 6 decimals
+        return cygnusNebulaOracle.lpTokenPriceUsdc(underlying) / 1e12;
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -147,7 +147,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 collateralInUsdc = amountCollateral.mul(getLPTokenPrice());
 
         // The borrower's USDC debt
-        uint256 borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
+        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
 
         // Adjust borrowed admount with liquidation incentive
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
@@ -156,19 +156,13 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         return collateralInUsdc == 0 ? 0 : adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
     }
 
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-            6. NON-CONSTANT FUNCTIONS
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function canBorrow_J2u(
+    function canBorrow(
         address borrower,
         address borrowableToken,
-        uint256 accountBorrows
+        uint256 borrowAmount
     ) external view override returns (bool) {
         /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
         if (borrowableToken != borrowable) {
@@ -179,8 +173,39 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         }
 
         // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, accountBorrows);
+        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, borrowAmount);
 
+        // Return bool
+        return shortfall == 0;
+    }
+
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
+    function canRedeem(address borrower, uint256 redeemAmount) public view override returns (bool) {
+        // Gas savings
+        uint256 cygLPBalance = balances[borrower];
+
+        // Value can't be higher than account balance, return false
+        if (redeemAmount > cygLPBalance) {
+            return false;
+        }
+
+        // Update user's balance
+        uint256 finalBalance = cygLPBalance - redeemAmount;
+
+        // Calculate final balance against the underlying's exchange rate / scale
+        uint256 amountCollateral = finalBalance.mul(exchangeRate());
+
+        // Get borrower's borrow balance from borrowable contract
+        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+
+        // prettier-ignore
+        ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, borrowedAmount);
+
+        // Return true if user has no shortfall
         return shortfall == 0;
     }
 }

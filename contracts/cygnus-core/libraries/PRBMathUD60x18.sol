@@ -499,4 +499,8 @@ library PRBMathUD60x18 {
             result = x / SCALE;
         }
     }
+
+    function max(uint256 x, uint256 y) internal pure returns (uint256) {
+        return x >= y ? x : y;
+    }
 }

@@ -66,6 +66,6 @@ interface IERC20Permit is IERC20 {
     /// @notice keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     function PERMIT_TYPEHASH() external view returns (bytes32);
 
-    /// @notice The chain ID
-    function chainId() external view returns (uint256);
+    /// @notice Eip712 version of this implementation.
+    function version() external view returns (string memory);
 }

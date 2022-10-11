@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -75,7 +75,7 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     ) internal {
         uint256 currentAllowance = borrowAllowances[owner][spender];
 
-        /// custom:error Avoid self
+        /// @custom:error OwnerIsSpender Avoid approving self
         if (owner == spender) {
             revert CygnusBorrowApprove__OwnerIsSpender({ owner: owner, spender: spender });
         }

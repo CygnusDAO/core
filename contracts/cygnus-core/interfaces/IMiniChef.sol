@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 import "./IERC20.sol";
 
 pragma solidity >=0.8.4;

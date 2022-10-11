@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Unlicense
-// solhint-disable var-name-mixedcase
 pragma solidity >=0.8.4;
 
+// solhint-disable var-name-mixedcase
 import { ERC20 } from "./ERC20.sol";
 import { IERC20Permit } from "./interfaces/IERC20Permit.sol";
-
-/// @notice replaced chainId assembly code from original author and hardcoded `version` to save bytesize
 
 /// @title ERC20Permit
 /// @author Paul Razvan Berg
@@ -23,20 +21,20 @@ contract ERC20Permit is IERC20Permit, ERC20 {
     mapping(address => uint256) public override nonces;
 
     /// @inheritdoc IERC20Permit
-    uint256 public override chainId = block.chainid;
+    string public constant override version = "1";
 
     /// CONSTRUCTOR ///
-
     constructor(
         string memory _name,
         string memory _symbol,
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {
+        uint256 chainId = block.chainid;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes(name)),
-                keccak256(bytes("1")),
+                keccak256(bytes(version)),
                 chainId,
                 address(this)
             )

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: Unlicensed
-pragma solidity ^0.8.4;
+// SPDX-License-Identifier: Unlicense
+pragma solidity >=0.8.4;
 
+// Interfaces
 import { AggregatorV3Interface } from "./AggregatorV3Interface.sol";
 import { IDexPair } from "./IDexPair.sol";
 
@@ -42,7 +43,6 @@ interface IChainlinkNebulaOracle {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Logs when a new LP Token is added to this oracle and the price is being tracked
      *  @param initialized Whether or not the LP Token is initialized
      *  @param oracleId The ID for this oracle
      *  @param lpTokenPair The address of the LP Token
@@ -59,7 +59,6 @@ interface IChainlinkNebulaOracle {
     );
 
     /**
-     *  @notice Logs when an LP Token is removed from this oracle, rendering all calls on this LP Token null
      *  @param oracleId The ID for this oracle
      *  @param lpTokenPair The contract address of the LP Token
      *  @param priceFeedA The contract address of Chainlink's aggregator contract for this LP Token's token0
@@ -75,7 +74,6 @@ interface IChainlinkNebulaOracle {
     );
 
     /**
-     *  @notice Logs when a new pending admin for the oracle is set
      *  @param oracleCurrentAdmin The address of the current oracle admin
      *  @param oraclePendingAdmin The address of the pending oracle admin
      *  @custom:event NewNebulaPendingAdmin Logs when a new pending admin is set, to be accepted by admin
@@ -83,7 +81,6 @@ interface IChainlinkNebulaOracle {
     event NewOraclePendingAdmin(address oracleCurrentAdmin, address oraclePendingAdmin);
 
     /**
-     *  @notice Logs when a new admin for the oracle is confirmed
      *  @param oracleOldAdmin The address of the old oracle admin
      *  @param oracleNewAdmin The address of the new oracle admin
      *  @custom:event NewNebulaAdmin Logs when the pending admin is confirmed as the new oracle admin

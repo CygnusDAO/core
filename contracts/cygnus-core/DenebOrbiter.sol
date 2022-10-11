@@ -16,7 +16,7 @@
         COLLATERAL DEPLOYER V1 - `Deneb`                                                           
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies

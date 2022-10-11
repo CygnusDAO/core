@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -128,13 +128,13 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         uint256 baseRate;
         uint256 multiplier;
 
-        // Get factory, underlying, collateral and lending pool id
+        // Get collateral contract and interest rate parameters
         (, , collateral, , baseRate, multiplier) = IAlbireoOrbiter(_msgSender()).borrowParameters();
 
-        // Update the interest rate model and do min/max checks from CygnusBorrowControl
+        // Update the interest rate model and do min max checks
         interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
 
-        // Match initial exchange rate
+        // Set initial exchange rate of CygUSD and underlying
         exchangeRateStored = 1e18;
 
         // Assurance
@@ -148,19 +148,19 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks if new parameter is within range when updating interest rate model
+     *  @notice Checks if new parameter is within range when updating borrowable settings
      *  @param min The minimum value allowed for the parameter that is being updated
      *  @param max The maximum value allowed for the parameter that is being updated
-     *  @param parameter The value of the parameter that is being updated
+     *  @param value The value of the parameter that is being updated
      */
     function validRange(
         uint256 min,
         uint256 max,
-        uint256 parameter
+        uint256 value
     ) internal pure {
         /// @custom:error Avoid outside range
-        if (parameter < min || parameter > max) {
-            revert CygnusBorrowControl__ParameterNotInRange({ minRange: min, maxRange: max, value: parameter });
+        if (value < min || value > max) {
+            revert CygnusBorrowControl__ParameterNotInRange({ min: min, max: max, value: value });
         }
     }
 

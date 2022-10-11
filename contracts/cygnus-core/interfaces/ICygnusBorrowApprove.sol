@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
+// Dependencies
 import { ICygnusBorrowControl } from "./ICygnusBorrowControl.sol";
 
 /**
@@ -31,27 +32,11 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
      */
     error CygnusBorrowApprove__BorrowNotAllowed(uint256 borrowAllowance, uint256 borrowAmount);
 
-    /**
-     *  @custom:error PermitExpired Reverts when the transaction permit is expired
-     */
-    error CygnusBorrowApprove__PermitExpired(uint256 transactDeadline, uint256 currentTimestamp);
-
-    /**
-     *  @custom:error RecoveredOwnerZeroAddress Reverts when the recovered owner is the zero address
-     */
-    error CygnusBorrowApprove__RecoveredOwnerZeroAddress(address recoveredOwner);
-
-    /**
-     *  @custom:error InvalidSignature Reverts when the recovered owner does not match the actual owner
-     */
-    error CygnusBorrowApprove__InvalidSignature(uint8 v, bytes32 r, bytes32 s);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Logs borrow allowance for a spender is updated
      *  @param owner Indexed address of the owner of the tokens
      *  @param spender The address of the user being allowed to spend the tokens
      *  @param amount The maximum amount of tokens the spender may spend

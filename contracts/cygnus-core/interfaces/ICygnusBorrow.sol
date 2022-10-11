@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
+// Dependencies
 import { ICygnusBorrowTracker } from "./ICygnusBorrowTracker.sol";
 
 /**
@@ -26,6 +27,8 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
+     *  @param sender Indexed address of the msg.sender
+     *  @param borrower Indexed address of the borrower
      *  @param liquidator Indexed address of the liquidator
      *  @param denebAmount The amount of the underlying asset to be seized
      *  @param repayAmount The amount of the underlying asset to be repaid (factors in liquidation incentive)

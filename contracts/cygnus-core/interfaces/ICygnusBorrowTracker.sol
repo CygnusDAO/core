@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
+// Dependencies
 import { ICygnusBorrowApprove } from "./ICygnusBorrowApprove.sol";
 
 interface ICygnusBorrowTracker is ICygnusBorrowApprove {
@@ -14,7 +15,7 @@ interface ICygnusBorrowTracker is ICygnusBorrowApprove {
      *  @param borrowIndexStored The latest stored borrow index
      *  @param totalBorrowsStored Total borrow balances of this lending pool
      *  @param borrowRateStored The current borrow rate
-     *  @custom:event AccrueInterest Logs when interest is accrued
+     *  @custom:event AccrueInterest Logs when interest is accrued to borrows and reserves
      */
     event AccrueInterest(
         uint256 cashStored,

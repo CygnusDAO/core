@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -153,7 +153,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     *  @dev Compute optimal deposit amount of token0 to mint an LP Token
+     *  @dev Compute optimal deposit amount of tokenA to mint an LP Token
      *  @param amountA amount of token A desired to deposit
      *  @param reservesA Reserves of token A from the DEX
      *  @param _dexSwapFee The fee charged by this dex for a swap (ie Uniswap = 997/1000 = 0.3%)
@@ -227,7 +227,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         address token,
         address router,
         uint256 amount
-    ) internal {
+    ) private {
         // Check allowance for `router` - Return if the allowance is higher than amount
         if (IERC20(token).allowance(address(this), router) >= amount) {
             return;
@@ -262,7 +262,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     }
 
     /**
-     *  @notice Function to add liquidity, called after `optimalDepositA` to transfer the optimal amount and mint LP
+     *  @notice Function to add liquidity and mint LP Tokens
      *  @param tokenA The address of the LP Token's token0
      *  @param tokenB The address of the LP Token's token1
      *  @param amountA The amount of token A to add as liquidity
@@ -337,7 +337,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Internal hook for deposits into strategies
      *  @param assets The amount of assets to deposit into the strategy
      */
-    function afterDepositInternal(uint256 assets, uint256) internal override {
+    function afterDepositInternal(uint256 assets, uint256) internal override(CygnusTerminal) {
         // Deposit assets into the strategy
         rewarder.deposit(pid, assets);
     }
@@ -346,7 +346,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Internal hook for withdrawals from strategies
      *  @param assets The amount of shares to withdraw from the strategy
      */
-    function beforeWithdrawInternal(uint256 assets, uint256) internal override {
+    function beforeWithdrawInternal(uint256 assets, uint256) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy
         rewarder.withdraw(pid, assets);
     }

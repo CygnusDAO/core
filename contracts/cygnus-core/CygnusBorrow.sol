@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -24,8 +24,8 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /**
-     *  @custom:library SafeErc20 Low level handling of Erc20 tokens
+    /*
+     *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
      */
     using SafeTransferLib for address;
 
@@ -48,12 +48,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
      */
     function mintReservesInternal(uint256 _exchangeRate) internal returns (uint256) {
         // Get current exchange rate stored for borrow contract
-        uint256 _exchangeRateLast = exchangeRateStored;
+        uint256 exchangeRateLast = exchangeRateStored;
 
         // Calculate new exchange rate, if different to last mint reserves
-        if (_exchangeRate > _exchangeRateLast) {
-            // Calculate new exchange rate taking reserves int oaccount
-            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - _exchangeRateLast).mul(reserveFactor));
+        if (_exchangeRate > exchangeRateLast) {
+            // Calculate new exchange rate taking reserves into account
+            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mul(reserveFactor));
 
             // Calculate new reserves if any
             uint256 newReserves = totalReserves - mintedReserves;
@@ -142,7 +142,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
 
         // For leverage functionality pass data to the router
         if (data.length > 0) {
-            ICygnusAltairCall(receiver).altairBorrow_O9E(_msgSender(), borrower, borrowAmount, data);
+            ICygnusAltairCall(receiver).altairBorrow_O9E(_msgSender(), borrowAmount, data);
         }
 
         // Get total balance of the underlying asset
@@ -161,7 +161,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {
             // Check if user can borrow and updates collateral totalBalance
-            bool userCanBorrow = ICygnusCollateral(collateral).canBorrow_J2u(borrower, address(this), accountBorrows);
+            bool userCanBorrow = ICygnusCollateral(collateral).canBorrow(borrower, address(this), accountBorrows);
 
             /// @custom:error InsufficientLiquidity Avoid if borrower has insufficient liquidity for this `borrowAmount`
             if (!userCanBorrow) {

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -12,9 +12,7 @@ import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 // Interfaces
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
-import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
-import { IERC20, ERC20 } from "./ERC20.sol";
-import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
+import { ERC20 } from "./ERC20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 
 /**
@@ -31,7 +29,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     using PRBMathUD60x18 for uint256;
 
     /**
-     *  @custom:library SafeTransferLib Solady`s library for low level handling of ERC20 tokens
+     *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
      */
     using SafeTransferLib for address;
 
@@ -42,8 +40,8 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks whether user has enough liquidity to redeem
      *  @notice ERC20 Overrides
+     *  @notice Before burning we check whether the user has sufficient liquidity (no debt) to redeem `burnAmount`
      */
     function burnInternal(address holder, uint256 burnAmount) internal override(ERC20) {
         /// @custom:error InsufficientLiquidity Avoid burning supply if there's shortfall
@@ -53,36 +51,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
 
         // Safe internal burn
         super.burnInternal(holder, burnAmount);
-    }
-
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusCollateral
-     */
-    function canRedeem(address borrower, uint256 redeemAmount) public view override returns (bool) {
-        // Gas savings
-        uint256 cygLPBalance = balances[borrower];
-
-        // Value can't be higher than account balance, return false
-        if (redeemAmount > cygLPBalance) {
-            return false;
-        }
-
-        // Update user's balance
-        uint256 finalBalance = cygLPBalance - redeemAmount;
-
-        // Calculate final balance against the underlying's exchange rate / scale
-        uint256 amountCollateral = finalBalance.mul(exchangeRate());
-
-        // Get borrower's borrow balance from borrowable contract
-        uint256 borrowedAmount = ICygnusBorrowTracker(borrowable).getBorrowBalance(borrower);
-
-        // prettier-ignore
-        ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, borrowedAmount);
-
-        // Return true if user has no shortfall
-        return shortfall == 0;
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -114,7 +82,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
 
         // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state
         if (shortfall <= 0) {
-            revert CygnusCollateral__NotLiquidatable({ userLiquidity: liquidity, userShortfall: 0 });
+            revert CygnusCollateral__NotLiquidatable({ liquidity: liquidity, shortfall: shortfall });
         }
 
         // Get price from oracle
@@ -158,41 +126,38 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
      */
     function flashRedeemAltair(
         address redeemer,
-        uint256 redeemAmount,
+        uint256 assets,
         bytes calldata data
     ) external override nonReentrant update {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
-        if (redeemAmount <= 0) {
+        if (assets <= 0) {
             revert CygnusCollateral__CantRedeemZero();
         }
         /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
-        else if (redeemAmount > totalBalance) {
-            revert CygnusCollateral__RedeemAmountInvalid({ redeemAmount: redeemAmount, totalBalance: totalBalance });
+        else if (assets > totalBalance) {
+            revert CygnusCollateral__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
         }
 
         // Withdraw hook to withdraw from the strategy (if any)
-        beforeWithdrawInternal(redeemAmount, 0);
+        beforeWithdrawInternal(assets, 0);
 
         // Optimistically transfer funds
-        underlying.safeTransfer(redeemer, redeemAmount);
+        underlying.safeTransfer(redeemer, assets);
 
         // Pass data to router
         if (data.length > 0) {
-            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), redeemAmount, token0, token1, data);
+            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), assets, token0, token1, data);
         }
 
         // Total balance of CygLP tokens in this contract
         uint256 cygLPTokens = balances[address(this)];
 
         // Calculate user's redeem (amount * scale / exch)
-        uint256 redeemableAmount = redeemAmount.div(exchangeRate());
+        uint256 shares = assets.div(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if there's less tokens than declared
-        if (cygLPTokens < redeemableAmount) {
-            revert CygnusCollateral__InsufficientRedeemAmount({
-                cygLPTokens: cygLPTokens,
-                redeemableAmount: redeemableAmount
-            });
+        if (cygLPTokens < shares) {
+            revert CygnusCollateral__InsufficientRedeemAmount({ cygLPTokens: cygLPTokens, shares: shares });
         }
 
         // Burn tokens and emit a Transfer event

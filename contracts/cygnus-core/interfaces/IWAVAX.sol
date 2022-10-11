@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Interface for interfacting with Wrapped Avax (0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7)

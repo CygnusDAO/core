@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -13,9 +13,9 @@ interface ICygnusBorrowControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error ParameterNotInRange Reverts when the value is below minRange or above maxRange
+     *  @custom:error ParameterNotInRange Reverts when the value is below min or above max
      */
-    error CygnusBorrowControl__ParameterNotInRange(uint256 minRange, uint256 maxRange, uint256 value);
+    error CygnusBorrowControl__ParameterNotInRange(uint256 min, uint256 max, uint256 value);
 
     /**
      *  @custom:error BorrowTrackerAlreadySet Reverts when the new borrow tracker is the same as current
@@ -43,7 +43,7 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /**
      *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
      *  @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     *  @param kinkMultiplier_ The increase to farmApy once kink utilization is reached
+     *  @param kinkMultiplier_ The increase to multiplier per year once kink utilization is reached
      *  @param kinkUtilizationRate_ The rate at which the jump interest rate takes effect
      *  custom:event NewInterestRateParameters Longs when a new interest rate model is set
      */

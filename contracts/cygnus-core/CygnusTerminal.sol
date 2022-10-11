@@ -85,7 +85,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     using PRBMathUD60x18 for uint256;
 
     /**
-     *  @custom:library SafeTransferLib Solady`s library for low level handling of ERC20 tokens
+     *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
      */
     using SafeTransferLib for address;
 
@@ -121,8 +121,8 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
 
     /**
      *  @notice Constructs tokens for both Collateral and Borrow arms
-     *  @notice We have to do a try/catch if we want to store the underlying as immutable as both borrowable
-     *          and collateral call the same contract
+     *  @notice We have to do a try/catch if we want to store immutables as both borrowable and collateral call
+     *          different deployer contracts.
      *  @param name_ ERC20 name of the Borrow/Collateral token
      *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
      *  @param decimals_ Decimals of the Borrow/Collateral token (always 18)
@@ -132,36 +132,37 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         string memory symbol_,
         uint8 decimals_
     ) ERC20Permit(name_, symbol_, decimals_) {
-        // Placeholders
-
+        // Set placeholders for try/catch
         // Factory
         address factory;
-
-        // underlying
+        // Underlying
         address asset;
-
-        // Immutable pool id
+        // Lending Pool ID (shared by both borrowable and collateral)
         uint256 poolId;
 
-        // Try collateral parameters: factory, underlying, borrowable, shuttleId
-        try IDenebOrbiter(_msgSender()).collateralParameters() returns (address a, address b, address, uint256 d) {
-            // placeholder factory
-            factory = a;
-            // placeholder underlying
-            asset = b;
-            // placeholder shuttleId
-            poolId = d;
+        // Try Collateral parameters: factory, underlying, borrowable (assigned on child contract), shuttleId
+        try IDenebOrbiter(_msgSender()).collateralParameters() returns (
+            address _factory,
+            address _asset,
+            address,
+            uint256 _poolId
+        ) {
+            // Factory
+            factory = _factory;
+            // Underlying
+            asset = _asset;
+            // ShuttleId
+            poolId = _poolId;
         } catch {
-            // Catch borrowable parameters: factory, underlying, collateral, shuttleId, baseRate, multiplier
+            // Else catch Borrow parameters: factory, underlying, collateral, shuttleId, baseRate, multiplier
             (factory, asset, , poolId, , ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
         }
-        // Assign immutables to success call
-
-        // Cygnus Factory
+        // Assign immutables to placeholders
+        // Factory
         hangar18 = factory;
         // Underlying
         underlying = asset;
-        // Lending pool ID (shared by both borrowable and collateral)
+        // Lending pool ID
         shuttleId = poolId;
     }
 
@@ -192,7 +193,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Internal check for admins only, checks factory for admin
+     *  @notice Internal check for msg.sender admin, checks factory's current admin 👽
      */
     function isCygnusAdmin() internal view {
         // Current admin from the factory
@@ -258,7 +259,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         // Get the amount of shares to mint
         shares = assets.div(exchangeRate());
 
-        /// custom:error CantMintZeroShares Avoid minting no tokens
+        /// custom:error CantMintZeroShares Avoid minting no shares
         if (shares <= 0) {
             revert CygnusTerminal__CantMintZeroShares();
         }
@@ -266,7 +267,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         // Transfer underlying from sender to this contract
         underlying.safeTransferFrom(_msgSender(), address(this), assets);
 
-        // Mint tokens and emit Transfer event
+        // Mint shares and emit Transfer event
         mintInternal(recipient, shares);
 
         // Deposit assets into the strategy (if any)
@@ -297,7 +298,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         // Get the amount of assets to redeem
         assets = shares.mul(exchangeRate());
 
-        /// @custom:error CantRedeemZeroAssets Avoid redeeming 0 assets
+        /// @custom:error CantRedeemZeroAssets Avoid redeeming no assets
         if (assets <= 0) {
             revert CygnusTerminal__CantRedeemZeroAssets();
         }
@@ -324,7 +325,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function sweepToken(address token) external override nonReentrant cygnusAdmin update {
+    function sweepToken(address token) external override nonReentrant cygnusAdmin {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
         if (token == underlying) {
             revert CygnusTerminal__CantSweepUnderlying({ token: token, underlying: underlying });

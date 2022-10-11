@@ -15,7 +15,7 @@ library Strings {
      *  @param underlying Address of the underlying LP Token
      *  @return The concat of token0 + '/' + token1
      */
-    function appendDeneb(address underlying) internal view returns (string memory) {
+    function tokenSymbols(address underlying) internal view returns (string memory) {
         // Get name of token0 from LP token
         string memory token0 = IERC20(IDexPair(underlying).token0()).symbol();
 

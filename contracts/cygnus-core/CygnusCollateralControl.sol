@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -108,14 +108,13 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *          contract, which is taken from the most current one in the factory.
      */
     constructor() {
-        // dummy vars
+        // Placeholder factory to get oracle
         address factory;
-        address asset;
 
         // Get factory, underlying, borrowable and lending pool id
-        (factory, asset, borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
+        (factory, , borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
 
-        // Assign price oracle from factory
+        // Assign latest price oracle from factory
         cygnusNebulaOracle = ICygnusFactory(factory).cygnusNebulaOracle();
 
         // Assurance
@@ -132,16 +131,16 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @notice Checks if new parameter is within range when updating collateral settings
      *  @param min The minimum value allowed for this parameter
      *  @param max The maximum value allowed for this parameter
-     *  @param parameter The value for the parameter that is being updated
+     *  @param value The value for the parameter that is being updated
      */
     function validRange(
         uint256 min,
         uint256 max,
-        uint256 parameter
+        uint256 value
     ) internal pure {
         /// @custom:error ParameterNotInRange Avoid outside range
-        if (parameter < min || parameter > max) {
-            revert CygnusCollateralControl__ParameterNotInRange({ minRange: min, maxRange: max, value: parameter });
+        if (value < min || value > max) {
+            revert CygnusCollateralControl__ParameterNotInRange({ min: min, max: max, value: value });
         }
     }
 

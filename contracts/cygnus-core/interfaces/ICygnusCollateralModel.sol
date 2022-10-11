@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -26,7 +26,7 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @notice Gets an account's liquidity or shortfall
@@ -34,7 +34,7 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
      *  @return liquidity The account's liquidity in USDC
      *  @return shortfall If user has no liquidity, return the shortfall in USDC
      */
-    function getAccountLiquidity(address borrower) external returns (uint256 liquidity, uint256 shortfall);
+    function getAccountLiquidity(address borrower) external view returns (uint256 liquidity, uint256 shortfall);
 
     /**
      *  @notice Calls the oracle to return the price of the underlying LP Token of this shuttle
@@ -47,17 +47,26 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
      *  @param borrower The address of the borrower
      *  @return borrowersDebtRatio The debt ratio of the borrower, with max being 1e18
      */
-    function getDebtRatio(address borrower) external returns (uint256 borrowersDebtRatio);
+    function getDebtRatio(address borrower) external view returns (uint256 borrowersDebtRatio);
 
     /**
      *  @param borrower The address of the borrower
      *  @param borrowableToken The address of the borrowable contract the `borrower` wants to borrow from
-     *  @param accountBorrows The amount the user wants to borrow
+     *  @param borrowAmount The amount the user wants to borrow
      *  @return Whether the account can borrow
      */
-    function canBorrow_J2u(
+    function canBorrow(
         address borrower,
         address borrowableToken,
-        uint256 accountBorrows
-    ) external returns (bool);
+        uint256 borrowAmount
+    ) external view returns (bool);
+
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @param borrower The address of the borrower
+     *  @param redeemAmount The amount of CygLP to redeem
+     *  @return Whether the `borrower` account can redeem - if user has shortfall, returns false
+     */
+    function canRedeem(address borrower, uint256 redeemAmount) external view returns (bool);
 }

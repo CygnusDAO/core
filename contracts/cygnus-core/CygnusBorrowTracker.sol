@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -38,7 +38,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /**
      *  @custom:struct BorrowSnapshot Container for individual user's borrow balance information
      *  @custom:member principal Total balance (with accrued interest) as of the most recent action
-     *  @custom:member interestIndex Global borrowIndex as of the most recent balance-changing action
+     *  @custom:member interestIndex Borrow index as of the most recent balance-changing action
      */
     struct BorrowSnapshot {
         uint112 principal;
@@ -150,7 +150,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @dev It is used by CygnusCollateral and CygnusCollateralModel contracts.
+     *  @dev It is used by CygnusCollateral contract
      *  @inheritdoc ICygnusBorrowTracker
      */
     function getBorrowBalance(address borrower) public view override returns (uint256) {
@@ -240,7 +240,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
             uint256 totalBorrowsStored
         )
     {
-        // Internal view function to get borrower's balance, if borrower's interestIndex = 0 it returns 0.
+        // Internal view function to get borrower's balance, if borrower's interestIndex = 0 it returns 0
         accountBorrowsPrior = getBorrowBalance(borrower);
 
         // if borrow amount == repayAmount, accountBorrowsPrior == accountBorrows
@@ -290,10 +290,10 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
                     : 0;
             }
 
-            // Update the snapshot record of the borrower's principal their new balance
+            // Update the snapshot record of the borrower's principal
             borrowSnapshot.principal = uint112(accountBorrows);
 
-            // If no account borrows then interest index is 0
+            // Update the snapshot record of the borrower's interest index, if no borrows then interest index is 0
             borrowSnapshot.interestIndex = accountBorrows == 0 ? 0 : borrowIndexStored;
 
             // Actual decrease amount checked
@@ -377,7 +377,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         reservesStored += reserveFactor.mul(interestAccumulated);
 
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
-        borrowIndexStored += interestFactor.mul(borrowIndex);
+        borrowIndexStored += interestFactor.mul(borrowIndexStored);
 
         // ────── Store values: 2 memory slots with uint32 lastAccrualTime ──────
 
@@ -398,6 +398,8 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         /// @custom:event AccrueInterest
         emit AccrueInterest(cashStored, interestAccumulated, borrowIndexStored, totalBorrowsStored, borrowRateStored);
     }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusBorrowTracker

@@ -16,7 +16,7 @@
         CYGNUS FACTORY V1 - `Hangar18`                                                           
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
@@ -86,7 +86,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    address[] public override allShuttles;
+    Shuttle[] public override allShuttles;
 
     /**
      *  @inheritdoc ICygnusFactory
@@ -151,7 +151,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Address of the native token for this chain (ie WETH)
         nativeToken = _nativeToken;
 
-        // Address of USDC on this factory's chain
+        // Address of DAI on this factory's chain
         usdc = _usdc;
 
         // Assign oracle used by all pools
@@ -250,22 +250,22 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      */
     function boardShuttle(address lpTokenPair, Orbiter memory orbiter) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
-        uint24 shuttleId = getShuttles[lpTokenPair][orbiter.orbiterId].shuttleId;
+        uint256 shuttleId = getShuttles[lpTokenPair][orbiter.orbiterId].shuttleId;
 
-        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
+        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles with the same orbiter ID
         if (shuttleId != 0) {
             // If we try to re-deploy the lending pool which actually has the ID of 0, the EVM will handle the revert
             revert CygnusFactory__ShuttleAlreadyDeployed({ id: shuttleId, lpTokenPair: lpTokenPair });
         }
 
-        // Set all to default before deploying
+        // Assign shuttle/orbiter ids
         return
             getShuttles[lpTokenPair][orbiter.orbiterId] = Shuttle(
                 false, // Initialized, default false until oracle is set
-                uint24(allShuttles.length), // Lending pool ID
-                address(0), // Borrow contract address
+                uint88(allShuttles.length), // Lending pool ID
+                address(0), // Borrowable address
                 address(0), // Collateral address
-                orbiter
+                uint96(orbiter.orbiterId) // The orbiter ID used to launch this shuttle
             );
     }
 
@@ -362,11 +362,11 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Add collateral contract to record
         shuttle.collateral = collateral;
 
-        // Push LP Token pair to array to keep count of pools deployed
-        allShuttles.push(lpTokenPair);
+        // Push the lending pool struct to the object array
+        allShuttles.push(shuttle);
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(shuttle.shuttleId, borrowable, collateral, usdc, lpTokenPair);
+        emit NewShuttleLaunched(lpTokenPair, orbiterId, shuttle.borrowable, shuttle.collateral, shuttle.shuttleId);
     }
 
     /**
@@ -486,8 +486,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Assign the new pending admin as the pending admin
         pendingAdmin = newPendingAdmin;
 
-        /// @custom:event PendingCygnusAdmin
-        emit PendingCygnusAdmin(oldPendingAdmin, newPendingAdmin);
+        /// @custom:event NewPendingCygnusAdmin
+        emit NewPendingCygnusAdmin(oldPendingAdmin, newPendingAdmin);
     }
 
     /**
@@ -539,8 +539,8 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Assign the new pending dao reserves
         pendingDaoReserves = newPendingDaoReserves;
 
-        /// @custom:event PendingDaoReserves
-        emit PendingDaoReserves(oldPendingDaoReserves, pendingDaoReserves);
+        /// @custom:event NewPendingDaoReserves
+        emit NewPendingDaoReserves(oldPendingDaoReserves, pendingDaoReserves);
     }
 
     /**
