@@ -74,13 +74,13 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
                 return _exchangeRate;
             }
 
-            // Mint new reserves and update the exchange rate
+            // Get the current DAO reserves contract
             address daoReserves = ICygnusFactory(hangar18).daoReserves();
 
-            // Safe internal mint
+            // Mint new resereves and upate the exchange rate
             mintInternal(daoReserves, newReserves);
 
-            // Add reserves
+            // Add to internal record of reserves
             mintedReserves += newReserves;
 
             // Update exchange rate

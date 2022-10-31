@@ -47,25 +47,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    // Non-customizable
-
-    /**
-     *  @notice Address of the chain's native token (ie WETH)
-     */
-    address internal immutable nativeToken;
-
-    /**
-     *  @notice The first token from the underlying LP Token
-     */
-    address internal immutable token0;
-
-    /**
-     *  @notice The second token from the underlying LP Token
-     */
-    address internal immutable token1;
-
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     // Customizable
@@ -89,6 +70,25 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
      */
     uint256 private pid;
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    // Non-customizable
+
+    /**
+     *  @notice Address of the chain's native token (ie WETH)
+     */
+    address internal immutable nativeToken;
+
+    /**
+     *  @notice The first token from the underlying LP Token
+     */
+    address internal immutable token0;
+
+    /**
+     *  @notice The second token from the underlying LP Token
+     */
+    address internal immutable token1;
 
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
 
@@ -423,8 +423,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Calculate reward for DAO (DAO_REWARD %)
         uint256 daoReward = currentRewards.mul(DAO_REWARD);
 
+        // Get the current DAO reserves contract
+        address daoReserves = ICygnusFactory(hangar18).daoReserves();
+
         // Transfer the reward to the DAO vault
-        rewardsToken.safeTransfer(ICygnusFactory(hangar18).daoReserves(), daoReward);
+        rewardsToken.safeTransfer(daoReserves, daoReward);
 
         // ─────────────────────── 3. Convert all rewardsToken to token0 or token1
         // Placeholders to sort tokens
@@ -437,7 +440,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
             (tokenA, tokenB) = token0 == rewardsToken ? (token0, token1) : (token1, token0);
         } else {
             // Swap token reward token to native token
-            swapTokensPrivate(rewardsToken, nativeToken, currentRewards - eoaReward - daoReward);
+            swapTokensPrivate(rewardsToken, nativeToken, contractBalanceOf(rewardsToken));
 
             // Check if token0 or token1 is native token
             if (token0 == nativeToken || token1 == nativeToken) {
