@@ -221,6 +221,21 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
+    function setInterestRateModel(
+        uint256 baseRatePerYear,
+        uint256 multiplierPerYear,
+        uint256 kinkMultiplier_,
+        uint256 kinkUtilizationRate_
+    ) external override nonReentrant cygnusAdmin {
+        // Update Per second rates
+        interestRateModelInternal(baseRatePerYear, multiplierPerYear, kinkMultiplier_, kinkUtilizationRate_);
+    }
+
+    /**
+     *  @notice 👽
+     *  @inheritdoc ICygnusBorrowControl
+     *  @custom:security non-reentrant
+     */
     function setCygnusBorrowRewarder(address newBorrowRewarder) external override nonReentrant cygnusAdmin {
         // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
         // case it's inactive
@@ -260,20 +275,5 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
         /// @custom:event NewReserveFactor
         emit NewReserveFactor(oldReserveFactor, newReserveFactor);
-    }
-
-    /**
-     *  @notice 👽
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant
-     */
-    function setInterestRateModel(
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear,
-        uint256 kinkMultiplier_,
-        uint256 kinkUtilizationRate_
-    ) external override nonReentrant cygnusAdmin {
-        // Update Per second rates
-        interestRateModelInternal(baseRatePerYear, multiplierPerYear, kinkMultiplier_, kinkUtilizationRate_);
     }
 }

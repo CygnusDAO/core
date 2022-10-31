@@ -16,7 +16,19 @@ import { ERC20 } from "./ERC20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 
 /**
- *  @title CygnusCollateral Main Collateral contract handles transfers and seizings of collateral
+ *  @title  CygnusCollateral Main Collateral contract handles transfers and seizings of collateral
+ *  @notice This is the main Collateral contract which is used for liquidations and for flash redeeming the
+ *          underlying. It also overrides the `burn` internal function, calling the borrowable arm to query
+ *          the redeemer's current borrow balance to check if the user can redeem the LP Tokens.
+ *
+ *          When a user's position gets liquidated, it is initially called by the borrow arm. The liquidator
+ *          first repays back USDC to the borrowable arm and then calls `liquidate` which then calls `seizeCygLP`
+ *          in this contract to seize the amount of CygLP being repaid + the liquidation incentive. There is a
+ *          liquidation fee which can be set to go to DAO Reserves taken from the user being liquidated this
+ *          fee is set to default as 0.
+ *
+ *          The last function `flashRedeemAltair` allows users to deleverage their positions. Anyone can flash
+ *          redeem the underlying LP Tokens, as long as they are paid back by the end of the function call.
  */
 contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

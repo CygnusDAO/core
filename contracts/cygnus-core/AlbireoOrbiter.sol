@@ -30,10 +30,10 @@ import { CygnusBorrow } from "./CygnusBorrow.sol";
 /**
  *  @title  AlbireoOrbiter Contract that deploys the Cygnus Borrow arm of the lending pool
  *  @author CygnusDAO
- *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys
- *          the borrow contract with the corresponding Cygnus collateral contract address. We pass
- *          structs to avoid having to set constructors in the core contracts, being able to calculate
- *          addresses of lending pools with CREATE2
+ *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys the borrow
+ *          contract with the corresponding Cygnus collateral contract address. We pass structs to avoid having
+ *          to set constructors in the core contracts, being able to calculate addresses of lending pools with
+ *          CREATE2
  */
 contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════

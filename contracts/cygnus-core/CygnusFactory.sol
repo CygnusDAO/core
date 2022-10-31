@@ -366,7 +366,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         allShuttles.push(shuttle);
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(lpTokenPair, orbiterId, shuttle.borrowable, shuttle.collateral, shuttle.shuttleId);
+        emit NewShuttleLaunched(lpTokenPair, orbiterId, shuttle.shuttleId, shuttle.borrowable, shuttle.collateral);
     }
 
     /**
@@ -407,7 +407,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         allOrbiters.push(orbiter);
 
         /// @custom:event InitializeOrbiters
-        emit InitializeOrbiters(true, totalOrbiters, orbiterName, denebOrbiter, albireoOrbiter);
+        emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, orbiterName);
     }
 
     /**
@@ -430,9 +430,9 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         emit SwitchOrbiterStatus(
             orbiter.status,
             orbiter.orbiterId,
-            orbiter.orbiterName,
             orbiter.albireoOrbiter,
-            orbiter.denebOrbiter
+            orbiter.denebOrbiter,
+            orbiter.orbiterName
         );
     }
 

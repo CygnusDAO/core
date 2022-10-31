@@ -20,12 +20,6 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
     /**
      *  @inheritdoc ICygnusBorrowApprove
      */
-    bytes32 public constant override BORROW_PERMIT_TYPEHASH =
-        keccak256("BorrowPermit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-
-    /**
-     *  @inheritdoc ICygnusBorrowApprove
-     */
     mapping(address => mapping(address => uint256)) public override borrowAllowances;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -106,24 +100,5 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
         borrowApproveInternal(_msgSender(), spender, amount);
 
         return true;
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowApprove
-     */
-    function borrowPermit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external override {
-        // Call permit with the borrow permit typehash
-        permit(owner, spender, value, deadline, v, r, s, BORROW_PERMIT_TYPEHASH);
-
-        // If succeeds approve internally
-        borrowApproveInternal(owner, spender, value);
     }
 }

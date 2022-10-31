@@ -51,7 +51,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
-import { ERC20Permit } from "./ERC20Permit.sol";
+import { ERC20 } from "./ERC20.sol";
 
 // Libraries
 import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
@@ -74,7 +74,7 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *          It follows similar functionality to UniswapV2Pair with some small differences.
  *          We added only the `deposit` and `redeem` functions from the erc-4626 standard to save on byte size.
  */
-contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
+contract CygnusTerminal is ICygnusTerminal, ERC20 {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -115,14 +115,16 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      */
     uint256 public override totalBalance;
 
+    string public orbiterName;
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
      *  @notice Constructs tokens for both Collateral and Borrow arms
-     *  @notice We have to do a try/catch if we want to store immutables as both borrowable and collateral call
-     *          different deployer contracts.
+     *  @notice We have to do a try/catch if we want to store underlying as immutables as both borrowable and
+     *          collateral call different deployer contracts.
      *  @param name_ ERC20 name of the Borrow/Collateral token
      *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
      *  @param decimals_ Decimals of the Borrow/Collateral token (always 18)
@@ -131,7 +133,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) ERC20Permit(name_, symbol_, decimals_) {
+    ) ERC20(name_, symbol_, decimals_) {
         // Set placeholders for try/catch
         // Factory
         address factory;
@@ -157,6 +159,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
             // Else catch Borrow parameters: factory, underlying, collateral, shuttleId, baseRate, multiplier
             (factory, asset, , poolId, , ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
         }
+
         // Assign immutables to placeholders
         // Factory
         hangar18 = factory;
@@ -325,7 +328,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function sweepToken(address token) external override nonReentrant cygnusAdmin {
+    function sweepToken(address token) external override nonReentrant cygnusAdmin update {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
         if (token == underlying) {
             revert CygnusTerminal__CantSweepUnderlying({ token: token, underlying: underlying });

@@ -2,13 +2,13 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IERC20Permit } from "./IERC20Permit.sol";
+import { IERC20 } from "./IERC20.sol";
 
 /**
  *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts
  *  @notice The interface for the CygnusTerminal contract allows minting/redeeming Cygnus pool tokens
  */
-interface ICygnusTerminal is IERC20Permit {
+interface ICygnusTerminal is IERC20 {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

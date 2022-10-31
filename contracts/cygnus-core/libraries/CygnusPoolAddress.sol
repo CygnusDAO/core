@@ -28,7 +28,6 @@ library CygnusPoolAddress {
         address denebOrbiter,
         bytes32 initCodeHash
     ) internal pure returns (address collateral) {
-        require(lpTokenPair != address(0), "LP Token can`t be zero");
         collateral = address(
             uint160(
                 uint256(

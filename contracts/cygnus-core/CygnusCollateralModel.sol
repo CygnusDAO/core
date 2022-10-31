@@ -12,21 +12,21 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
 
 /**
- *  @title  CygnusCollateralModel Main contract in Cygnus that calculates a borrower's liquidity or shortfall
- *          in USDC (how much LP Token the user has deposited, and then we use the oracle to return what the LP
- *          Token deposited amount is worth in USDC)
+ *  @title  CygnusCollateralModel Main contract in Cygnus that calculates a borrower's liquidity or shortfall in
+ *          USDC (how much LP Token the user has deposited, and then we use the oracle to return what the LP Token
+ *          deposited amount is worth in USDC).
  *  @author CygnusDAO
  *  @notice Theres 2 main functions to calculate the liquidity of a user: `getDebtRatio` and `getAccountLiquidity`
- *          `getDebtRatio` will return the percentage of the borrowed amount divided by the user's collateral, scaled
- *          by 1e18. If `getDebtRatio` returns higher than 100% (or 1e18) then the user has shortfall and can be
- *          liquidated.
+ *          `getDebtRatio` will return the percentage of the borrowed amount divided by the user's collateral,
+ *          scaled by 1e18. If `getDebtRatio` returns higher than 100% (or 1e18) then the user has shortfall and
+ *          can be liquidated.
  *
- *          The same can be calculated with `getAccountLiquidity`, but instead of returning a percentage will return
- *          the actual amount of the user's liquidity or shortfall denominated in USDC.
+ *          The same can be calculated with `getAccountLiquidity`, but instead of returning a percentage will
+ *          return the actual amount of the user's liquidity or shortfall denominated in USDC.
  *
- *          The last function `canBorrow` is called by the `borrowable` contract (the borrow arm) to confirm if a user
- *          can borrow or not and can be called by anyone, returning `false` if the account has shortfall, otherwise
- *          will return `true`.
+ *          The last function `canBorrow` is called by the `borrowable` contract (the borrow arm) to confirm if a
+ *          user can borrow or not and can be called by anyone, returning `false` if the account has shortfall,
+ *          otherwise will return `true`.
  */
 contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -153,7 +153,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
 
         // Account for 0 collateral to avoid divide by 0
-        return collateralInUsdc == 0 ? 0 : adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
+        return adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
     }
 
     /**
@@ -175,7 +175,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         // prettier-ignore
         (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, borrowAmount);
 
-        // Return bool
+        // Return true if user has no shortfall
         return shortfall == 0;
     }
 

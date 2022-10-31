@@ -38,25 +38,25 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @param _rewarder The address of the rewarder contract
      *  @param _rewardsToken The address of the token that rewards are paid in
      *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
-     *  @param _swapFeeFactor The swap fee factor used by this DEX
      *  @custom:event ChargeVoid Logs when the strategy is first initialized
      */
-    event ChargeVoid(
-        IDexRouter02 _dexRouter,
-        IMiniChef _rewarder,
-        address _rewardsToken,
-        uint256 _pid,
-        uint256 _swapFeeFactor
-    );
+    event ChargeVoid(IDexRouter02 _dexRouter, IMiniChef _rewarder, address _rewardsToken, uint256 _pid);
 
     /**
      *  @param shuttle The address of this lending pool
      *  @param reinvestor The address of the caller who reinvested reward and received bounty
      *  @param rewardBalance The amount reinvested
      *  @param reinvestReward The reward received by the reinvestor
+     *  @param daoReward The reward received by the DAO
      *  @custom:event RechargeVoid Logs when rewards from the Masterchef/Rewarder are reinvested into more LP Tokens
      */
-    event RechargeVoid(address indexed shuttle, address reinvestor, uint256 rewardBalance, uint256 reinvestReward);
+    event RechargeVoid(
+        address indexed shuttle,
+        address reinvestor,
+        uint256 rewardBalance,
+        uint256 reinvestReward,
+        uint256 daoReward
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -65,7 +65,12 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
     /**
      *  @return REINVEST_REWARD The % of rewards paid to the user who reinvested this shuttle's rewards to buy more LP
      */
-    function REINVEST_REWARD() external view returns (uint256);
+    function REINVEST_REWARD() external pure returns (uint256);
+
+    /**
+     *  @return DAO_REWARD The % of rewards paid to the DAO from the harvest
+     */
+    function DAO_REWARD() external pure returns (uint256);
 
     /**
      *  @notice Getter for this contract's void values (if activated) showing the rewarder address, pool id, etc.
@@ -73,7 +78,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @return _dexRouter The address of the dex' router used to swap between tokens
      *  @return _rewardsToken The address of the rewards token from the Dex
      *  @return _pid The pool ID the collateral's underlying LP Token belongs to in the rewarder
-     *  @return _dexSwapFee The fee the dex charges for swaps (divided by 1000 ie Uniswap charges 0.3%, swap fee is 997)
      */
     function getCygnusVoid()
         external
@@ -82,8 +86,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
             IMiniChef _rewarder,
             IDexRouter02 _dexRouter,
             address _rewardsToken,
-            uint256 _pid,
-            uint256 _dexSwapFee
+            uint256 _pid
         );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -97,15 +100,13 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @param _rewarder The address of the rewarder contract
      *  @param _rewardsToken The address of the token that rewards are paid in
      *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
-     *  @param _swapFeeFactor The swap fee factor used by this DEX
      *  @custom:security non-reentrant
      */
     function chargeVoid(
         IDexRouter02 _dexRouter,
         IMiniChef _rewarder,
         address _rewardsToken,
-        uint256 _pid,
-        uint256 _swapFeeFactor
+        uint256 _pid
     ) external;
 
     /**

@@ -113,10 +113,10 @@ interface ICygnusFactory {
      */
     event NewShuttleLaunched(
         address indexed lpTokenPair,
-        uint256 indexed orbiterId,
+        uint256 indexed shuttleId,
+        uint256 orbiterId,
         address borrowable,
-        address collateral,
-        uint256 shuttleId
+        address collateral
     );
 
     /**
@@ -150,33 +150,33 @@ interface ICygnusFactory {
     /**
      *  @param status Whether or not these orbiters are active and usable
      *  @param orbitersLength How many orbiter pairs we have (equals the amount of Dexes cygnus is using)
-     *  @param orbitersName The name of the dex for these orbiters
-     *  @param denebOrbiter The address of the collateral orbiter for this dex
      *  @param borrowOrbiter The address of the borrow orbiter for this dex
+     *  @param denebOrbiter The address of the collateral orbiter for this dex
+     *  @param orbitersName The name of the dex for these orbiters
      *  @custom:event InitializeOrbiters Logs when orbiters are initialized in the factory
      */
     event InitializeOrbiters(
         bool status,
         uint256 orbitersLength,
-        string orbitersName,
+        IAlbireoOrbiter borrowOrbiter,
         IDenebOrbiter denebOrbiter,
-        IAlbireoOrbiter borrowOrbiter
+        string orbitersName
     );
 
     /**
      *  @param status Bool representing whether or not these orbiters are usable
      *  @param orbiterId The ID of the collateral & borrow orbiters
-     *  @param orbiterName The name of the dex these orbiters were for
-     *  @param denebOrbiter The address of the deleted collateral orbiter
      *  @param albireoOrbiter The address of the deleted borrow orbiter
+     *  @param denebOrbiter The address of the deleted collateral orbiter
+     *  @param orbiterName The name of the dex these orbiters were for
      *  @custom:event SwitchOrbiterStatus Logs when admins switch orbiters off for future deployments
      */
     event SwitchOrbiterStatus(
         bool status,
         uint256 orbiterId,
-        string orbiterName,
         IAlbireoOrbiter albireoOrbiter,
-        IDenebOrbiter denebOrbiter
+        IDenebOrbiter denebOrbiter,
+        string orbiterName
     );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -196,10 +196,10 @@ interface ICygnusFactory {
      */
     struct Orbiter {
         bool status;
-        uint24 orbiterId;
-        string orbiterName;
+        uint88 orbiterId;
         IAlbireoOrbiter albireoOrbiter;
         IDenebOrbiter denebOrbiter;
+        string orbiterName;
     }
 
     /**
@@ -225,19 +225,19 @@ interface ICygnusFactory {
      *  @param _orbiterId The ID of the orbiter deployed
      *  @return status Whether or not these orbiters are active and usable
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
-     *  @return orbiterName The name of the dex
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return orbiterName The name of the dex
      */
     function getOrbiters(uint256 _orbiterId)
         external
         view
         returns (
             bool status,
-            uint24 orbiterId,
-            string memory orbiterName,
+            uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
-            IDenebOrbiter denebOrbiter
+            IDenebOrbiter denebOrbiter,
+            string memory orbiterName
         );
 
     /**
@@ -245,19 +245,19 @@ interface ICygnusFactory {
      *  @param _orbiterId The ID of the orbiter pair
      *  @return status Whether or not these orbiters are active and usable
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
-     *  @return orbiterName The name of the dex
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return orbiterName The name of the dex
      */
     function allOrbiters(uint256 _orbiterId)
         external
         view
         returns (
             bool status,
-            uint24 orbiterId,
-            string memory orbiterName,
+            uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
-            IDenebOrbiter denebOrbiter
+            IDenebOrbiter denebOrbiter,
+            string memory orbiterName
         );
 
     /**

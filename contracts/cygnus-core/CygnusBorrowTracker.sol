@@ -12,12 +12,12 @@ import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
 
 /**
- *  @title  CygnusBorrowTracker Contract that accrues interest to borrows/reserves and stores borrow data of each user
+ *  @title  CygnusBorrowTracker Contract that accrues interest and stores borrow data of each user
  *  @author CygnusDAO
  *  @notice Contract that accrues interest and tracks borrows for this shuttle. It accrues interest on any borrow,
- *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store reserves and borrows.
- *          It is also used by CygnusCollateral contracts to get the borrow balance of each user to calculate current
- *          debt ratios, liquidity or shortfall
+ *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store reserves and
+ *          borrows. It is also used by CygnusCollateral contracts to get the borrow balance of each user to
+ *          calculate current debt ratios, liquidity or shortfall.
  */
 contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -97,7 +97,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         borrowIndex = 1e18;
 
         // Set last accrual timestamp to deployment time
-        lastAccrualTimestamp = uint32(block.timestamp);
+        lastAccrualTimestamp = getBlockTimestamp();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

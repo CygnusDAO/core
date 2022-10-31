@@ -51,12 +51,6 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @notice IERC721 permit typehash for signature based borrow approvals
-     *  @return BORROW_PERMIT_TYPEHASH The keccak256 of the owner, spender, value, nonce and deadline
-     */
-    function BORROW_PERMIT_TYPEHASH() external view returns (bytes32);
-
-    /**
      *  @notice Mapping of spending allowances from one address to another address
      *  @param owner The address of the token owner
      *  @param spender The address of the token spender
@@ -69,25 +63,6 @@ interface ICygnusBorrowApprove is ICygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
-    /**
-     *  @param owner The address owner of the tokens
-     *  @param spender The user allowed to spend the tokens
-     *  @param value The maximum amount of tokens the spender may spend
-     *  @param deadline A future time
-     *  @param v Must be a valid secp256k1 signature from the owner along with r and s
-     *  @param r Must be a valid secp256k1 signature from the owner along with v and s
-     *  @param s Must be a valid secp256k1 signature from the owner along with r and v
-     */
-    function borrowPermit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
 
     /**
      *  @param spender The user allowed to spend the tokens

@@ -17,7 +17,18 @@ import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
 
 /**
- *  @title CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves
+ *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
+ *  @notice This is the main Borrow contract which is used for borrowing USDC and liquidating shortfall positions.
+ *          It also overrides the `exchangeRate` function at CygnusTerminal and we add the accrue modifiers,
+ *          to accrue interest during deposits and redeems.
+ *
+ *          Reserves are also minted to the address `daoReserves` of the CygnusFactory (`hangar18`). The way
+ *          the DAO accumulates reserves is not through USDC but through the minting of CygUSD.
+ *
+ *          The `borrow` function allows anyone to borrow or leverage USDc to buy more LP Tokens. If calldata is
+ *          passed, then the function calls the `altairBorrow` function on the router, and leverages users'
+ *          position. If there is no calldata, the user can simply borrow instead of leveraging. The same borrow
+ *          function is used to repay a loan, by checking the totalBalance held of USDC (the router handles this).
  */
 contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -124,7 +135,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         // Gas savings
         uint256 totalBalanceStored = totalBalance;
 
-        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than shuttle's balance
+        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than pool's USDC balance
         if (borrowAmount > totalBalanceStored) {
             revert CygnusBorrow__BorrowExceedsTotalBalance({
                 invalidBorrowAmount: borrowAmount,

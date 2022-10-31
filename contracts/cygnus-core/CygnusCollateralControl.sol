@@ -24,7 +24,7 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
  *          borrow USDC from the borrowable.
  */
-contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "CygLP", 18) {
+contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "", 18) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
