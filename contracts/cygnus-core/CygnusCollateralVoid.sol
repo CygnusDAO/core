@@ -199,17 +199,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function getCygnusVoid()
-        external
-        view
-        override
-        returns (
-            IMiniChef,
-            IDexRouter02,
-            address,
-            uint256
-        )
-    {
+    function getCygnusVoid() external view override returns (IMiniChef, IDexRouter02, address, uint256) {
         // Return all the private storage variables from this contract
         return (rewarder, dexRouter, rewardsToken, pid);
     }
@@ -225,11 +215,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @param token The address of the token we are approving
      *  @param amount The amount to approve
      */
-    function approveDexRouter(
-        address token,
-        address router,
-        uint256 amount
-    ) private {
+    function approveDexRouter(address token, address router, uint256 amount) private {
         // Check allowance for `router` - Return if the allowance is higher than amount
         if (IERC20(token).allowance(address(this), router) >= amount) {
             return;
@@ -245,11 +231,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @param tokenOut Address of the token we are receiving
      *  @param amount Amount of TokenIn we are swapping
      */
-    function swapTokensPrivate(
-        address tokenIn,
-        address tokenOut,
-        uint256 amount
-    ) private {
+    function swapTokensPrivate(address tokenIn, address tokenOut, uint256 amount) private {
         // Create the path to swap from tokenIn to tokenOut
         address[] memory path = new address[](2);
 

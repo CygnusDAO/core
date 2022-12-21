@@ -58,7 +58,7 @@
       "name": "rewardToken",
       "outputs": [
         {
-          "internalType": "contract IErc20",
+          "internalType": "contract IERC20",
           "name": "",
           "type": "address"
         }

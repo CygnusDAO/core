@@ -129,11 +129,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
      *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
      *  @param decimals_ Decimals of the Borrow/Collateral token (always 18)
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_
-    ) ERC20(name_, symbol_, decimals_) {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_, decimals_) {
         // Set placeholders for try/catch
         // Factory
         address factory;

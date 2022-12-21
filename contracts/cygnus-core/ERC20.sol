@@ -37,11 +37,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     /// @param name_ ERC20 name of this token.
     /// @param symbol_ ERC20 symbol of this token.
     /// @param decimals_ ERC20 decimal precision of this token.
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_
-    ) {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) {
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
@@ -74,11 +70,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IERC20
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public virtual override returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         transferInternal(sender, recipient, amount);
 
         uint256 currentAllowance = allowances[sender][_msgSender()];
@@ -102,11 +94,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     ///
     /// - `owner` cannot be the zero address.
     /// - `spender` cannot be the zero address.
-    function approveInternal(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
+    function approveInternal(address owner, address spender, uint256 amount) internal virtual {
         if (owner == address(0)) {
             revert ERC20__ApproveOwnerZeroAddress();
         }
@@ -170,11 +158,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     /// - `sender` cannot be the zero address.
     /// - `recipient` cannot be the zero address.
     /// - `sender` must have a balance of at least `amount`.
-    function transferInternal(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal virtual {
+    function transferInternal(address sender, address recipient, uint256 amount) internal virtual {
         if (sender == address(0)) {
             revert ERC20__TransferSenderZeroAddress();
         }

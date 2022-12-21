@@ -124,11 +124,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
      *  @param borrows Total amount of borrowed funds
      *  @param reserves Total amount the protocol keeps as reserves
      */
-    function getBorrowRate(
-        uint256 cash,
-        uint256 borrows,
-        uint256 reserves
-    ) internal view returns (uint256) {
+    function getBorrowRate(uint256 cash, uint256 borrows, uint256 reserves) internal view returns (uint256) {
         // Utilization rate (borrows * scale) / ((cash + borrows) - reserves)
         uint256 util = borrows.div((cash + borrows) - reserves);
 
@@ -178,7 +174,8 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
      */
     function utilizationRate() external view override returns (uint256) {
         // Return the current pool utilization rate
-        return uint256(totalBorrows).div((totalBalance + uint256(totalBorrows)) - totalReserves);
+        return
+            totalBorrows == 0 ? 0 : uint256(totalBorrows).div((totalBalance + uint256(totalBorrows)) - totalReserves);
     }
 
     /**
@@ -188,7 +185,10 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         uint256 rateToPool = uint256(borrowRate).mul(1e18 - reserveFactor);
 
         // Return pool supply rate
-        return uint256(totalBorrows).div((totalBalance + totalBorrows) - totalReserves).mul(rateToPool);
+        return
+            borrowRate == 0
+                ? 0
+                : uint256(totalBorrows).div((totalBalance + totalBorrows) - totalReserves).mul(rateToPool);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -203,11 +203,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
      *  @param accountBorrows Record of this borrower's total borrows up to this point
      *  @param borrowIndexStored Borrow index stored up to this point
      */
-    function trackBorrowInternal(
-        address borrower,
-        uint256 accountBorrows,
-        uint256 borrowIndexStored
-    ) internal {
+    function trackBorrowInternal(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) internal {
         address _cygnusBorrowRewarder = cygnusBorrowRewarder;
 
         // If not initialized return
@@ -220,7 +216,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     }
 
     /**
-     *  @notice Record keeping private function for all borrows, repays and liquidations
+     *  @notice Record keeping function for all borrows, repays and liquidations
      *  @param borrower Address of the borrower
      *  @param borrowAmount The amount of the underlying to update
      *  @param repayAmount The amount to repay
@@ -232,14 +228,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         address borrower,
         uint256 borrowAmount,
         uint256 repayAmount
-    )
-        internal
-        returns (
-            uint256 accountBorrowsPrior,
-            uint256 accountBorrows,
-            uint256 totalBorrowsStored
-        )
-    {
+    ) internal returns (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) {
         // Internal view function to get borrower's balance, if borrower's interestIndex = 0 it returns 0
         accountBorrowsPrior = getBorrowBalance(borrower);
 

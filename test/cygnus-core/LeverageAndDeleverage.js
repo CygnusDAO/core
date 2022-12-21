@@ -24,9 +24,9 @@ chai.use(solidity);
  *  Simple deposit and redeem for all borrow contracts
  *
  */
-context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
-    // usdc and LP Token contracts
-    let usdc, lpToken;
+context('CYGNUS BORROW: DEPOSIT DAI & REDEEM CYGDAI', function () {
+    // dai and LP Token contracts
+    let dai, lpToken;
 
     // Cygnus Contracts
     let oracle, factory, router, borrowable, collateral;
@@ -36,7 +36,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
 
     let lenderInitialDaiBalance; // Balance before depositing and interacting with Cygnus
     let lenderFinalDaiBalance; // Balance after interacting and redeeming
-    const lenderDeposit = BigInt(2000e18); // 2000 USDC
+    const lenderDeposit = BigInt(2000e18); // 2000 DAI
 
     let borrowerInitialDaiBalance; // Balance before depositing and interacting with Cygnus
     let borrowerFinalDaiBalance; // Balance after interacting and redeeming
@@ -46,7 +46,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
 
     before(async () => {
         // Cygnus contracts and underlyings
-        [oracle, factory, router, borrowable, collateral, usdc, lpToken] = await Make();
+        [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
 
         // Users
         [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
@@ -54,28 +54,28 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         // Masterchef reward reinvest or other strategy
         [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
 
-        // Initial USDC and LP balances for lender and borrower
-        lenderInitialDaiBalance = await usdc.balanceOf(lender._address);
+        // Initial DAI and LP balances for lender and borrower
+        lenderInitialDaiBalance = await dai.balanceOf(lender._address);
         borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
 
         console.log('------------------------------------------------------------------------------');
-        console.log('Lender   | %s | Balance: %s USDC', lender._address, lenderInitialDaiBalance / 1e18);
+        console.log('Lender   | %s | Balance: %s DAI', lender._address, lenderInitialDaiBalance / 1e18);
         console.log('------------------------------------------------------------------------------');
         console.log('Borrower | %s | Balance: %s LPs', borrower._address, borrowerInitialLPBalance / 1e18);
         console.log('------------------------------------------------------------------------------');
 
         await collateral.chargeVoid(voidRouter, masterChef, rewardToken, pid, swapFee);
 
-        // Lender deposits 10000 USDC
-        await usdc.connect(lender).approve(router.address, max);
+        // Lender deposits 10000 DAI
+        await dai.connect(lender).approve(router.address, max);
         await router.connect(lender).mint(borrowable.address, lenderDeposit, lender._address, max);
 
         // Borrower deposits 10 LP tokens
         await lpToken.connect(borrower).approve(router.address, max);
         await router.connect(borrower).mint(collateral.address, borrowerDeposit, borrower._address, max);
 
-        // Get initial usdc balance
-        borrowerInitialDaiBalance = (await usdc.balanceOf(borrower._address)) / 1e18;
+        // Get initial dai balance
+        borrowerInitialDaiBalance = (await dai.balanceOf(borrower._address)) / 1e18;
     });
 
     /*
@@ -139,12 +139,12 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         });
 
         it('Borrower has CygLP in their wallet', async () => {
-            // Check USDC balance of borrower
+            // Check DAI balance of borrower
             expect(await collateral.balanceOf(borrower._address)).to.eq(lpTokenAmount);
         });
     });
 
-    describe('Borrower takes out a USDC loan', async () => {
+    describe('Borrower takes out a DAI loan', async () => {
         /**
          *
          *  Borrower interactions with router to borrow
@@ -168,7 +168,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
 
         // Check user's liquidity
         it('Borrower takes out more than his collateral available at 95% debt ratio: FAIL { Insufficient_Liquidity  }', async () => {
-            // This Users collateral in USDC
+            // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
             const liquidationIncentive = await collateral.liquidationIncentive();
 
@@ -194,7 +194,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
 
         // Get user's max liquidity and borrow max limit
         it('Borrower takes out max allowed at 80% debt ratio and emits { Borrow }', async () => {
-            // This Users collateral in USDC
+            // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = BigInt(collateralInDai.liquidity) - BigInt(0.01e18);
@@ -210,10 +210,10 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
             ).to.emit(borrowable, 'Borrow');
         });
 
-        // Check USDC balance of borrower
-        it('User has USDC in wallet', async () => {
-            // Initial usdc balance was 0
-            expect(await usdc.balanceOf(borrower._address)).to.be.gt(borrowerInitialDaiBalance);
+        // Check DAI balance of borrower
+        it('User has DAI in wallet', async () => {
+            // Initial dai balance was 0
+            expect(await dai.balanceOf(borrower._address)).to.be.gt(borrowerInitialDaiBalance);
         });
 
         // Debt ratio of borrower should be max 100%
@@ -232,7 +232,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         });
 
         it('Borrower has 0 liquidity', async () => {
-            // This Users collateral in USDC
+            // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = collateralInDai.liquidity;
@@ -283,7 +283,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
 
         // Check another event
         it('Borrower takes out another loan and emits { Borrow, AccrueInterest } }', async () => {
-            // This Users collateral in USDC
+            // This Users collateral in DAI
             const collateralInDaiV2 = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidityV2 = BigInt(collateralInDaiV2.liquidity) - BigInt(0.001e18);
@@ -307,7 +307,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         });
 
         it('Borrower has 0 liquidity left', async () => {
-            // This Users collateral in USDC
+            // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = collateralInDai.liquidity;
@@ -329,7 +329,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
             //console.log('Total Reserves: %s', totalReserves);
             //console.log('Reserves Balance 1: %s', reservesBalance);
 
-            // Borrowable's total USDC balance
+            // Borrowable's total DAI balance
             const totalBalance = await borrowable.totalBalance();
             //console.log('Total Balance: %s', totalBalance);
 
@@ -358,7 +358,7 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
             expect(userDebtRatio).to.be.within(BigInt(0.99e18), BigInt(1.01e18));
         });
 
-        it('Borrower repays part of his loan back without approving router in USDC: FAIL { InsufficientAllowance }', async () => {
+        it('Borrower repays part of his loan back without approving router in DAI: FAIL { InsufficientAllowance }', async () => {
             const loanRepayAmount = BigInt(10e18);
 
             // Static call the debt ratio
@@ -366,12 +366,12 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
                 .be.reverted;
         });
 
-        it('Borrower approves router in USDC contract and emits { Approval }', async () => {
-            // Approve dUSDC
-            await expect(usdc.connect(borrower).approve(router.address, max)).to.emit(usdc, 'Approval');
+        it('Borrower approves router in DAI contract and emits { Approval }', async () => {
+            // Approve dDAI
+            await expect(dai.connect(borrower).approve(router.address, max)).to.emit(dai, 'Approval');
         });
 
-        it('Borrower repays 50% of his loan back in USDC and emits { Borrow }', async () => {
+        it('Borrower repays 50% of his loan back in DAI and emits { Borrow }', async () => {
             const borrowersBalance = await borrowable.getBorrowBalance(borrower._address);
 
             const loanRepayAmount = (BigInt(borrowersBalance) * BigInt(0.5e18)) / BigInt(1e18);
@@ -393,8 +393,8 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         it('Borrower repays full loan amount', async () => {
             const borrowersBalance = await borrowable.getBorrowBalance(borrower._address);
 
-            // Whale sends user usdc
-            await usdc.connect(lender).transfer(borrower._address, BigInt(borrowersBalance) + BigInt(100e18));
+            // Whale sends user dai
+            await dai.connect(lender).transfer(borrower._address, BigInt(borrowersBalance) + BigInt(100e18));
 
             const borrowersBalanceUpdated = BigInt(borrowersBalance) + BigInt(50e18);
 
@@ -415,8 +415,8 @@ context('CYGNUS BORROW: DEPOSIT USDC & REDEEM CYGUSDC', function () {
         let totalBalance;
         let userDebtRatio;
 
-        it('User takes out another USDC loan (50% of their liquidity)', async () => {
-            // This Users collateral in USDC
+        it('User takes out another DAI loan (50% of their liquidity)', async () => {
+            // This Users collateral in DAI
             const collateralInDai = await collateral.getAccountLiquidity(borrower._address);
 
             const maxLiquidity = BigInt(collateralInDai.liquidity) / BigInt(2);

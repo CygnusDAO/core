@@ -153,11 +153,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @param max The maximum value allowed for the parameter that is being updated
      *  @param value The value of the parameter that is being updated
      */
-    function validRange(
-        uint256 min,
-        uint256 max,
-        uint256 value
-    ) internal pure {
+    function validRange(uint256 min, uint256 max, uint256 value) internal pure {
         /// @custom:error Avoid outside range
         if (value < min || value > max) {
             revert CygnusBorrowControl__ParameterNotInRange({ min: min, max: max, value: value });

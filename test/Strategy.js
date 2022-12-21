@@ -13,7 +13,6 @@ const ethers = hre.ethers;
  ////////////////////////////////////////////////////////////*/
 module.exports = async function Strategy() {
 
-
     // ---------------------------- Cygnus Void --------------------------------
 
     // Dex router
@@ -28,10 +27,6 @@ module.exports = async function Strategy() {
     // Pool ID in the masterchef
     const pid = 6;
 
-    // Dex swap fee
-    const swapFee = 997;
-
-
     // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
-    return [voidRouter, masterChef, rewardToken, pid, swapFee];
+    return [voidRouter, masterChef, rewardToken, pid];
 };

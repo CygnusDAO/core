@@ -34,11 +34,7 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
      *  @param spender The address of the account given the allowance
      *  @param amount The max amount of tokens the spender can spend
      */
-    function borrowApproveInternal(
-        address owner,
-        address spender,
-        uint256 amount
-    ) private {
+    function borrowApproveInternal(address owner, address spender, uint256 amount) private {
         // Store approve amount
         borrowAllowances[owner][spender] = amount;
 
@@ -62,11 +58,7 @@ contract CygnusBorrowApprove is ICygnusBorrowApprove, CygnusBorrowControl {
      *  @param spender The address of the person given the allowance
      *  @param amount The max amount of tokens the spender can spend
      */
-    function borrowApproveUpdate(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal {
+    function borrowApproveUpdate(address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = borrowAllowances[owner][spender];
 
         /// @custom:error OwnerIsSpender Avoid approving self

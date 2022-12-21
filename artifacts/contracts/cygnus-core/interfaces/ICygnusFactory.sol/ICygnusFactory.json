@@ -6,17 +6,17 @@
     {
       "inputs": [
         {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
+          "internalType": "address",
+          "name": "newPendingAdmin",
           "type": "address"
         },
         {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "newCygnusAlbireo",
+          "internalType": "address",
+          "name": "admin",
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__BorrowOrbiterAlreadySet",
+      "name": "CygnusFactory__AdminAlreadySet",
       "type": "error"
     },
     {
@@ -33,38 +33,6 @@
         }
       ],
       "name": "CygnusFactory__CollateralAddressMismatch",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "internalType": "contract ICygnusDeneb",
-          "name": "newCygnusDeneb",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusFactory__CollateralOrbiterAlreadySet",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "currentAdmin",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "newPendingAdmin",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusFactory__CygnusAdminAlreadySet",
       "type": "error"
     },
     {
@@ -100,13 +68,7 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "priceOracle",
-          "type": "address"
-        }
-      ],
+      "inputs": [],
       "name": "CygnusFactory__CygnusNebulaCantBeZero",
       "type": "error"
     },
@@ -114,16 +76,21 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "currentVegaTokenManager",
+          "name": "newPendingDaoReserves",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "newVegaTokenManager",
+          "name": "daoReserves",
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__CygnusVegaAlreadySet",
+      "name": "CygnusFactory__DaoReservesAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CygnusFactory__DaoReservesCantBeZero",
       "type": "error"
     },
     {
@@ -140,19 +107,74 @@
     {
       "inputs": [
         {
-          "internalType": "uint24",
-          "name": "id",
-          "type": "uint24"
-        },
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "status",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint88",
+              "name": "orbiterId",
+              "type": "uint88"
+            },
+            {
+              "internalType": "contract IAlbireoOrbiter",
+              "name": "albireoOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract IDenebOrbiter",
+              "name": "denebOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "orbiterName",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct ICygnusFactory.Orbiter",
+          "name": "orbiter",
+          "type": "tuple"
+        }
+      ],
+      "name": "CygnusFactory__OrbiterAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [
         {
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
-          "type": "address"
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "status",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint88",
+              "name": "orbiterId",
+              "type": "uint88"
+            },
+            {
+              "internalType": "contract IAlbireoOrbiter",
+              "name": "albireoOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract IDenebOrbiter",
+              "name": "denebOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "orbiterName",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct ICygnusFactory.Orbiter",
+          "name": "orbiter",
+          "type": "tuple"
         }
       ],
       "name": "CygnusFactory__OrbitersAreInactive",
@@ -173,15 +195,20 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "pending",
+          "name": "newPendingAdmin",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "sender",
+          "name": "pendingAdmin",
           "type": "address"
         }
       ],
+      "name": "CygnusFactory__PendingAdminAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "CygnusFactory__PendingAdminCantBeZero",
       "type": "error"
     },
@@ -189,24 +216,24 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "pending",
+          "name": "newPendingDaoReserves",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "sender",
+          "name": "pendingDaoReserves",
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__PendingVegaCantBeZero",
+      "name": "CygnusFactory__PendingDaoReservesAlreadySet",
       "type": "error"
     },
     {
       "inputs": [
         {
-          "internalType": "uint24",
+          "internalType": "uint256",
           "name": "id",
-          "type": "uint24"
+          "type": "uint256"
         },
         {
           "internalType": "address",
@@ -223,7 +250,7 @@
         {
           "indexed": false,
           "internalType": "bool",
-          "name": "active",
+          "name": "status",
           "type": "bool"
         },
         {
@@ -234,21 +261,21 @@
         },
         {
           "indexed": false,
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "borrowOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
           "internalType": "string",
           "name": "orbitersName",
           "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract ICygnusDeneb",
-          "name": "collateralOrbiter",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract ICygnusAlbireo",
-          "name": "borrowOrbiter",
-          "type": "address"
         }
       ],
       "name": "InitializeOrbiters",
@@ -296,56 +323,19 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "lpTokenPair",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "shuttleId",
-          "type": "uint256"
-        },
-        {
           "indexed": false,
           "internalType": "address",
-          "name": "collateral",
+          "name": "oldDaoReserves",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "address",
-          "name": "cygnusDai",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "dai",
+          "name": "daoReserves",
           "type": "address"
         }
       ],
-      "name": "NewShuttleLaunched",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "oldVegaTokenManager",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "vegaTokenManager",
-          "type": "address"
-        }
-      ],
-      "name": "NewVegaTokenManager",
+      "name": "NewDaoReserves",
       "type": "event"
     },
     {
@@ -364,7 +354,7 @@
           "type": "address"
         }
       ],
-      "name": "PendingCygnusAdmin",
+      "name": "NewPendingCygnusAdmin",
       "type": "event"
     },
     {
@@ -373,17 +363,54 @@
         {
           "indexed": false,
           "internalType": "address",
-          "name": "oldPendingVegaContract",
+          "name": "oldPendingdaoReservesContract",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "address",
-          "name": "newPendingVegaContract",
+          "name": "newPendingdaoReservesContract",
           "type": "address"
         }
       ],
-      "name": "PendingVegaTokenManager",
+      "name": "NewPendingDaoReserves",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "lpTokenPair",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "shuttleId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        }
+      ],
+      "name": "NewShuttleLaunched",
       "type": "event"
     },
     {
@@ -392,7 +419,7 @@
         {
           "indexed": false,
           "internalType": "bool",
-          "name": "active",
+          "name": "status",
           "type": "bool"
         },
         {
@@ -403,21 +430,21 @@
         },
         {
           "indexed": false,
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
           "internalType": "string",
           "name": "orbiterName",
           "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
-          "type": "address"
         }
       ],
       "name": "SwitchOrbiterStatus",
@@ -440,7 +467,7 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "orbiterId_",
+          "name": "_orbiterId",
           "type": "uint256"
         }
       ],
@@ -448,28 +475,28 @@
       "outputs": [
         {
           "internalType": "bool",
-          "name": "active",
+          "name": "status",
           "type": "bool"
         },
         {
-          "internalType": "uint24",
+          "internalType": "uint88",
           "name": "orbiterId",
-          "type": "uint24"
+          "type": "uint88"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
         },
         {
           "internalType": "string",
           "name": "orbiterName",
           "type": "string"
-        },
-        {
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
-          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -479,16 +506,36 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "_shuttleId",
           "type": "uint256"
         }
       ],
       "name": "allShuttles",
       "outputs": [
         {
+          "internalType": "bool",
+          "name": "launched",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint88",
+          "name": "shuttleId",
+          "type": "uint88"
+        },
+        {
           "internalType": "address",
-          "name": "",
+          "name": "borrowable",
           "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        },
+        {
+          "internalType": "uint96",
+          "name": "orbiterId",
+          "type": "uint96"
         }
       ],
       "stateMutability": "view",
@@ -509,7 +556,7 @@
     },
     {
       "inputs": [],
-      "name": "dai",
+      "name": "daoReserves",
       "outputs": [
         {
           "internalType": "address",
@@ -523,14 +570,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "orbiterId",
-          "type": "uint256"
-        },
-        {
           "internalType": "address",
           "name": "lpTokenPair",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
@@ -541,18 +588,13 @@
           "internalType": "uint256",
           "name": "multiplier",
           "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "kinkMultiplier",
-          "type": "uint256"
         }
       ],
       "name": "deployShuttle",
       "outputs": [
         {
           "internalType": "address",
-          "name": "cygnusDai",
+          "name": "borrowable",
           "type": "address"
         },
         {
@@ -568,7 +610,7 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "orbitersId_",
+          "name": "_orbiterId",
           "type": "uint256"
         }
       ],
@@ -576,28 +618,28 @@
       "outputs": [
         {
           "internalType": "bool",
-          "name": "active",
+          "name": "status",
           "type": "bool"
         },
         {
-          "internalType": "uint24",
+          "internalType": "uint88",
           "name": "orbiterId",
-          "type": "uint24"
+          "type": "uint88"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
         },
         {
           "internalType": "string",
           "name": "orbiterName",
           "type": "string"
-        },
-        {
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
-          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -609,6 +651,11 @@
           "internalType": "address",
           "name": "_lpTokenPair",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_orbiterId",
+          "type": "uint256"
         }
       ],
       "name": "getShuttles",
@@ -619,9 +666,14 @@
           "type": "bool"
         },
         {
-          "internalType": "uint24",
+          "internalType": "uint88",
           "name": "shuttleId",
-          "type": "uint24"
+          "type": "uint88"
+        },
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
         },
         {
           "internalType": "address",
@@ -629,54 +681,35 @@
           "type": "address"
         },
         {
-          "internalType": "address",
-          "name": "cygnusDai",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "lpTokenPair",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "borrowToken",
-          "type": "address"
-        },
-        {
-          "components": [
-            {
-              "internalType": "bool",
-              "name": "active",
-              "type": "bool"
-            },
-            {
-              "internalType": "uint24",
-              "name": "orbiterId",
-              "type": "uint24"
-            },
-            {
-              "internalType": "string",
-              "name": "orbiterName",
-              "type": "string"
-            },
-            {
-              "internalType": "contract ICygnusDeneb",
-              "name": "cygnusDeneb",
-              "type": "address"
-            },
-            {
-              "internalType": "contract ICygnusAlbireo",
-              "name": "cygnusAlbireo",
-              "type": "address"
-            }
-          ],
-          "internalType": "struct ICygnusFactory.Orbiter",
-          "name": "orbiter",
-          "type": "tuple"
+          "internalType": "uint96",
+          "name": "orbiterId",
+          "type": "uint96"
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        }
+      ],
+      "name": "initializeOrbiter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -707,7 +740,7 @@
     },
     {
       "inputs": [],
-      "name": "pendingNewAdmin",
+      "name": "pendingAdmin",
       "outputs": [
         {
           "internalType": "address",
@@ -720,7 +753,7 @@
     },
     {
       "inputs": [],
-      "name": "pendingVegaTokenManager",
+      "name": "pendingDaoReserves",
       "outputs": [
         {
           "internalType": "address",
@@ -739,6 +772,13 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "setNewDaoReserves",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -747,49 +787,6 @@
         }
       ],
       "name": "setNewNebulaOracle",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "internalType": "contract ICygnusDeneb",
-          "name": "cygnusDeneb",
-          "type": "address"
-        },
-        {
-          "internalType": "contract ICygnusAlbireo",
-          "name": "cygnusAlbireo",
-          "type": "address"
-        }
-      ],
-      "name": "setNewOrbiter",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "setNewVegaTokenManager",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "orbiterId",
-          "type": "uint256"
-        }
-      ],
-      "name": "setOrbiterStatus",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -811,11 +808,11 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "newVegaTokenManager",
+          "name": "newDaoReserves",
           "type": "address"
         }
       ],
-      "name": "setPendingVegaTokenManager",
+      "name": "setPendingDaoReserves",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -834,8 +831,21 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "switchOrbiterStatus",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
-      "name": "vegaTokenManager",
+      "name": "usdc",
       "outputs": [
         {
           "internalType": "address",

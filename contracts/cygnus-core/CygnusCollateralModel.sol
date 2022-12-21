@@ -51,11 +51,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @return liquidity The account's liquidity in USDC, if any
      *  @return shortfall The account's shortfall in USDC, if any
      */
-    function collateralNeededInternal(uint256 amountCollateral, uint256 borrowedAmount)
-        internal
-        view
-        returns (uint256 liquidity, uint256 shortfall)
-    {
+    function collateralNeededInternal(
+        uint256 amountCollateral,
+        uint256 borrowedAmount
+    ) internal view returns (uint256 liquidity, uint256 shortfall) {
         // Get the price of 1 LP Token from the oracle, denominated in USDC
         uint256 lpTokenPrice = getLPTokenPrice();
 
@@ -88,11 +87,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
      *  @return liquidity If user has more collateral than needed, return liquidity amount and 0 shortfall
      *  @return shortfall If user has less collateral than needed, return 0 liquidity and shortfall amount
      */
-    function accountLiquidityInternal(address borrower, uint256 borrowedAmount)
-        internal
-        view
-        returns (uint256 liquidity, uint256 shortfall)
-    {
+    function accountLiquidityInternal(
+        address borrower,
+        uint256 borrowedAmount
+    ) internal view returns (uint256 liquidity, uint256 shortfall) {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
             // solhint-disable avoid-tx-origin
@@ -121,66 +119,6 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
         return cygnusNebulaOracle.lpTokenPriceUsdc(underlying) / 1e12;
     }
 
-    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusCollateralModel
-     */
-    function getAccountLiquidity(address borrower)
-        external
-        view
-        override
-        returns (uint256 liquidity, uint256 shortfall)
-    {
-        // Calculate if `borrower` has liquidity or shortfall
-        return accountLiquidityInternal(borrower, type(uint256).max);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralModel
-     */
-    function getDebtRatio(address borrower) external view override returns (uint256) {
-        // Get the borrower's deposited LP Tokens and adjust with current exchange Rate
-        uint256 amountCollateral = balances[borrower].mul(exchangeRate());
-
-        // Multiply LP collateral by LP Token price
-        uint256 collateralInUsdc = amountCollateral.mul(getLPTokenPrice());
-
-        // The borrower's USDC debt
-        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
-
-        // Adjust borrowed admount with liquidation incentive
-        uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
-
-        // Account for 0 collateral to avoid divide by 0
-        return adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralModel
-     */
-    function canBorrow(
-        address borrower,
-        address borrowableToken,
-        uint256 borrowAmount
-    ) external view override returns (bool) {
-        /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
-        if (borrowableToken != borrowable) {
-            revert CygnusCollateralModel__BorrowableInvalid({
-                invalidBorrowable: borrowableToken,
-                validBorrowable: borrowable
-            });
-        }
-
-        // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, borrowAmount);
-
-        // Return true if user has no shortfall
-        return shortfall == 0;
-    }
-
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
@@ -204,6 +142,61 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
 
         // prettier-ignore
         ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, borrowedAmount);
+
+        // Return true if user has no shortfall
+        return shortfall == 0;
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
+    function getAccountLiquidity(
+        address borrower
+    ) external view override returns (uint256 liquidity, uint256 shortfall) {
+        // Calculate if `borrower` has liquidity or shortfall
+        return accountLiquidityInternal(borrower, type(uint256).max);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
+    function getDebtRatio(address borrower) external view override returns (uint256) {
+        // Get the borrower's deposited LP Tokens and adjust with current exchange Rate
+        uint256 amountCollateral = balances[borrower].mul(exchangeRate());
+
+        // Multiply LP collateral by LP Token price
+        uint256 collateralInUsdc = amountCollateral.mul(getLPTokenPrice());
+
+        // The borrower's USDC debt
+        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+
+        // Adjust borrowed admount with liquidation incentive
+        uint256 adjustedBorrowedAmount = borrowedAmount.mul(liquidationIncentive + liquidationFee);
+
+        // Account for 0 collateral to avoid divide by 0
+        return borrowedAmount == 0 ? 0 : adjustedBorrowedAmount.div(collateralInUsdc).div(debtRatio);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
+    function canBorrow(
+        address borrower,
+        address borrowableToken,
+        uint256 borrowAmount
+    ) external view override returns (bool) {
+        /// @custom:error BorrowableInvalid Avoid calculating borrowable amount unless contract is CygnusBorrow
+        if (borrowableToken != borrowable) {
+            revert CygnusCollateralModel__BorrowableInvalid({
+                invalidBorrowable: borrowableToken,
+                validBorrowable: borrowable
+            });
+        }
+
+        // prettier-ignore
+        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, borrowAmount);
 
         // Return true if user has no shortfall
         return shortfall == 0;

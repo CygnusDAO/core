@@ -133,11 +133,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @param max The maximum value allowed for this parameter
      *  @param value The value for the parameter that is being updated
      */
-    function validRange(
-        uint256 min,
-        uint256 max,
-        uint256 value
-    ) internal pure {
+    function validRange(uint256 min, uint256 max, uint256 value) internal pure {
         /// @custom:error ParameterNotInRange Avoid outside range
         if (value < min || value > max) {
             revert CygnusCollateralControl__ParameterNotInRange({ min: min, max: max, value: value });

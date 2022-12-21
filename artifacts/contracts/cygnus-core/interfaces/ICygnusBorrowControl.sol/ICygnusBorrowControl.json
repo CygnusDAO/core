@@ -23,12 +23,12 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "minRange",
+          "name": "min",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "maxRange",
+          "name": "max",
           "type": "uint256"
         },
         {
@@ -41,32 +41,36 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "CygnusTerminal__CantMintZero",
+      "inputs": [],
+      "name": "CygnusTerminal__CantMintZeroShares",
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "CygnusTerminal__CantRedeemZero",
+      "inputs": [],
+      "name": "CygnusTerminal__CantRedeemZeroAssets",
       "type": "error"
     },
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "caller",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "underlying",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusTerminal__CantSweepUnderlying",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
           "type": "address"
         },
         {
@@ -81,24 +85,13 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusTerminal__MsgSenderNotFactory",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint256",
-          "name": "invalidAmount",
+          "name": "assets",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "contractBalance",
+          "name": "totalBalance",
           "type": "uint256"
         }
       ],
@@ -106,60 +99,13 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint8",
-          "name": "v",
-          "type": "uint8"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "r",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "s",
-          "type": "bytes32"
-        }
-      ],
-      "name": "Erc20Permit__InvalidSignature",
+      "inputs": [],
+      "name": "ERC20__ApproveOwnerZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "Erc20Permit__OwnerZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "deadline",
-          "type": "uint256"
-        }
-      ],
-      "name": "Erc20Permit__PermitExpired",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "Erc20Permit__RecoveredOwnerZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "Erc20Permit__SpenderZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "Erc20__ApproveOwnerZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "Erc20__ApproveSpenderZeroAddress",
+      "name": "ERC20__ApproveSpenderZeroAddress",
       "type": "error"
     },
     {
@@ -175,12 +121,12 @@
           "type": "uint256"
         }
       ],
-      "name": "Erc20__BurnUnderflow",
+      "name": "ERC20__BurnUnderflow",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "Erc20__BurnZeroAddress",
+      "name": "ERC20__BurnZeroAddress",
       "type": "error"
     },
     {
@@ -196,7 +142,7 @@
           "type": "uint256"
         }
       ],
-      "name": "Erc20__InsufficientAllowance",
+      "name": "ERC20__InsufficientAllowance",
       "type": "error"
     },
     {
@@ -212,22 +158,22 @@
           "type": "uint256"
         }
       ],
-      "name": "Erc20__InsufficientBalance",
+      "name": "ERC20__InsufficientBalance",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "Erc20__MintZeroAddress",
+      "name": "ERC20__MintZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "Erc20__TransferRecipientZeroAddress",
+      "name": "ERC20__TransferRecipientZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "Erc20__TransferSenderZeroAddress",
+      "name": "ERC20__TransferSenderZeroAddress",
       "type": "error"
     },
     {
@@ -267,42 +213,23 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "minter",
+          "name": "recipient",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "mintAmount",
+          "name": "assets",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "poolTokens",
+          "name": "shares",
           "type": "uint256"
         }
       ],
-      "name": "Mint",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "oldBaseRatePerYear",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "newBaseRatePerYear",
-          "type": "uint256"
-        }
-      ],
-      "name": "NewBaseRate",
+      "name": "Deposit",
       "type": "event"
     },
     {
@@ -311,17 +238,17 @@
         {
           "indexed": false,
           "internalType": "address",
-          "name": "oldBorrowTracker",
+          "name": "oldBorrowRewarder",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "address",
-          "name": "newBorrowTracker",
+          "name": "newBorrowRewarder",
           "type": "address"
         }
       ],
-      "name": "NewCygnusBorrowTracker",
+      "name": "NewCygnusBorrowRewarder",
       "type": "event"
     },
     {
@@ -330,36 +257,29 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "oldKinkMultiplier",
+          "name": "baseRatePerYear",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "newKinkMultiplier",
-          "type": "uint256"
-        }
-      ],
-      "name": "NewKinkMultiplier",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "oldKinkUtilizationRate",
+          "name": "multiplierPerYear",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "newKinkUtilizationRate",
+          "name": "kinkMultiplier_",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "kinkUtilizationRate_",
           "type": "uint256"
         }
       ],
-      "name": "NewKinkUtilizationRate",
+      "name": "NewInterestRateParameters",
       "type": "event"
     },
     {
@@ -379,37 +299,6 @@
         }
       ],
       "name": "NewReserveFactor",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "redeemer",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "redeemAmount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "poolTokens",
-          "type": "uint256"
-        }
-      ],
-      "name": "Redeem",
       "type": "event"
     },
     {
@@ -451,95 +340,41 @@
       "type": "event"
     },
     {
-      "inputs": [],
-      "name": "BASE_RATE_MAX",
-      "outputs": [
+      "anonymous": false,
+      "inputs": [
         {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
           "internalType": "uint256",
-          "name": "",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "shares",
           "type": "uint256"
         }
       ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DOMAIN_SEPARATOR",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "KINK_MULTIPLIER_MAX",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "KINK_UTILIZATION_RATE_MAX",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "KINK_UTILIZATION_RATE_MIN",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "PERMIT_TYPEHASH",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "RESERVE_FACTOR_MAX",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
+      "name": "Withdraw",
+      "type": "event"
     },
     {
       "inputs": [
@@ -610,7 +445,7 @@
     },
     {
       "inputs": [],
-      "name": "chainId",
+      "name": "baseRatePerSecond",
       "outputs": [
         {
           "internalType": "uint256",
@@ -636,7 +471,7 @@
     },
     {
       "inputs": [],
-      "name": "cygnusBorrowTracker",
+      "name": "cygnusBorrowRewarder",
       "outputs": [
         {
           "internalType": "address",
@@ -663,22 +498,22 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
         },
         {
-          "internalType": "uint256",
-          "name": "subtractedAmount",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
         }
       ],
-      "name": "decreaseAllowance",
+      "name": "deposit",
       "outputs": [
         {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
         }
       ],
       "stateMutability": "nonpayable",
@@ -720,31 +555,20 @@
           "type": "address"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
+      "inputs": [],
+      "name": "jumpMultiplierPerSecond",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "addedAmount",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "increaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -774,22 +598,16 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "minter",
-          "type": "address"
-        }
-      ],
-      "name": "mint",
+      "inputs": [],
+      "name": "multiplierPerSecond",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "poolTokens",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -808,70 +626,18 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "nonces",
-      "outputs": [
-        {
           "internalType": "uint256",
-          "name": "",
+          "name": "shares",
           "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
+        },
+        {
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
         {
           "internalType": "address",
           "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "deadline",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint8",
-          "name": "v",
-          "type": "uint8"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "r",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "s",
-          "type": "bytes32"
-        }
-      ],
-      "name": "permit",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "holder",
           "type": "address"
         }
       ],
@@ -879,7 +645,7 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "redeemAmount",
+          "name": "assets",
           "type": "uint256"
         }
       ],
@@ -903,11 +669,11 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "newBorrowTracker",
+          "name": "newBorrowRewarder",
           "type": "address"
         }
       ],
-      "name": "setCygnusBorrowTracker",
+      "name": "setCygnusBorrowRewarder",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -916,11 +682,26 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "newKinkUtilizationRate",
+          "name": "baseRatePerYear",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "multiplierPerYear",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "kinkMultiplier_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "kinkUtilizationRate_",
           "type": "uint256"
         }
       ],
-      "name": "setKinkUtilizationRate",
+      "name": "setInterestRateModel",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -939,14 +720,27 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "shuttleId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
-          "name": "recipient",
+          "name": "token",
           "type": "address"
         }
       ],
-      "name": "skim",
+      "name": "sweepToken",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -966,13 +760,6 @@
     },
     {
       "inputs": [],
-      "name": "sync",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "totalBalance",
       "outputs": [
         {
@@ -981,7 +768,7 @@
           "type": "uint256"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1058,19 +845,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "version",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
         }
       ],
       "stateMutability": "view",

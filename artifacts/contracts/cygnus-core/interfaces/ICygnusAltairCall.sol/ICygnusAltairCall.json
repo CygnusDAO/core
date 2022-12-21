@@ -11,11 +11,6 @@
           "type": "address"
         },
         {
-          "internalType": "address",
-          "name": "borrower",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
           "name": "borrowAmount",
           "type": "uint256"
@@ -42,6 +37,16 @@
           "internalType": "uint256",
           "name": "redeemAmount",
           "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_token0",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_token1",
+          "type": "address"
         },
         {
           "internalType": "bytes",

@@ -202,14 +202,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function liquidate(address borrower, address liquidator)
-        external
-        override
-        nonReentrant
-        update
-        accrue
-        returns (uint256 cygLPAmount)
-    {
+    function liquidate(
+        address borrower,
+        address liquidator
+    ) external override nonReentrant update accrue returns (uint256 cygLPAmount) {
         // Latest balance after accrue's sync
         uint256 balance = IERC20(underlying).balanceOf(address(this));
 
