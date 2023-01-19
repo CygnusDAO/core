@@ -179,14 +179,15 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     }
 
     /**
+     *  @inheritdoc ICygnusBorrowTracker
      */
-    function supplyRate() external view returns (uint256) {
+    function supplyRate() external view override returns (uint256) {
         // Current burrow rate taking into account the reserve factor
         uint256 rateToPool = uint256(borrowRate).mul(1e18 - reserveFactor);
 
         // Return pool supply rate
         return
-            borrowRate == 0
+            rateToPool == 0
                 ? 0
                 : uint256(totalBorrows).div((totalBalance + totalBorrows) - totalReserves).mul(rateToPool);
     }

@@ -12,7 +12,7 @@ import { IDexPair } from "./interfaces/IDexPair.sol";
 import { IDexRouter02 } from "./interfaces/IDexRouter.sol";
 import { IERC20 } from "./interfaces/IERC20.sol";
 import { IRewarder, IMiniChef } from "./interfaces/IMiniChef.sol";
-import { IWAVAX } from "./interfaces/IWAVAX.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
 import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
 
 // Libraries
@@ -34,7 +34,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library PRBMathUD60x18 For uint256 fixed point math, also imports the main library `PRBMath`.
+     *  @custom:library PRBMathUD60x18 For uint256 fixed point math, also imports the main library `PRBMath`
      */
     using PRBMathUD60x18 for uint256;
 
@@ -135,11 +135,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
     }
 
     /**
-     *  @notice Accepts AVAX and immediately deposits in WAVAX contract to receive wrapped avax
+     *  @notice Accepts native deposits and immediately wraps in native contract
      */
     receive() external payable {
-        // Deposit in nativeToken (WAVAX) contract
-        IWAVAX(nativeToken).deposit{ value: msg.value }();
+        // Deposit in nativeToken (WETH) contract
+        IWETH(nativeToken).deposit{ value: msg.value }();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -166,7 +166,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @return This contract's balance
      */
     function contractBalanceOf(address token) private view returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
+        // Optimised safeTransferLib `balanceOf`
+        return token.balanceOf(address(this));
     }
 
     /**
@@ -273,30 +274,32 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      *  @notice Gets the rewards from the masterchef's rewarder contract for multiple tokens and converts to rewardToken
      */
     function getRewardsPrivate() private returns (uint256) {
-        // Harvest rewards from the masterchef by withdrawing 0 amount
-        rewarder.withdraw(pid, 0);
+        // Get bonus rewards address
+        address bonusRewarder = rewarder.rewarder(pid);
 
-        // Get the contract that pays the bonus AVAX rewards (if any) from the dex
-        (, , , , , IRewarder bonusRewarder, , , ) = rewarder.poolInfo(pid);
+        // If active then harvest and swap all to reward token
+        if (bonusRewarder != address(0)) {
+            // Get all reward tokens and amounts
+            (address[] memory rewardTokens, uint256[] memory rewardAmounts) = IRewarder(bonusRewarder).pendingTokens(
+                pid,
+                address(this),
+                0
+            );
 
-        // Check if this LP is paying additional rewards
-        if (address(bonusRewarder) != address(0)) {
-            // Check on contract to see if the reward is AVAX
-            bool isNative = bonusRewarder.isNative();
+            // Harvest Sushi
+            rewarder.harvest(pid, address(this));
 
-            // If is AVAX, bonus reward is WAVAX due to receive() function else get bonus reward token
-            address bonusRewardToken = isNative ? nativeToken : address(bonusRewarder.rewardToken());
-
-            // Get the balance of the bonus reward token
-            uint256 bonusRewardBalance = contractBalanceOf(bonusRewardToken);
-
-            // If we have any, swap everything to this shuttle's rewardsToken
-            if (bonusRewardBalance > 0) {
-                swapTokensPrivate(bonusRewardToken, rewardsToken, bonusRewardBalance);
+            // Harvest all tokens and swap to Sushi
+            for (uint i = 0; i < rewardTokens.length; i++) {
+                if (rewardAmounts[i] > 0) {
+                    swapTokensPrivate(rewardTokens[i], rewardsToken, contractBalanceOf(rewardTokens[i]));
+                }
             }
+        } else {
+            // Not active, harvest Sushi
+            rewarder.harvest(pid, address(this));
         }
 
-        // Return this contract's total rewards balance
         return contractBalanceOf(rewardsToken);
     }
 
@@ -325,7 +328,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     function afterDepositInternal(uint256 assets, uint256) internal override(CygnusTerminal) {
         // Deposit assets into the strategy
-        rewarder.deposit(pid, assets);
+        rewarder.deposit(pid, assets, address(this));
     }
 
     /**
@@ -335,7 +338,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     function beforeWithdrawInternal(uint256 assets, uint256) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy
-        rewarder.withdraw(pid, assets);
+        rewarder.withdraw(pid, assets, address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -373,7 +376,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // Approve dex router in rewards token
         rewardsTokenVoid.safeApprove(address(dexRouterVoid), type(uint256).max);
 
-        // Approve dex router in wavax
+        // Approve dex router in wrapped native
         nativeToken.safeApprove(address(dexRouterVoid), type(uint256).max);
 
         /// @custom:event ChargeVoid
@@ -387,7 +390,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
      */
     function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
         // ─────────────────────── 1. Withdraw all rewards
-        // Harvest rewards accrued
+        // Harvest rewards accrued of `rewardToken`
         uint256 currentRewards = getRewardsPrivate();
 
         // If none accumulated return and do nothing
@@ -398,16 +401,13 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         // ─────────────────────── 2. Send reward to the reinvestor and vault
         // Calculate reward for user (REINVEST_REWARD %)
         uint256 eoaReward = currentRewards.mul(REINVEST_REWARD);
-
         // Transfer the reward to the reinvestor
         rewardsToken.safeTransfer(_msgSender(), eoaReward);
 
         // Calculate reward for DAO (DAO_REWARD %)
         uint256 daoReward = currentRewards.mul(DAO_REWARD);
-
         // Get the current DAO reserves contract
         address daoReserves = ICygnusFactory(hangar18).daoReserves();
-
         // Transfer the reward to the DAO vault
         rewardsToken.safeTransfer(daoReserves, daoReward);
 
@@ -458,9 +458,31 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
 
         // ─────────────────────── 5. Stake the LP Token
         // Deposit in rewarder
-        rewarder.deposit(pid, liquidity);
+        rewarder.deposit(pid, liquidity, address(this));
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(address(this), _msgSender(), currentRewards, eoaReward, daoReward);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security non-reentrant
+     */
+    function smokeDust() external override nonReentrant {
+        // Get dust amount of token0
+        uint256 amountTokenA = contractBalanceOf(token0);
+
+        // Swap to rewards token
+        if (amountTokenA > 0) {
+            swapTokensPrivate(token0, rewardsToken, amountTokenA);
+        }
+
+        // Get dust amount of token1
+        uint256 amountTokenB = contractBalanceOf(token1);
+
+        // Swap to rewards token
+        if (amountTokenB > 0) {
+            swapTokensPrivate(token1, rewardsToken, amountTokenB);
+        }
     }
 }

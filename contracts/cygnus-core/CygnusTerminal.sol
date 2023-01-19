@@ -115,8 +115,6 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
      */
     uint256 public override totalBalance;
 
-    string public orbiterName;
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -127,7 +125,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
      *          collateral call different deployer contracts.
      *  @param name_ ERC20 name of the Borrow/Collateral token
      *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
-     *  @param decimals_ Decimals of the Borrow/Collateral token (always 18)
+     *  @param decimals_ Decimals of the Borrow/Collateral token
      */
     constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_, decimals_) {
         // Set placeholders for try/catch
@@ -258,9 +256,18 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
         // Get the amount of shares to mint
         shares = assets.div(exchangeRate());
 
-        /// custom:error CantMintZeroShares Avoid minting no shares
+        /// @custom:error CantMintZeroShares Avoid minting no shares
         if (shares <= 0) {
             revert CygnusTerminal__CantMintZeroShares();
+        }
+
+        /// Avoid first depositor front-running & update shares - only for the first pool deposit
+        if (totalSupply == 0) {
+            // Lock initial tokens
+            mintInternal(address(0xdEaD), 1000);
+
+            // Update shares for first depositor
+            shares -= 1000;
         }
 
         // Transfer underlying from sender to this contract

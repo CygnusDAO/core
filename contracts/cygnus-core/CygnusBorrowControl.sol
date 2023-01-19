@@ -218,13 +218,13 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @custom:security non-reentrant
      */
     function setInterestRateModel(
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear,
+        uint256 baseRatePerYear_,
+        uint256 multiplierPerYear_,
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
     ) external override nonReentrant cygnusAdmin {
         // Update Per second rates
-        interestRateModelInternal(baseRatePerYear, multiplierPerYear, kinkMultiplier_, kinkUtilizationRate_);
+        interestRateModelInternal(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
 
     /**

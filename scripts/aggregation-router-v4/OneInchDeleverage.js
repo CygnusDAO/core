@@ -33,6 +33,8 @@ module.exports = async function SwapCallData(
     borrower,
   );
 
+  const one = ethers.utils.parseUnits("1", 18);
+
   /**
    * @notice Calculates the amount of Token0 and Token1 we get after burning, used to build the 1Inch call
    */
@@ -47,8 +49,8 @@ module.exports = async function SwapCallData(
     const amount = ethers.utils.parseUnits(deleverageLpAmount.toString(), 18);
 
     // Calculate the amount we would get of each token respectively
-    const amountA = amount.mul(balanceToken0).div(totalSupply);
-    const amountB = amount.mul(balanceToken1).div(totalSupply);
+    const amountA = amount.mul(balanceToken0).div(one).div(totalSupply);
+    const amountB = amount.mul(balanceToken1).div(one).div(totalSupply);
 
     // Return amounts
     return [amountA, amountB];

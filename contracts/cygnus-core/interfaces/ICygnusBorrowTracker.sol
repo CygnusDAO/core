@@ -53,11 +53,6 @@ interface ICygnusBorrowTracker is ICygnusBorrowApprove {
     function borrowRate() external view returns (uint112);
 
     /**
-     *  @return utilizationRate The current utilization rate for this shuttle
-     */
-    function utilizationRate() external view returns (uint256);
-
-    /**
      *  @return lastAccrualTimestamp The unix timestamp stored of the last interest rate accrual
      */
     function lastAccrualTimestamp() external view returns (uint32);
@@ -69,6 +64,16 @@ interface ICygnusBorrowTracker is ICygnusBorrowApprove {
      *  @return balance The account's outstanding borrow balance or 0 if borrower's interest index is zero
      */
     function getBorrowBalance(address borrower) external view returns (uint256 balance);
+
+    /**
+     *  @return utilizationRate The current utilization rate for this shuttle
+     */
+    function utilizationRate() external view returns (uint256);
+
+    /**
+     *  @return supplyRate The current supply rate for this shuttle
+     */
+    function supplyRate() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

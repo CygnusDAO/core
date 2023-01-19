@@ -293,7 +293,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         uint256 orbiterId,
         uint256 baseRate,
         uint256 multiplier
-    ) external override nonReentrant returns (address borrowable, address collateral) {
+    ) external override nonReentrant cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
 
         // Load orbiter to memory
@@ -370,15 +370,13 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
-     *  @notice Anyone may create their own strategy to deploy their own lending pool but admin reserves the right
-     *          to switch status, reverting only future deployments (deployed pools remain active)
      *  @inheritdoc ICygnusFactory
      */
     function initializeOrbiter(
         string memory orbiterName,
         IAlbireoOrbiter albireoOrbiter,
         IDenebOrbiter denebOrbiter
-    ) external override {
+    ) external override cygnusAdmin {
         // Total orbiters
         uint256 totalOrbiters = allOrbiters.length;
 
@@ -412,6 +410,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
+     *  @notice Reverts future deployments with orbiter
      *  @inheritdoc ICygnusFactory
      */
     function switchOrbiterStatus(uint256 orbiterId) external override cygnusAdmin {

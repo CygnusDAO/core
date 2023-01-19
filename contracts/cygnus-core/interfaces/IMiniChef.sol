@@ -4,46 +4,23 @@ import "./IERC20.sol";
 pragma solidity >=0.8.4;
 
 interface IMiniChef {
-    function deposit(uint256 _pid, uint256 _amount) external;
+    function lpToken(uint256) external view returns (address);
 
-    function withdraw(uint256 _pid, uint256 _amount) external;
+    function userInfo(uint256, address) external view returns (uint256 amount, uint256 rewardDebt);
 
-    function emergencyWithdraw(uint256 _pid) external;
+    function rewarder(uint256) external view returns (address);
 
-    function pendingTokens(uint256 _pid, address _user)
-        external
-        view
-        returns (
-            uint256 pendingJoe,
-            address bonusTokenAddress,
-            string memory bonusTokenSymbol,
-            uint256 pendingBonusToken
-        );
+    function deposit(uint256 _pid, uint256 _amount, address _to) external;
 
-    function userInfo(uint256 pid, address user) external view returns (uint256 amount, uint256 rewardDebt);
+    function withdraw(uint256 _pid, uint256 _amount, address _to) external;
 
-    function poolInfo(uint256 pid)
-        external
-        view
-        returns (
-            address lpToken,
-            uint96 allocPoint,
-            uint256 accJoePerShare,
-            uint256 accJoePerFactorPerShare,
-            uint64 lastRewardTimestamp,
-            IRewarder rewarder,
-            uint32 veJoeShareBp,
-            uint256 totalFactor,
-            uint256 totalLpSupply
-        );
+    function harvest(uint256 _pid, address _to) external;
 }
 
 interface IRewarder {
-    function isNative() external view returns (bool);
-
-    function onJoeReward(address user, uint256 newLpAmount) external;
-
-    function pendingTokens(address user) external view returns (uint256 pending);
-
-    function rewardToken() external view returns (IERC20);
+    function pendingTokens(
+        uint256 pid,
+        address user,
+        uint256 sushiAmount
+    ) external view returns (address[] memory, uint256[] memory);
 }

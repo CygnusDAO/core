@@ -65,6 +65,20 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
         super.burnInternal(holder, burnAmount);
     }
 
+    /**
+     *  @notice ERC20 Overrides
+     *  @notice Before transfering we check whether the user has sufficient liquidity (no debt) to transfer `amount`
+     */
+    function transferInternal(address sender, address recipient, uint256 amount) internal override(ERC20) {
+        /// @custom:error InsufficientLiquidity Avoid transfering CygLP if there's shortfall
+        if (!canRedeem(sender, amount)) {
+            revert CygnusCollateral__InsufficientLiquidity({ from: sender, to: recipient, value: amount });
+        }
+
+        // Safe internal burn
+        super.transferInternal(sender, recipient, amount);
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**

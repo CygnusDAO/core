@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
-// Interface for interfacting with Wrapped Avax (0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7)
-interface IWAVAX {
+// Interface for interfacting with Wrapped Eth
+interface IWETH {
     function deposit() external payable;
 
     function withdraw(uint256 wad) external;

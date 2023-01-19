@@ -34,12 +34,7 @@ module.exports = {
     defaultNetwork: 'localhost',
     networks: {
         hardhat: {},
-        tenderly: {
-            chainId: 1, // chain you forked
-            url: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-        },
         localhost: {
-            timeout: 400000000,
             url: 'http://localhost:8545',
             chainId: 31337,
         },
@@ -63,10 +58,10 @@ module.exports = {
         },
 
         mainnet: {
-            url: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+            url: 'https://rpc.ankr.com/eth',
             chainId: 1,
             forking: {
-                url: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+                url: 'https://rpc.ankr.com/eth',
                 enabled: true,
             },
         },

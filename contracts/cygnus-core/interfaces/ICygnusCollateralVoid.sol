@@ -82,12 +82,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
     function getCygnusVoid()
         external
         view
-        returns (
-            IMiniChef _rewarder,
-            IDexRouter02 _dexRouter,
-            address _rewardsToken,
-            uint256 _pid
-        );
+        returns (IMiniChef _rewarder, IDexRouter02 _dexRouter, address _rewardsToken, uint256 _pid);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -102,12 +97,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
      *  @custom:security non-reentrant
      */
-    function chargeVoid(
-        IDexRouter02 _dexRouter,
-        IMiniChef _rewarder,
-        address _rewardsToken,
-        uint256 _pid
-    ) external;
+    function chargeVoid(IDexRouter02 _dexRouter, IMiniChef _rewarder, address _rewardsToken, uint256 _pid) external;
 
     /**
      *  @notice Reinvests all rewards from the rewarder to buy more LP Tokens to then deposit back into the rewarder
@@ -116,4 +106,10 @@ interface ICygnusCollateralVoid is ICygnusCollateralControl {
      *  @custom:security non-reentrant
      */
     function reinvestRewards_y7b() external;
+
+    /**
+     *  @notice Converts all the dust we may have from token0/token1 to rewardsToken
+     *  @custom:security non-reentrant
+     */
+    function smokeDust() external;
 }

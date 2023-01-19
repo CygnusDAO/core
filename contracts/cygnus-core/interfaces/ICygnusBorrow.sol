@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusBorrowTracker } from "./ICygnusBorrowTracker.sol";
+import { ICygnusTerminal } from "./ICygnusTerminal.sol";
 
 /**
  *  @title ICygnusBorrow Interface for the main Borrow contract which handles borrows/liquidations
@@ -91,15 +92,10 @@ interface ICygnusBorrow is ICygnusBorrowTracker {
      *  @param borrowAmount The amount of the underlying asset to borrow.
      *  @param data Calltype data passed to Router contract.
      */
-    function borrow(
-        address borrower,
-        address receiver,
-        uint256 borrowAmount,
-        bytes calldata data
-    ) external;
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external;
 
     /**
      *  @notice Overrides the exchange rate of `CygnusTerminal` for borrow contracts to mint reserves
      */
-    function exchangeRate() external override returns (uint256);
+    function exchangeRate() external override(ICygnusTerminal) returns (uint256);
 }

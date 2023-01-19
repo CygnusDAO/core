@@ -11,7 +11,7 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
-import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
+import { ICygnusTerminal } from "./CygnusTerminal.sol";
 import { IERC20 } from "./interfaces/IERC20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
