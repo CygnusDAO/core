@@ -34,9 +34,3 @@ By lending stablecoins to borrowers in specific farms, lenders earn an APY in st
 There are NO deposit fees, NO borrow fees or NO lending fees. Users are free to deposit and redeem their positions whenever they want at no cost aside from gas fees.
 
   ![image](https://user-images.githubusercontent.com/97303883/175662172-723323cb-1f04-46c5-afd6-66bc5ce84faf.png)
-  
-# **Cygnus architecture**
-
-<p align="center">
-<img src="https://user-images.githubusercontent.com/97303883/190871578-707285ed-79e2-4d82-8f9d-c2521ea47e38.svg" width=50% />
-</p>
