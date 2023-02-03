@@ -17,11 +17,11 @@
 
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-     Smart contracts to `go long` on your LP Token.
+     Smart contracts to `go long` on your liquidity.
 
-     Deposit LP Token, borrow USDC
+     Deposit liquidity, borrow USDC.
 
-     Structure of all Cygnus Contracts
+     Structure of all Cygnus Contracts:
 
      Contract                        ⠀Interface                                             
         ├ 1. Libraries                   ├ 1. Custom Errors                                               
@@ -51,7 +51,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
-import { ERC20 } from "./ERC20.sol";
+import { ERC20Permit } from "./ERC20Permit.sol";
 
 // Libraries
 import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
@@ -60,7 +60,6 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 // Interfaces
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
-import { IERC20 } from "./interfaces/IERC20.sol";
 import { IMiniChef } from "./interfaces/IMiniChef.sol";
 
 import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
@@ -74,7 +73,7 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *          It follows similar functionality to UniswapV2Pair with some small differences.
  *          We added only the `deposit` and `redeem` functions from the erc-4626 standard to save on byte size.
  */
-contract CygnusTerminal is ICygnusTerminal, ERC20 {
+contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -127,7 +126,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
      *  @param symbol_ ERC20 symbol of the Borrow/Collateral token
      *  @param decimals_ Decimals of the Borrow/Collateral token
      */
-    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_, decimals_) {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20Permit(name_, symbol_, decimals_) {
         // Set placeholders for try/catch
         // Factory
         address factory;
@@ -240,7 +239,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
      */
     function updateInternal() internal virtual {
         // Match totalBalance state to balanceOf this contract
-        totalBalance = IERC20(underlying).balanceOf(address(this));
+        totalBalance = underlying.balanceOf(address(this));
 
         /// @custom:event Sync
         emit Sync(totalBalance);
@@ -261,7 +260,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
             revert CygnusTerminal__CantMintZeroShares();
         }
 
-        /// Avoid first depositor front-running & update shares - only for the first pool deposit
+        // Avoid first depositor front-running & update shares - only for the first pool depositor
         if (totalSupply == 0) {
             // Lock initial tokens
             mintInternal(address(0xdEaD), 1000);
@@ -338,7 +337,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20 {
         }
 
         // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 balance = token.balanceOf(address(this));
 
         // Transfer token
         token.safeTransfer(_msgSender(), balance);

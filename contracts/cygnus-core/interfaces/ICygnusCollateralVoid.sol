@@ -3,7 +3,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
+import { ICygnusCollateralModel } from "./ICygnusCollateralModel.sol";
 
 // Interfaces
 import { IDexRouter02 } from "./IDexRouter.sol";
@@ -14,7 +14,7 @@ import { IMiniChef } from "./IMiniChef.sol";
  *  @notice Interface for `CygnusCollateralVoid` which is in charge of connecting the collateral LP Tokens with
  *          a specified strategy (for example connect to a rewarder contract to stake the LP Token, etc.)
  */
-interface ICygnusCollateralVoid is ICygnusCollateralControl {
+interface ICygnusCollateralVoid is ICygnusCollateralModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

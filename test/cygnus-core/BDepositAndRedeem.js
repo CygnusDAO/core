@@ -25,7 +25,7 @@ chai.use(solidity);
  *
  */
 
-context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function() {
+context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function () {
   // Cygnus contracts + lp + dai
   let router, borrowable, collateral, dai, lpToken;
 
@@ -55,8 +55,8 @@ context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function(
     console.log("------------------------------------------------------------------------------");
   });
 
-  describe("When Cygnus factory deploys collateral and borrow contracts", function() {
-    describe("When the collateral contract is deployed", function() {
+  describe("When Cygnus factory deploys collateral and borrow contracts", function () {
+    describe("When the collateral contract is deployed", function () {
       // Collateral
       it("Sets the name of the collateral pool token", async () => {
         expect(await collateral.name()).to.eq("Cygnus: Collateral");
@@ -78,7 +78,7 @@ context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function(
       });
     });
 
-    describe("When the borrow contract is deployed", function() {
+    describe("When the borrow contract is deployed", function () {
       // Borrowable
       it("Sets the name of borrow pool token", async () => {
         expect(await borrowable.name()).to.eq("Cygnus: Borrow");
@@ -103,7 +103,7 @@ context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function(
   });
 
   // MINTS
-  describe("Lender deposits DAI for CygDAI", function() {
+  describe("Lender deposits DAI for CygDAI", function () {
     // Fail before approval
     it("Deposits dai in borrowable and mints CygDAI without approving borrowable in DAI: FAIL { DAI_ERROR }", async () => {
       // DAI error
@@ -134,7 +134,7 @@ context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function(
   });
 
   // REDEEMS
-  describe("Lender redeems CygDAI for dai", function() {
+  describe("Lender redeems CygDAI for dai", function () {
     it("Redeems CygDAI for deposited amount without approving router in borrowable: FAIL { Erc20__InsufficientAllowance }", async () => {
       await expect(router.connect(lender).redeem(borrowable.address, lenderDeposit, lender._address, max, "0x")).to.be
         .reverted;
@@ -189,7 +189,7 @@ context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function(
   });
 
   // Shouldn't accrue reserves as no borrows yet
-  describe("When there are 0 borrows there are no reserves, borrow rate or exchange rate differences", function() {
+  describe("When there are 0 borrows there are no reserves, borrow rate or exchange rate differences", function () {
     it("Has 0 reserves accrued", async () => {
       expect(await borrowable.totalReserves()).to.eq(0);
     });

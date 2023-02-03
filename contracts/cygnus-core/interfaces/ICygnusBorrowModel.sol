@@ -2,9 +2,9 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowApprove } from "./ICygnusBorrowApprove.sol";
+import { ICygnusBorrowControl } from "./ICygnusBorrowControl.sol";
 
-interface ICygnusBorrowTracker is ICygnusBorrowApprove {
+interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

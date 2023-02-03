@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
-import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
+import { CygnusCollateralVoid } from "./CygnusCollateralVoid.sol";
 
 // Libraries
 import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
@@ -30,7 +30,7 @@ import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
  *          The last function `flashRedeemAltair` allows users to deleverage their positions. Anyone can flash
  *          redeem the underlying LP Tokens, as long as they are paid back by the end of the function call.
  */
-contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
+contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -82,14 +82,15 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This function should only be called from `CygnusBorrow` contracts only - No possible reentrancy
+     *  @dev This function should only be called from `CygnusBorrow` contracts only
      *  @inheritdoc ICygnusCollateral
+     *  @custom:security non-reentrant
      */
     function seizeCygLP(
         address liquidator,
         address borrower,
         uint256 repayAmount
-    ) external override returns (uint256 cygLPAmount) {
+    ) external override nonReentrant returns (uint256 cygLPAmount) {
         /// @custom:error CantLiquidateSelf Avoid liquidating self
         if (_msgSender() == borrower) {
             revert CygnusCollateral__CantLiquidateSelf({ borrower: borrower, liquidator: liquidator });

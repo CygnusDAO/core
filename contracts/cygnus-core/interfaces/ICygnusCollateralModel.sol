@@ -2,12 +2,12 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralVoid } from "./ICygnusCollateralVoid.sol";
+import { ICygnusCollateralControl } from "./ICygnusCollateralControl.sol";
 
 /**
  *  @title ICygnusCollateralModel The interface for querying any borrower's positions and find liquidity/shortfalls
  */
-interface ICygnusCollateralModel is ICygnusCollateralVoid {
+interface ICygnusCollateralModel is ICygnusCollateralControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -55,11 +55,7 @@ interface ICygnusCollateralModel is ICygnusCollateralVoid {
      *  @param borrowAmount The amount the user wants to borrow
      *  @return Whether the account can borrow
      */
-    function canBorrow(
-        address borrower,
-        address borrowableToken,
-        uint256 borrowAmount
-    ) external view returns (bool);
+    function canBorrow(address borrower, address borrowableToken, uint256 borrowAmount) external view returns (bool);
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 

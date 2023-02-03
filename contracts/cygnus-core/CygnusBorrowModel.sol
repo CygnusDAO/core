@@ -2,8 +2,8 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowTracker } from "./interfaces/ICygnusBorrowTracker.sol";
-import { CygnusBorrowApprove } from "./CygnusBorrowApprove.sol";
+import { ICygnusBorrowModel } from "./interfaces/ICygnusBorrowModel.sol";
+import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
 
 // Libraries
 import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
@@ -12,14 +12,14 @@ import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
 
 /**
- *  @title  CygnusBorrowTracker Contract that accrues interest and stores borrow data of each user
+ *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
  *  @author CygnusDAO
  *  @notice Contract that accrues interest and tracks borrows for this shuttle. It accrues interest on any borrow,
  *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store reserves and
  *          borrows. It is also used by CygnusCollateral contracts to get the borrow balance of each user to
  *          calculate current debt ratios, liquidity or shortfall.
  */
-contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
+contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -61,27 +61,27 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     // 2 memory slots on every accrual
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     uint128 public override totalReserves;
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     uint128 public override totalBorrows;
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     uint112 public override borrowIndex;
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     uint112 public override borrowRate;
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     uint32 public override lastAccrualTimestamp;
 
@@ -147,7 +147,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
 
     /**
      *  @dev It is used by CygnusCollateral contract
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     function getBorrowBalance(address borrower) public view override returns (uint256) {
         // memory struct for this borrower
@@ -170,7 +170,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     function utilizationRate() external view override returns (uint256) {
         // Return the current pool utilization rate
@@ -179,7 +179,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     }
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     function supplyRate() external view override returns (uint256) {
         // Current burrow rate taking into account the reserve factor
@@ -205,6 +205,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
      *  @param borrowIndexStored Borrow index stored up to this point
      */
     function trackBorrowInternal(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) internal {
+        // Rewarder address (if any)
         address _cygnusBorrowRewarder = cygnusBorrowRewarder;
 
         // If not initialized return
@@ -213,7 +214,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
         }
 
         // Pass to farming pool
-        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(borrower, accountBorrows, borrowIndexStored);
+        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
     }
 
     /**
@@ -310,7 +311,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     function accrueInterest() public override {
         // Get the present timestamp
@@ -392,7 +393,7 @@ contract CygnusBorrowTracker is ICygnusBorrowTracker, CygnusBorrowApprove {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusBorrowTracker
+     *  @inheritdoc ICygnusBorrowModel
      */
     function trackBorrow(address borrower) external override {
         // Pass to farming pool

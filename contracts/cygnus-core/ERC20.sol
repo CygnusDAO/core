@@ -18,7 +18,7 @@ contract ERC20 is IERC20, Context, ReentrancyGuard {
     string public override symbol;
 
     /// @inheritdoc IERC20
-    uint8 public immutable override decimals;
+    uint8 public override decimals;
 
     /// @inheritdoc IERC20
     uint256 public override totalSupply;

@@ -1,38 +1,34 @@
-const hre = require('hardhat');
+const hre = require("hardhat");
 const ethers = hre.ethers;
 
-/*////////////////////////////////////////////////////////////
- /                                                           /
- /    IMPERSONATE ACCOUNTS FOR LP TOKEN AND DAI              /
- /                                                           /
- /    LP Token: 0x454E67025631C065d3cFAD6d71E6892f74487a15   /
- /                                                           /
- ////////////////////////////////////////////////////////////*/
+/**
+ * @notice Impersonate account for LP Token
+ */
 module.exports = async function Users() {
-    // Ganache signers
-    const [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
+  // Ganache signers
+  const [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
 
-    // Lender
-    const lenderAddress = '0xf89d7b9c864f589bbf53a82105107622b35eaa40';
+  // Lender
+  const lenderAddress = "0xc882b111a75c0c657fc507c04fbfcd2cc984f071";
 
-    // Borrower
-    const borrowerAddress = '0x0f1410a815105f4429a404d2101890aa11d97951';
+  // Borrower
+  const borrowerAddress = "0x9854179bbbda1154f439116d31a646b15ec26e2d";
 
-    // Lender: Random DAI Whale //
-    await network.provider.request({
-        method: 'hardhat_impersonateAccount',
-        params: [lenderAddress],
-    });
+  // Lender: Random DAI Whale //
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [lenderAddress],
+  });
 
-    const lender = await ethers.provider.getSigner(lenderAddress);
+  const lender = await ethers.provider.getSigner(lenderAddress);
 
-    // Borrower: Random LP Whale //
-    await network.provider.request({
-        method: 'hardhat_impersonateAccount',
-        params: [borrowerAddress],
-    });
-    const borrower = await ethers.provider.getSigner(borrowerAddress);
+  // Borrower: Random LP Whale //
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [borrowerAddress],
+  });
+  const borrower = await ethers.provider.getSigner(borrowerAddress);
 
-    // Return accounts
-    return [owner, daoReservesManager, safeAddress1, lender, borrower];
+  // Return accounts
+  return [owner, daoReservesManager, safeAddress1, lender, borrower];
 };

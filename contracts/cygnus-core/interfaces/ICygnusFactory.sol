@@ -229,7 +229,9 @@ interface ICygnusFactory {
      *  @return denebOrbiter The address of the collateral deployer contract
      *  @return orbiterName The name of the dex
      */
-    function getOrbiters(uint256 _orbiterId)
+    function getOrbiters(
+        uint256 _orbiterId
+    )
         external
         view
         returns (
@@ -249,7 +251,9 @@ interface ICygnusFactory {
      *  @return denebOrbiter The address of the collateral deployer contract
      *  @return orbiterName The name of the dex
      */
-    function allOrbiters(uint256 _orbiterId)
+    function allOrbiters(
+        uint256 _orbiterId
+    )
         external
         view
         returns (
@@ -270,16 +274,10 @@ interface ICygnusFactory {
      *  @return collateral The address of the collateral contract
      *  @return orbiterId The ID of the orbiters used to deploy this lending pool
      */
-    function getShuttles(address _lpTokenPair, uint256 _orbiterId)
-        external
-        view
-        returns (
-            bool launched,
-            uint88 shuttleId,
-            address borrowable,
-            address collateral,
-            uint96 orbiterId
-        );
+    function getShuttles(
+        address _lpTokenPair,
+        uint256 _orbiterId
+    ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
 
     /**
      *  @notice Array of LP Token pairs deployed
@@ -290,16 +288,9 @@ interface ICygnusFactory {
      *  @return collateral The address of the collateral contract
      *  @return orbiterId The ID of the orbiters used to deploy this lending pool
      */
-    function allShuttles(uint256 _shuttleId)
-        external
-        view
-        returns (
-            bool launched,
-            uint88 shuttleId,
-            address borrowable,
-            address collateral,
-            uint96 orbiterId
-        );
+    function allShuttles(
+        uint256 _shuttleId
+    ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
 
     /**
      *  @return admin The address of the Cygnus Admin which grants special permissions in collateral/borrow contracts
@@ -355,7 +346,6 @@ interface ICygnusFactory {
     /**
      *  @notice Turns off orbiters making them not able for deployment of pools
      *  @param orbiterId The ID of the orbiter pairs we want to switch the status of
-     *  @custom:security non-reentrant
      */
     function switchOrbiterStatus(uint256 orbiterId) external;
 
@@ -383,11 +373,7 @@ interface ICygnusFactory {
      *  @param denebOrbiter The address of this orbiter's collateral deployer
      *  @custom:security non-reentrant
      */
-    function initializeOrbiter(
-        string memory name,
-        IAlbireoOrbiter albireoOrbiter,
-        IDenebOrbiter denebOrbiter
-    ) external;
+    function initializeOrbiter(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
 
     /**
      *  @notice 👽

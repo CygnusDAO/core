@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusCollateralVoid } from "./interfaces/ICygnusCollateralVoid.sol";
-import { CygnusCollateralControl } from "./CygnusCollateralControl.sol";
+import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
 
 // Interfaces
 import { CygnusTerminal } from "./CygnusTerminal.sol";
@@ -21,14 +21,14 @@ import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
 
 /**
  *  @title  CygnusCollateralVoid The strategy contract for the underlying LP Tokens
- *  @notice This contract is considered optional. Vanilla shuttles (ie those without masterchef/rewarders) should
+ *  @notice This contract is considered optional. Vanilla pools (ie those without masterchef/rewarders) should
  *          only have the constructor of this contract included and nothing else.
  *
  *          It is the only contract in Cygnus that should be changed according to the LP Token's masterchef/rewarder.
  *          As such most functions are kept private as they are only relevant to this contract and the others
  *          are indifferent to this. Do not modify constructor.
  */
-contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl {
+contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -122,7 +122,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralControl 
         address tokenB = IDexPair(asset).token1();
 
         // Name of this CygLP with each token symbols
-        symbol = string(abi.encodePacked("CygLP ", IERC20(tokenA).symbol(), "/", IERC20(tokenB).symbol()));
+        symbol = string(abi.encodePacked("CygLP: ", IERC20(tokenA).symbol(), "/", IERC20(tokenB).symbol()));
+
+        // Get decimals
+        decimals = IERC20(asset).decimals();
 
         // This chain's native token read from the factory
         nativeToken = ICygnusFactory(factory).nativeToken();

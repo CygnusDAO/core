@@ -1,136 +1,136 @@
-const hre = require('hardhat');
+// eslint-disable-next-line
+const hre = require("hardhat");
 const ethers = hre.ethers;
 
 // Custom
-const Make = require('../test/Make.js');
-const Users = require('../test/Users.js');
-const Strategy = require('../test/Strategy.js');
+const Make = require("../test/MakeInch.js");
+const Users = require("../test/Users.js");
+const Strategy = require("../test/Strategy.js");
 
-// OE
-const { time } = require('@openzeppelin/test-helpers');
+// eslint-disable-next-line
+const { time } = require("@openzeppelin/test-helpers");
 
 // Ethers
-const addressZero = ethers.constants.AddressZero;
 const max = ethers.constants.MaxUint256;
 
 async function deploy() {
-    // Cygnus contracts and underlyings
-    let [oracle, factory, router, borrowable, collateral, dai, lpToken] = await Make();
+  // Cygnus contracts and underlyings
+  const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
 
-    // Users
-    let [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
+  // Strateg}
+  const [voidRouter, masterChef, rewardToken, pid] = await Strategy();
 
-    // Strateg}
-    let [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
+  // Users
+  const [owner, , , lender, borrower] = await Users();
 
-    // ═════════════════════ INITIALIZE VOID ═══════════════════════════════════════════════════════════════
+  // ═════════════════════ INITIALIZE VOID ═══════════════════════════════════════════════════════════════
 
-    // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
-    await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, 6, 997);
+  // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
+  await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, pid);
 
-    console.log('----------------------------------------------------------------------------------------------');
-    console.log('Price of LP Token                    | %s DAI', (await collateral.getLPTokenPrice()) / 1e18);
-    console.log('----------------------------------------------------------------------------------------------');
-    console.log('INITIAL BALANCES OF LENDER/BORROWER');
-    console.log('----------------------------------------------------------------------------------------------');
-    console.log('Borrower`s LP balance before Cyg     | %s LPs', (await lpToken.balanceOf(borrower._address)) / 1e18);
-    console.log('Borrower`s DAI balance before Cyg    | %s DAI', (await dai.balanceOf(borrower._address)) / 1e18);
-    console.log('----------------------------------------------------------------------------------------------');
-    console.log('Lender`s LP balance before Cyg       | %s LPs', (await lpToken.balanceOf(lender._address)) / 1e18);
-    console.log('Lender`s DAI balance before Cyg      | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);
-    console.log('----------------------------------------------------------------------------------------------');
+  console.log("----------------------------------------------------------------------------------------------");
+  console.log("Price of LP Token                    | %s USDC", (await collateral.getLPTokenPrice()) / 1e6);
+  console.log("----------------------------------------------------------------------------------------------");
+  console.log("INITIAL BALANCES OF LENDER/BORROWER");
+  console.log("----------------------------------------------------------------------------------------------");
+  console.log("Borrower`s LP balance before Cyg     | %s LPs", (await lpToken.balanceOf(borrower._address)) / 1e18);
+  console.log("Borrower`s USDC balance before Cyg    | %s USDC", (await usdc.balanceOf(borrower._address)) / 1e6);
+  console.log("----------------------------------------------------------------------------------------------");
+  console.log("Lender`s LP balance before Cyg       | %s LPs", (await lpToken.balanceOf(lender._address)) / 1e18);
+  console.log("Lender`s USDC balance before Cyg      | %s USDC", (await usdc.balanceOf(lender._address)) / 1e6);
+  console.log("----------------------------------------------------------------------------------------------");
 
-    /*******************************************************************************************************
+  /*******************************************************************************************************
    
     
                             INTERACTIONS
     
      
-      ******************************************************************************************************/
+  ******************************************************************************************************/
 
-    console.log('------------------------------------------------------------------------------');
-    console.log('Borrower deposits 100 LPs, Lender deposits 4000 DAI');
-    console.log('------------------------------------------------------------------------------');
+  console.log("------------------------------------------------------------------------------");
+  console.log("Borrower deposits 100 LPs, Lender deposits 4000 USDC");
+  console.log("------------------------------------------------------------------------------");
 
-    console.log('Total Balance of borrowable before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
-    console.log('Total Balance of collateral before   | %s DAI', (await borrowable.totalBalance()) / 1e18);
+  console.log("Total Balance of borrowable before   | %s USDC", (await borrowable.totalBalance()) / 1e6);
+  console.log("Total Balance of collateral before   | %s USDC", (await borrowable.totalBalance()) / 1e18);
 
-    // Borrower: Approve router in LP and mint CygLP
-    await lpToken.connect(borrower).approve(collateral.address, max);
-    await collateral.connect(borrower).deposit(BigInt(100e18), borrower._address);
+  // Borrower: Approve router in LP and mint CygLP
+  await lpToken.connect(borrower).approve(collateral.address, max);
+  await collateral.connect(borrower).deposit(BigInt(2e18), borrower._address);
 
-    // Lender: Approve router in dai and mint Cygdai
-    await dai.connect(lender).approve(borrowable.address, max);
-    await borrowable.connect(lender).deposit(BigInt(4000e18), lender._address);
+  // Lender: Approve router in usdc and mint Cygusdc
+  await usdc.connect(lender).approve(borrowable.address, max);
+  await borrowable.connect(lender).deposit(BigInt(3000e6), lender._address);
 
-    let daiBalanceBorrower = await dai.balanceOf(borrower._address);
-    let cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
+  const usdcBalanceBorrower = await usdc.balanceOf(borrower._address);
+  const cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
 
-    console.log('Total Balance of borrowable after    | %s DAI', (await borrowable.totalBalance()) / 1e18);
-    console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
-    console.log('CygDai balanceOf Lender              | %s CygDai', daiBalanceBorrower / 1e18);
-    console.log('CygLP balanceOf Borrower             | %s CygLP', cygLPBalanceBorrower / 1e18);
-    // Borrow
-    await borrowable.connect(borrower).borrowApprove(router.address, max);
-    await router.connect(borrower).borrow(borrowable.address, BigInt(300e18), borrower._address, max, '0x');
+  console.log("Total Balance of borrowable after    | %s USDC", (await borrowable.totalBalance()) / 1e6);
+  console.log("Total Balance of collateral after    | %s LPs", (await collateral.totalBalance()) / 1e18);
+  console.log("CygUSDC balanceOf Lender             | %s CygUSDC", usdcBalanceBorrower / 1e6);
+  console.log("CygLP balanceOf Borrower             | %s CygLP", cygLPBalanceBorrower / 1e18);
 
-    console.log('Borrower`s DAI balance after borrow  | %s DAI', (await dai.balanceOf(borrower._address)) / 1e18);
-    console.log('Lenders`s DAI balance after deposit  | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);
+  // Borrow
+  await router.connect(borrower).borrow(borrowable.address, BigInt(50e6), borrower._address, max, "0x");
 
-    console.log('------------------------------------------------------------------------------');
-    console.log('Reinvest rewards');
-    console.log('------------------------------------------------------------------------------');
+  console.log("Borrower`s USDC balance after borrow  | %s USDC", (await usdc.balanceOf(borrower._address)) / 1e6);
+  console.log("Lenders`s USDC balance after deposit  | %s USDC", (await usdc.balanceOf(lender._address)) / 1e6);
 
-    console.log('Total Balance of collateral before   | %s LPs', (await collateral.totalBalance()) / 1e18);
-    console.log('Exchange Rate of CygLP to collateral | %s', (await collateral.exchangeRate()) / 1e18);
+  console.log("------------------------------------------------------------------------------");
+  console.log("Reinvest rewards");
+  console.log("------------------------------------------------------------------------------");
 
-    console.log('------------------------------------------------------------------------------');
-    console.log('7 days.... ');
-    console.log('------------------------------------------------------------------------------');
+  console.log("Total Balance of collateral before   | %s LPs", (await collateral.totalBalance()) / 1e18);
+  console.log("Exchange Rate of CygLP to collateral | %s", (await collateral.exchangeRate()) / 1e18);
 
-    await time.increase(60 * 60 * 24 * 7);
+  console.log("------------------------------------------------------------------------------");
+  console.log("7 days.... ");
+  console.log("------------------------------------------------------------------------------");
 
-    await collateral.reinvestRewards_y7b();
+  await time.increase(60 * 60 * 24 * 7);
 
-    console.log('Total Balance of collateral after    | %s LPs', (await collateral.totalBalance()) / 1e18);
-    console.log('Exchange Rate of CygLP to collateral | %s', (await collateral.exchangeRate()) / 1e18);
+  await collateral.reinvestRewards_y7b();
 
-    console.log('------------------------------------------------------------------------------');
-    console.log('Repay loan and redeem');
-    console.log('------------------------------------------------------------------------------');
+  console.log("Total Balance of collateral after    | %s LPs", (await collateral.totalBalance()) / 1e18);
+  console.log("Exchange Rate of CygLP to collateral | %s", (await collateral.exchangeRate()) / 1e18);
 
-    // To repay just send borrower some dai
-    // Impersonate a random dai holder
-    await network.provider.request({
-        method: 'hardhat_impersonateAccount',
-        params: ['0xb760ef4751fe4e11c308d668f3ffB76ACfFB8285'],
-    });
+  console.log("------------------------------------------------------------------------------");
+  console.log("Repay loan and redeem");
+  console.log("------------------------------------------------------------------------------");
 
-    const lender2 = await ethers.provider.getSigner('0xb760ef4751fe4e11c308d668f3ffB76ACfFB8285');
-    await dai.connect(lender2).transfer(borrower._address, BigInt(400e18));
+  // To repay just send borrower some usdc
+  // Impersonate a random usdc holder
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: ["0xc882b111a75c0c657fc507c04fbfcd2cc984f071"],
+  });
 
-    await borrowable.accrueInterest();
-    let borrowBalance = await borrowable.getBorrowBalance(borrower._address);
-    console.log('Borrower`s amount to repay           | %s DAI', borrowBalance / 1e18);
+  const lender2 = await ethers.provider.getSigner("0xc882b111a75c0c657fc507c04fbfcd2cc984f071");
+  await usdc.connect(lender2).transfer(borrower._address, BigInt(400e6));
 
-    // Approve and repay dai (the router does the calculation to Make sure repay amount is never above owed amount)
-    await dai.connect(borrower).approve(router.address, max);
-    await router.connect(borrower).repay(borrowable.address, BigInt(400e18), borrower._address, max);
+  await borrowable.accrueInterest();
+  const borrowBalance = await borrowable.getBorrowBalance(borrower._address);
+  console.log("Borrower`s amount to repay           | %s USDC", borrowBalance / 1e6);
 
-    // Redeem borrower
-    const balanceBorrower = await collateral.balanceOf(borrower._address);
-    await collateral.connect(borrower).redeem(balanceBorrower, borrower._address, borrower._address);
-    // await collateral.connect(borrower).approve(router.address, max);
-    // await router.connect(borrower).redeem(collateral.address, balanceBorrower, borrower._address, max, '0x');
+  // Approve and repay usdc (the router does the calculation to Make sure repay amount is never above owed amount)
+  await usdc.connect(borrower).approve(router.address, max);
+  await router.connect(borrower).repay(borrowable.address, BigInt(400e6), borrower._address, max);
 
-    // Redeem lender
-    const balanceLender = await borrowable.balanceOf(lender._address);
-    await borrowable.connect(lender).redeem(balanceLender, lender._address, lender._address);
+  // Redeem borrower
+  const balanceBorrower = await collateral.balanceOf(borrower._address);
+  await collateral.connect(borrower).redeem(balanceBorrower, borrower._address, borrower._address);
+  // await collateral.connect(borrower).approve(router.address, max);
+  // await router.connect(borrower).redeem(collateral.address, balanceBorrower, borrower._address, max, '0x');
 
-    // Should be a bit higher due to reinvest rewards
-    console.log('Borrower`s LP balance after redeem   | %s LPs', (await lpToken.balanceOf(borrower._address)) / 1e18);
-    console.log('Lender`s DAI balance after redeem    | %s DAI', (await dai.balanceOf(lender._address)) / 1e18);
-    console.log('------------------------------------------------------------------------------');
+  // Redeem lender
+  const balanceLender = await borrowable.balanceOf(lender._address);
+  await borrowable.connect(lender).redeem(balanceLender, lender._address, lender._address);
+
+  // Should be a bit higher due to reinvest rewards
+  console.log("Borrower`s LP balance after redeem   | %s LPs", (await lpToken.balanceOf(borrower._address)) / 1e18);
+  console.log("Lender`s USDC balance after redeem   | %s USDC", (await usdc.balanceOf(lender._address)) / 1e6);
+  console.log("------------------------------------------------------------------------------");
 }
 
 deploy();

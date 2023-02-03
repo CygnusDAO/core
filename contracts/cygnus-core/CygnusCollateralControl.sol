@@ -24,7 +24,7 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
  *          borrow USDC from the borrowable.
  */
-contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "", 18) {
+contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "", 0) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -164,7 +164,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setDebtRatio(uint256 newDebtRatio) external override nonReentrant cygnusAdmin {
+    function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin {
         // Checks if new value is within ranges allowed. If false, reverts with custom error
         validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
@@ -183,7 +183,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override nonReentrant cygnusAdmin {
+    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
@@ -202,7 +202,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      *  @custom:security non-reentrant
      */
-    function setLiquidationFee(uint256 newLiquidationFee) external override nonReentrant cygnusAdmin {
+    function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 

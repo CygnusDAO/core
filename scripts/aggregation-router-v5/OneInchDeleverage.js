@@ -24,12 +24,12 @@ module.exports = async function SwapCallData(
   // Create contracts for token0 and token1
   const token0 = new ethers.Contract(
     await lpToken.token0(),
-    fs.readFileSync("./scripts/abis/dai.json").toString(),
+    fs.readFileSync(path.resolve(__dirname, "../abis/dai.json")).toString(),
     borrower,
   );
   const token1 = new ethers.Contract(
     await lpToken.token1(),
-    fs.readFileSync("./scripts/abis/dai.json").toString(),
+    fs.readFileSync(path.resolve(__dirname, "../abis/dai.json")).toString(),
     borrower,
   );
 
@@ -75,7 +75,7 @@ module.exports = async function SwapCallData(
    */
   const oneInch = async (chainId, fromToken, toToken, amount, router) => {
     const swapData = await fetch(
-      `https://api.1inch.io/v4.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&slippage=0.025&disableEstimate=true&compatibilityMode=true&complexityLevel=3`,
+      `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&slippage=5&disableEstimate=true&compatibilityMode=true&complexityLevel=2&protocols=POLYGON_QUICKSWAP,POLYGON_CURVE,POLYGON_SUSHISWAP,POLYGON_AAVE_V2,COMETH,POLYGON_MSTABLE,POLYGON_DODO,POLYGON_BALANCER_V2,POLYGON_QUICKSWAP_V3,POLYGON_SWAAP,POLYGON_ELK,POLYGON_QUICKSWAP_V3,POLYGON_UNISWAP_V3,MM_FINANCE,DFYN,POLYDEX_FINANCE,IRONSWAP`,
     ).then(response => response.json());
 
     return swapData;
@@ -92,13 +92,13 @@ module.exports = async function SwapCallData(
       firstSwap = await oneInch(chainId, token1.address, usdc, burnAmountToken1, router);
 
       // Calls with second empty
-      calls = [...calls, firstSwap.tx.data.toString().replace("0x7c025200", "0x"), "0x"];
+      calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x"), "0x"];
     } else {
       // Swap token0 to usdc
       firstSwap = await oneInch(chainId, token0.address, usdc, burnAmountToken0, router);
 
       // Calls with second empty
-      calls = [...calls, firstSwap.tx.data.toString().replace("0x7c025200", "0x"), "0x"];
+      calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x"), "0x"];
     }
   } else {
     //
@@ -109,12 +109,11 @@ module.exports = async function SwapCallData(
 
     // Swap token1 to USDC
     lastSwap = await oneInch(chainId, token1.address, usdc, burnAmountToken1, router);
-
     // Build call array replacing the swap tx data
     calls = [
       ...calls,
-      firstSwap.tx.data.toString().replace("0x7c025200", "0x"),
-      lastSwap.tx.data.toString().replace("0x7c025200", "0x"),
+      firstSwap.tx.data.toString().replace("0x12aa3caf", "0x"),
+      lastSwap.tx.data.toString().replace("0x12aa3caf", "0x"),
     ];
   }
 

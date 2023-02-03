@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
-import { CygnusBorrowTracker } from "./CygnusBorrowTracker.sol";
+import { CygnusBorrowVoid } from "./CygnusBorrowVoid.sol";
 
 // Libraries
 import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
@@ -12,7 +12,6 @@ import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
 // Interfaces
 import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
 import { ICygnusTerminal } from "./CygnusTerminal.sol";
-import { IERC20 } from "./interfaces/IERC20.sol";
 import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
 import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
 
@@ -30,7 +29,7 @@ import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
  *          position. If there is no calldata, the user can simply borrow instead of leveraging. The same borrow
  *          function is used to repay a loan, by checking the totalBalance held of USDC (the router handles this).
  */
-contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
+contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -143,9 +142,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
             });
         }
 
-        // Check borrow allowance at Cygnus Borrow Approve
-        borrowApproveUpdate(borrower, _msgSender(), borrowAmount);
-
         // Optimistically transfer borrowAmount to `receiver`
         if (borrowAmount > 0) {
             underlying.safeTransfer(receiver, borrowAmount);
@@ -157,7 +153,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         }
 
         // Get total balance of the underlying asset
-        uint256 balance = IERC20(underlying).balanceOf(address(this));
+        uint256 balance = underlying.balanceOf(address(this));
 
         // Calculate the user's amount outstanding
         uint256 repayAmount = (balance + borrowAmount) - totalBalanceStored;
@@ -207,7 +203,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowTracker {
         address liquidator
     ) external override nonReentrant update accrue returns (uint256 cygLPAmount) {
         // Latest balance after accrue's sync
-        uint256 balance = IERC20(underlying).balanceOf(address(this));
+        uint256 balance = underlying.balanceOf(address(this));
 
         // Borrow balance
         uint256 borrowerBalance = getBorrowBalance(borrower);

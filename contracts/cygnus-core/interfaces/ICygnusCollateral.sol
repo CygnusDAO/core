@@ -2,12 +2,12 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralModel } from "./ICygnusCollateralModel.sol";
+import { ICygnusCollateralVoid } from "./ICygnusCollateralVoid.sol";
 
 /**
  *  @title ICygnusCollateral Interface for the main collateral contract which handles collateral seizes
  */
-interface ICygnusCollateral is ICygnusCollateralModel {
+interface ICygnusCollateral is ICygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -80,9 +80,5 @@ interface ICygnusCollateral is ICygnusCollateralModel {
      *  @param data Calldata passed from and back to router contract
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(
-        address redeemer,
-        uint256 assets,
-        bytes calldata data
-    ) external;
+    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external;
 }

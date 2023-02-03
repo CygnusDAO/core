@@ -1,12 +1,13 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
+const path = require("path");
 
 // Custom
-const Make = require("../test/MakeInch.js");
-const Users = require("../test/Users.js");
-const Strategy = require("../test/Strategy.js");
-const leverageSwapData = require("./aggregation-router-v4/OneInchLeverage.js");
-const deleverageSwapData = require("./aggregation-router-v4/OneInchDeleverage.js");
+const Make = require(path.resolve(__dirname, "../test/MakeInch.js"));
+const Users = require(path.resolve(__dirname, "../test/Users.js"));
+const Strategy = require(path.resolve(__dirname, "../test/Strategy.js"));
+const leverageSwapData = require(path.resolve(__dirname, "./aggregation-router-v5/OneInchLeverage.js"));
+const deleverageSwapData = require(path.resolve(__dirname, "./aggregation-router-v5/OneInchDeleverage.js"));
 
 // OE
 const { time } = require("@openzeppelin/test-helpers");
@@ -16,15 +17,14 @@ const max = ethers.constants.MaxUint256;
 
 async function deploy() {
   // Cygnus contracts and underlyings
-  let [oracle, factory, router, borrowable, collateral, usdc, lpToken] = await Make();
+  const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
   // Strategy
-  let [voidRouter, masterChef, rewardToken, pid, swapFee] = await Strategy();
+  const [voidRouter, masterChef, rewardToken, pid] = await Strategy();
 
   // Users
-  let [owner, daoReservesManager, safeAddress2, lender, borrower] = await Users();
+  const [owner, , safeAddress2, lender, borrower] = await Users();
 
-  const chainId = 43114;
   const nativeToken = await router.nativeToken();
 
   // INITIALIZE VOID
@@ -42,14 +42,14 @@ async function deploy() {
   const oneLPToken = await collateral.getLPTokenPrice();
 
   // Leverage
-  let xLeverage = BigInt(12);
+  const xLeverage = BigInt(2);
 
   console.log("----------------------------------------------------------------------------------------------");
   console.log("PRICE OF 1 LP TOKEN                            | %s USDC", oneLPToken / 1e6);
   console.log("----------------------------------------------------------------------------------------------");
 
-  let lpTokenBalanceBeforeDeposit = await lpToken.balanceOf(borrower._address);
-  let usdcBalanceBeforeDeposit = await usdc.balanceOf(lender._address);
+  const lpTokenBalanceBeforeDeposit = (await lpToken.balanceOf(borrower._address)) / 8;
+  const usdcBalanceBeforeDeposit = await usdc.balanceOf(lender._address);
 
   console.log("Borrower`s LP balance before deposit           | %s LP Tokens", lpTokenBalanceBeforeDeposit / 1e18);
   console.log("Lender`s USDC balance before deposit           | %s USDC", usdcBalanceBeforeDeposit / 1e6);
@@ -64,7 +64,7 @@ async function deploy() {
 
   // Lender: Approve borrowable in USDC
   await usdc.connect(lender).approve(borrowable.address, max);
-  await borrowable.connect(lender).deposit(BigInt(30000e6), lender._address);
+  await borrowable.connect(lender).deposit(BigInt(1000000e6), lender._address);
 
   console.log("BEFORE LEVERAGE");
   console.log("----------------------------------------------------------------------------------------------");
@@ -82,11 +82,11 @@ async function deploy() {
   console.log("----------------------------------------------------------------------------------------------");
 
   // Borrower: Approve borrow
-  await borrowable.connect(borrower).borrowApprove(router.address, max);
-  let accountLiquidity = await collateral.getAccountLiquidity(borrower._address);
-  let liqIncentive = await collateral.liquidationIncentive();
-  let maxLiquidity = (BigInt(accountLiquidity.liquidity) * BigInt(1e18)) / BigInt(liqIncentive);
-  let leverageAmount = maxLiquidity * xLeverage;
+  // await borrowable.connect(borrower).borrowApprove(router.address, max);
+  const accountLiquidity = await collateral.getAccountLiquidity(borrower._address);
+  const liqIncentive = await collateral.liquidationIncentive();
+  const maxLiquidity = (BigInt(accountLiquidity.liquidity) * BigInt(1e18)) / BigInt(liqIncentive);
+  const leverageAmount = maxLiquidity * xLeverage;
 
   // Console.log
   console.log("Leverage USDC Amount ---------------->: %s", leverageAmount);
@@ -95,9 +95,16 @@ async function deploy() {
   await usdc.connect(borrower).approve(router.address, max);
 
   // Byte array with data from 1inch 'swap' calls
-  let leverageCalls = await leverageSwapData( chainId, lpToken, nativeToken, usdc.address, router.address, leverageAmount);
+  const leverageCalls = await leverageSwapData(
+    chainId,
+    lpToken,
+    nativeToken,
+    usdc.address,
+    router.address,
+    leverageAmount,
+  );
 
-  // 
+  //
   await router.connect(borrower).leverage(
     collateral.address, // Cygnus Collateral address
     borrowable.address, // Cygnus Borrowable address
@@ -105,8 +112,8 @@ async function deploy() {
     0, // Min amount of LP Tokens to receive (frontend using current LP Token price)
     borrower._address, // Receiver of the CygLP
     max, // Deadline
-    "0x", // Permit calldata
     leverageCalls, // Byte array holding the 1inch swap calls
+    "0x",
   );
 
   // Borrower`s borrow balance
@@ -119,7 +126,11 @@ async function deploy() {
   const totalBalanceC = await collateral.totalBalance();
 
   console.log(`Borrowers USDC debt after ${Number(xLeverage)} leverage        | %s USDC`, borrowBalanceAfter / 1e6);
-  console.log(`Borrowers debt ratio after ${Number(xLeverage)} leverage       | % %s`, (await collateral.getDebtRatio(borrower._address)) / 1e16);
+  console.log(
+    `Borrowers debt ratio after ${Number(xLeverage)} leverage       | % %s`,
+    (await collateral.getDebtRatio(borrower._address)) / 1e16,
+  );
+
   console.log(`Borrowers CygLP balance after ${Number(xLeverage)} leverage    | %s CygLP`, denebBalanceAfterL / 1e18);
   console.log(`Borrowables USDC balance after ${Number(xLeverage)} leverage   | %s USDC`, albireoBalanceAfterL / 1e6);
   console.log(`Collaterals totalBalance after ${Number(xLeverage)} leverage   | %s LP Tokens`, totalBalanceC / 1e18);
@@ -133,7 +144,10 @@ async function deploy() {
   const reinvestorBalance = await rewardTokenContract.balanceOf(safeAddress2.address);
   const balanceBeforeReinvest = await collateral.totalBalance();
 
-  console.log("Borrower`s debt ratio before reinvesting       | % %s", (await collateral.getDebtRatio(borrower._address)) / 1e16,);
+  console.log(
+    "Borrower`s debt ratio before reinvesting       | % %s",
+    (await collateral.getDebtRatio(borrower._address)) / 1e16,
+  );
   console.log("Collateral`s totalBalance before reinvesting   | %s LP Tokens", balanceBeforeReinvest / 1e18);
   console.log("Reinvestor`s balanceOf token before reinvest   | %s JOE (or other)", reinvestorBalance / 1e18);
 
@@ -163,7 +177,7 @@ async function deploy() {
   const er = await collateral.exchangeRate();
   const deleverageLPAmount = (deleverageCygLPAmount * BigInt(er)) / BigInt(1e18);
 
-  let deleverageCalls = await deleverageSwapData(
+  const deleverageCalls = await deleverageSwapData(
     chainId,
     lpToken,
     nativeToken,
@@ -178,7 +192,7 @@ async function deploy() {
 
   await router
     .connect(borrower)
-    .deleverage(collateral.address, borrowable.address, deleverageCygLPAmount, 0, max, "0x", deleverageCalls, {
+    .deleverage(collateral.address, borrowable.address, deleverageCygLPAmount, 0, max, deleverageCalls, "0x", {
       gasLimit: 12000000,
     });
 
@@ -222,10 +236,9 @@ async function deploy() {
 
   // Borrowables balance and supply
   // Only USDC left and CygUSD are dao reserves
-  let totalSupply = (await borrowable.totalSupply()) / 1e6;
+  const totalSupply = (await borrowable.totalSupply()) / 1e6;
   console.log("totalBalance of borrowable after full redeem   | %s USDC ", (await borrowable.totalBalance()) / 1e6);
   console.log("totalSupply of borrowable after full redeem    | %s CygUSD", totalSupply);
-
 }
 
 deploy();

@@ -20,7 +20,7 @@ import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
  *          The constructor stores the collateral address this pool is linked with, and only this address can
  *          be used as collateral to borrow this contract`s underlying.
  */
-contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrow", "CygUSD", 6) {
+contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrowable", "", 0) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -124,15 +124,15 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *          and stored during deployment
      */
     constructor() {
-        // Get base rate and multiplier from orbiter
-        uint256 baseRate;
-        uint256 multiplier;
-
         // Get collateral contract and interest rate parameters
-        (, , collateral, , baseRate, multiplier) = IAlbireoOrbiter(_msgSender()).borrowParameters();
+        (, , address _collateral, , uint256 baseRate, uint256 multiplier) = IAlbireoOrbiter(_msgSender())
+            .borrowParameters();
 
         // Update the interest rate model and do min max checks
         interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
+
+        // Set collateral
+        collateral = _collateral;
 
         // Set initial exchange rate of CygUSD and underlying
         exchangeRateStored = 1e18;
@@ -158,6 +158,13 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         if (value < min || value > max) {
             revert CygnusBorrowControl__ParameterNotInRange({ min: min, max: max, value: value });
         }
+    }
+
+    /**
+     *  @return The uint32 block timestamp
+     */
+    function getBlockTimestamp() internal view returns (uint32) {
+        return uint32(block.timestamp);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -222,7 +229,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         uint256 multiplierPerYear_,
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
-    ) external override nonReentrant cygnusAdmin {
+    ) external override cygnusAdmin {
         // Update Per second rates
         interestRateModelInternal(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
@@ -232,7 +239,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setCygnusBorrowRewarder(address newBorrowRewarder) external override nonReentrant cygnusAdmin {
+    function setCygnusBorrowRewarder(address newBorrowRewarder) external override cygnusAdmin {
         // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
         // case it's inactive
 
@@ -259,7 +266,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant
      */
-    function setReserveFactor(uint256 newReserveFactor) external override nonReentrant cygnusAdmin {
+    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
         // Check if parameter is within range allowed
         validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
 

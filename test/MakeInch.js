@@ -6,45 +6,46 @@ const path = require("path");
 const hre = require("hardhat");
 const ethers = hre.ethers;
 
-/*////////////////////////////////////////////////////////////
- /                                                           /
- /              SETUP OF ALL CYGNUS CONTRACTS                /
- /                                                           /
- ////////////////////////////////////////////////////////////*/
+/**
+ * @notice Main test setup
+ */
 module.exports = async function Make() {
+  // 0. Chain ID
+  const chainId = 137;
+
   // Addresses in this chain //
 
   // 1. LP Token address -----------------------------------------------------
-  const lpTokenAddress = "0x454e67025631c065d3cfad6d71e6892f74487a15";
+  const lpTokenAddress = "0xc4e595acdd7d12fec385e5da5d43160e8a0bac0e";
 
   // 2. USDC address on this chain --------------------------------------------
-  const usdcAddress = "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e";
+  const usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 
   // 3. Native chain token ---------------------------------------------------
-  const nativeAddress = "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7";
+  const nativeAddress = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
 
   // 4. Chainlink aggregators ------------------------------------------------
 
   // USDC aggregator
-  const usdcAggregator = "0xF096872672F44d6EBA71458D74fe67F9a77a23B9";
+  const usdcAggregator = "0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7";
   // Token0 from LP Token
-  const token0Aggregator = "0x02D35d3a8aC3e1626d3eE09A78Dd87286F5E8e3a";
+  const token0Aggregator = "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0";
   // Token1 from LP Token
-  const token1Aggregator = "0x0A77230d17318075983913bC2145DB16C7366156";
+  const token1Aggregator = "0xF9680D99D6C9589e2a93a78A04A279e509205945";
 
   // 5. DEX of this LP Token -------------------------------------------------
 
   // Name
-  const orbiterName = "TraderJoe";
+  const orbiterName = "Sushiswap";
 
   // 6. DEX Aggregator (1 Inch)
   //
-  const oneInchAggregatorV4 = '0x1111111254fb6c44bac0bed2854e76f90643097d';
+  const oneInchAggregatorV4 = "0x1111111254eeb25477b68fb85ed929f73a960582";
 
   // ═══════════════════ 0. SETUP ══════════════════════════════════════════════════════════
 
   // Admin and ReservesManager
-  [owner, daoReserves, safeAddress1] = await ethers.getSigners();
+  const [owner, daoReserves] = await ethers.getSigners();
 
   // Make contract
   const usdcAbi = fs.readFileSync(path.resolve(__dirname, "./abis/usdc.json")).toString();
@@ -52,7 +53,6 @@ module.exports = async function Make() {
 
   const lpTokenAbi = fs.readFileSync(path.resolve(__dirname, "./abis/lptoken.json")).toString();
   const lpToken = new ethers.Contract(lpTokenAddress, lpTokenAbi, owner);
-
 
   // ═══════════════════ 1. ORACLE ═══════════════════════════════════════════════════════════
 
@@ -94,7 +94,7 @@ module.exports = async function Make() {
   const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, oracle.address);
 
   // Orbiter
-  const orbiter = await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
+  await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
 
   console.log("Cygnus Factory     | %s", factory.address);
   console.log("──────────────────────────────────────────────────────────────────────────────");
@@ -113,13 +113,8 @@ module.exports = async function Make() {
 
   // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
 
-  // custom pool rates for the JoeAvax lending pool
-  const baseRate = BigInt(0);
-
-  const multiplier = BigInt(0);
-
   // Shuttle with LP Token address from setup
-  await factory.deployShuttle(lpToken.address, 0, baseRate, multiplier);
+  await factory.deployShuttle(lpToken.address, 0, 0, 0);
 
   const shuttle = await factory.getShuttles(lpToken.address, 0);
 
@@ -131,10 +126,10 @@ module.exports = async function Make() {
   console.log("──────────────────────────────────────────────────────────────────────────────");
 
   // Borrowable and collateral contracts
-  const borrowable = await ethers.getContractAt("CygnusBorrow", shuttle.borrowable, owner);
+  const borrowable = await ethers.getContractAt("CygnusBorrow", shuttle.borrowable);
 
-  const collateral = await ethers.getContractAt("CygnusCollateral", shuttle.collateral, owner);
+  const collateral = await ethers.getContractAt("CygnusCollateral", shuttle.collateral);
 
   // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
-  return [oracle, factory, router, borrowable, collateral, usdc, lpToken];
+  return [oracle, factory, router, borrowable, collateral, usdc, lpToken, chainId];
 };

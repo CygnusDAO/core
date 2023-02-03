@@ -3,7 +3,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import { ICygnusCollateralModel } from "./interfaces/ICygnusCollateralModel.sol";
-import { CygnusCollateralVoid } from "./CygnusCollateralVoid.sol";
+import { CygnusCollateralControl } from "./CygnusCollateralControl.sol";
 
 // Libraries
 import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
@@ -28,7 +28,7 @@ import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
  *          user can borrow or not and can be called by anyone, returning `false` if the account has shortfall,
  *          otherwise will return `true`.
  */
-contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralVoid {
+contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

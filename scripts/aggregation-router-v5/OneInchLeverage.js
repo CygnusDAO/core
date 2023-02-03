@@ -1,6 +1,5 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
-const fs = require("fs");
 
 /**
  *  @notice Build 1inch swaps using AggregationRouterV4. Inspired by https://github.com/smye/1inch-swap/
@@ -17,7 +16,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
   /**
    *  @notice TokenA and TokenB placeholders, and placeholders for the maximum amount of swaps possible (2)
    */
-  let tokenA, tokenB, firstSwap, secondSwap;
+  let tokenA, tokenB, firstSwap;
 
   /**
    *  @notice Byte data array to pass to our periphery contract with the api calls from 1inch to complete the swaps
@@ -37,7 +36,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
     const b = amountA * 1000 * reservesA * 4 * _dexSwapFee;
     const c = Math.sqrt(a * a + b);
     const d = 2 * _dexSwapFee;
-    let res = (c - a) / d;
+    const res = (c - a) / d;
     return res;
   };
 
@@ -50,8 +49,9 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
    *  @param {String} router - The address of the router (this is not really needed, but convinient)
    */
   const oneInch = async (chainId, fromToken, toToken, amount, router) => {
-    let swapData = await fetch(
-      `https://api.1inch.io/v4.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&slippage=0.025&disableEstimate=true&compatibilityMode=true&complexityLevel=3`,
+    // Fetch 1inch API
+    const swapData = await fetch(
+      `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&slippage=5&disableEstimate=true&compatibilityMode=true&complexityLevel=2&protocols=POLYGON_QUICKSWAP,POLYGON_CURVE,POLYGON_SUSHISWAP,POLYGON_AAVE_V2,COMETH,POLYGON_MSTABLE,POLYGON_DODO,POLYGON_BALANCER_V2,POLYGON_QUICKSWAP_V3,POLYGON_SWAAP,POLYGON_ELK,POLYGON_QUICKSWAP_V3,POLYGON_UNISWAP_V3,MM_FINANCE,DFYN,POLYDEX_FINANCE,IRONSWAP`,
     ).then(response => response.json());
 
     return swapData;
@@ -72,7 +72,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
       firstSwap = await oneInch(chainId, lendingToken, nativeToken, leverageUsdcAmount, router);
 
       // Add to call array
-      calls = [...calls, firstSwap.tx.data.toString().replace("0x7c025200", "0x")];
+      calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x")];
 
       // Assign tokenA to Native
       [tokenA, tokenB] = token0 === nativeToken ? [token0, token1] : [token1, token0];
@@ -84,7 +84,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
       firstSwap = await oneInch(chainId, lendingToken, token0, leverageUsdcAmount, router);
 
       // Add to call array
-      calls = [...calls, firstSwap.tx.data.toString().replace("0x7c025200", "0x")];
+      calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x")];
 
       // Assign tokenA to token0
       [tokenA, tokenB] = [token0, token1];
@@ -99,7 +99,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
   const optimalTokenA = optimalDeposit(firstSwap.toTokenAmount, ethers.utils.formatUnits(reservesA, 0), 997);
 
   // Do the second swap
-  secondSwap = await oneInch(
+  const secondSwap = await oneInch(
     chainId,
     tokenA,
     tokenB,
@@ -107,7 +107,7 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
     router,
   );
 
-  calls = [...calls, secondSwap.tx.data.toString().replace("0x7c025200", "0x")];
+  calls = [...calls, secondSwap.tx.data.toString().replace("0x12aa3caf", "0x")];
 
   // Return LP Tokens minted by borrowing `leverageUsdcAmount` of USDC
   return calls;

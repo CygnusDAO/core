@@ -383,7 +383,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Check if collateral orbiter already exists, reverts if it does
         checkOrbitersInternal(albireoOrbiter, denebOrbiter, totalOrbiters);
 
-        // Orbiters, ID starts from 0 so length is alwyas 1 ahead from record
+        // Create storage for orbiters with this ID
         Orbiter storage orbiter = getOrbiters[totalOrbiters];
 
         // ID for this group of collateral and borrow orbiters
@@ -410,7 +410,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @notice Reverts future deployments with orbiter
+     *  @notice Reverts future deployments with disabled orbiter
      *  @inheritdoc ICygnusFactory
      */
     function switchOrbiterStatus(uint256 orbiterId) external override cygnusAdmin {
@@ -444,13 +444,6 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         if (newPriceOracle == address(0)) {
             revert CygnusFactory__CygnusNebulaCantBeZero();
         }
-        /// @custom:error CygnusNebulaAlreadySet Avoid setting the same address twice
-        else if (newPriceOracle == address(cygnusNebulaOracle)) {
-            revert CygnusFactory__CygnusNebulaAlreadySet({
-                priceOracle: address(cygnusNebulaOracle),
-                newPriceOracle: newPriceOracle
-            });
-        }
 
         // Assign old oracle address for event
         IChainlinkNebulaOracle oldOracle = cygnusNebulaOracle;
@@ -470,13 +463,6 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         /// @custom:error CygnusAdminAlreadySet Avoid setting the pending admin as the current admin
         if (newPendingAdmin == admin) {
             revert CygnusFactory__AdminAlreadySet({ newPendingAdmin: newPendingAdmin, admin: admin });
-        }
-        /// @custom:error PendingAdminAlreadySet Avoid setting the same pending admin twice
-        else if (newPendingAdmin == pendingAdmin) {
-            revert CygnusFactory__PendingAdminAlreadySet({
-                newPendingAdmin: newPendingAdmin,
-                pendingAdmin: pendingAdmin
-            });
         }
 
         // Address of the pending admin until this point
@@ -522,13 +508,6 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
             revert CygnusFactory__DaoReservesAlreadySet({
                 newPendingDaoReserves: newPendingDaoReserves,
                 daoReserves: daoReserves
-            });
-        }
-        /// @custom:error PendingDaoReservesAlreadySet Avoid setting the same pending dao reserves address twice
-        else if (newPendingDaoReserves == pendingDaoReserves) {
-            revert CygnusFactory__PendingDaoReservesAlreadySet({
-                newPendingDaoReserves: newPendingDaoReserves,
-                pendingDaoReserves: pendingDaoReserves
             });
         }
 
