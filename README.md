@@ -33,6 +33,7 @@ By lending stablecoins to borrowers in specific farms, lenders earn an APY in st
 # **Protocol Features**
 
 There are NO deposit fees, NO borrow fees or NO lending fees. Users are free to deposit and redeem their positions whenever they want at no cost aside from gas fees.
+  
+  ![image](https://user-images.githubusercontent.com/97303883/225300674-ec0c0260-ea1b-4dab-9654-e41fc7f72ca2.png)
 
-  ![image](https://user-images.githubusercontent.com/97303883/175662172-723323cb-1f04-46c5-afd6-66bc5ce84faf.png)
  
