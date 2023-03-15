@@ -2,14 +2,14 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowModel } from "./interfaces/ICygnusBorrowModel.sol";
-import { CygnusBorrowControl } from "./CygnusBorrowControl.sol";
+import {ICygnusBorrowModel} from "./interfaces/ICygnusBorrowModel.sol";
+import {CygnusBorrowControl} from "./CygnusBorrowControl.sol";
 
 // Libraries
-import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import { ICygnusFarmingPool } from "./interfaces/ICygnusFarmingPool.sol";
+import {ICygnusFarmingPool} from "./interfaces/ICygnusFarmingPool.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
@@ -27,7 +27,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /**
      *  @custom:library PRBMathUD60x18 Library for uint256 fixed point math, also imports the main library `PRBMath`
      */
-    using PRBMathUD60x18 for uint256;
+    using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
@@ -49,12 +49,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @notice Internal mapping of account addresses to outstanding borrow balances
      */
     mapping(address => BorrowSnapshot) internal borrowBalances;
-
-    /**
-     *  @notice Internal variable to keep track of reserve mints used by CygnusBorrow contract to add to
-     *          `totalReserves`. Keep track internally to avoid using `balanceOf` and break accounting
-     */
-    uint256 internal mintedReserves;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -126,21 +120,21 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function getBorrowRate(uint256 cash, uint256 borrows, uint256 reserves) internal view returns (uint256) {
         // Utilization rate (borrows * scale) / ((cash + borrows) - reserves)
-        uint256 util = borrows.div((cash + borrows) - reserves);
+        uint256 util = borrows.divWad((cash + borrows) - reserves);
 
         // If utilization <= kink return normal rate
         if (util <= kinkUtilizationRate) {
-            return util.mul(multiplierPerSecond) + baseRatePerSecond;
+            return util.mulWad(multiplierPerSecond) + baseRatePerSecond;
         }
 
         // else return normal rate + kink rate
-        uint256 normalRate = kinkUtilizationRate.mul(multiplierPerSecond) + baseRatePerSecond;
+        uint256 normalRate = kinkUtilizationRate.mulWad(multiplierPerSecond) + baseRatePerSecond;
 
         // Get the excess utilization rate
         uint256 excessUtil = util - kinkUtilizationRate;
 
         // Return per second borrow rate
-        return excessUtil.mul(jumpMultiplierPerSecond) + normalRate;
+        return excessUtil.mulWad(jumpMultiplierPerSecond) + normalRate;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -160,11 +154,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Calculate new borrow balance with the interest index
         return
-            PRBMath.mulDiv(
-                uint256(borrowSnapshot.principal),
-                uint256(borrowIndex),
-                uint256(borrowSnapshot.interestIndex)
-            );
+            uint256(borrowSnapshot.principal).fullMulDiv(uint256(borrowIndex), uint256(borrowSnapshot.interestIndex));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -173,9 +163,16 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @inheritdoc ICygnusBorrowModel
      */
     function utilizationRate() external view override returns (uint256) {
+        // Gas savings
+        uint256 _totalBorrows = uint256(totalBorrows);
+
+        // Util is 0 if there are no borrows
+        if (_totalBorrows == 0) {
+            return 0;
+        }
+
         // Return the current pool utilization rate
-        return
-            totalBorrows == 0 ? 0 : uint256(totalBorrows).div((totalBalance + uint256(totalBorrows)) - totalReserves);
+        return _totalBorrows.divWad((totalBalance + _totalBorrows) - totalReserves);
     }
 
     /**
@@ -183,13 +180,18 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function supplyRate() external view override returns (uint256) {
         // Current burrow rate taking into account the reserve factor
-        uint256 rateToPool = uint256(borrowRate).mul(1e18 - reserveFactor);
+        uint256 rateToPool = uint256(borrowRate).mulWad(1e18 - reserveFactor);
+
+        // Return 0 when borrow rate is 0
+        if (rateToPool == 0) { 
+          return 0;
+        }
+
+        // Utilization rate
+        uint256 util = uint256(totalBorrows).divWad((totalBalance + totalBorrows) - totalReserves);
 
         // Return pool supply rate
-        return
-            rateToPool == 0
-                ? 0
-                : uint256(totalBorrows).div((totalBalance + totalBorrows) - totalReserves).mul(rateToPool);
+        return util.mulWad(rateToPool);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -359,16 +361,16 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 interestFactor = borrowRateStored * timeElapsed;
 
         // 3. Calculate the interest accumulated in this time elapsed
-        uint256 interestAccumulated = interestFactor.mul(totalBorrowsStored);
+        uint256 interestAccumulated = interestFactor.mulWad(totalBorrowsStored);
 
         // 4. Add the interest accumulated to total borrows
         totalBorrowsStored += interestAccumulated;
 
         // 5. Add interest to total reserves (reserveFactor * interestAccumulated / scale) + reservesStored
-        reservesStored += reserveFactor.mul(interestAccumulated);
+        reservesStored += reserveFactor.mulWad(interestAccumulated);
 
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
-        borrowIndexStored += interestFactor.mul(borrowIndexStored);
+        borrowIndexStored += interestFactor.mulWad(borrowIndexStored);
 
         // ────── Store values: 2 memory slots with uint32 lastAccrualTime ──────
 

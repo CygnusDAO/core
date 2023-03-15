@@ -18,11 +18,6 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
     error CygnusCollateral__InsufficientLiquidity(address from, address to, uint256 value);
 
     /**
-     *  @custom:error LiquiditingSelf Reverts when liquidator address is the borrower address
-     */
-    error CygnusCollateral__CantLiquidateSelf(address borrower, address liquidator);
-
-    /**
      *  @custom:error MsgSenderNotBorrowable Reverts when the msg.sender of the liquidation is not `borrowable`
      */
     error CygnusCollateral__MsgSenderNotBorrowable(address sender, address borrowable);

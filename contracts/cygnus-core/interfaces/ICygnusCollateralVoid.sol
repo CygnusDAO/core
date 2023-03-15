@@ -3,11 +3,11 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralModel } from "./ICygnusCollateralModel.sol";
+import {ICygnusCollateralModel} from "./ICygnusCollateralModel.sol";
 
 // Interfaces
-import { IDexRouter02 } from "./IDexRouter.sol";
-import { IMiniChef } from "./IMiniChef.sol";
+import {IDexRouter02} from "./IDexRouter.sol";
+import {IMiniChef} from "./IMiniChef.sol";
 
 /**
  *  @title ICygnusCollateralVoid
@@ -22,32 +22,33 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     /**
      *  @custom:error OnlyAccountsAllowed Reverts when the transaction origin and sender are different
      */
-    error CygnusCollateralChef__OnlyEOAAllowed(address sender, address origin);
+    error CygnusCollateralVoid__OnlyEOAAllowed(address sender, address origin);
 
     /**
-     *  @custom:error InvalidRewardsToken Reverts when initializing the Void twice
+     *  @custom:error VoidAlreadyInitialized Reverts when re-initalizing the strategy
      */
-    error CygnusCollateralChef__VoidAlreadyInitialized(address tokenReward);
+    error CygnusCollateralVoid__VoidAlreadyInitialized(uint256 poolId);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @param _dexRouter The address of the router that is used by the DEX (must be UniswapV2 compatible)
-     *  @param _rewarder The address of the rewarder contract
-     *  @param _rewardsToken The address of the token that rewards are paid in
-     *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
+     *  @notice Emitted when admin implements strategy
+     *  @param timestamp The current block timestamp
+     *  @param shuttleId This lending pool ID
+     *  @param underlying The underlying collateral asset (LP Token)
+     *  @param rewarderPoolId The pool ID of the rewarder (Masterchef PID)
      *  @custom:event ChargeVoid Logs when the strategy is first initialized
      */
-    event ChargeVoid(IDexRouter02 _dexRouter, IMiniChef _rewarder, address _rewardsToken, uint256 _pid);
+    event ChargeVoid(uint256 timestamp, uint256 shuttleId, address underlying, uint256 rewarderPoolId);
 
     /**
+     *  @notice Emitted when user reinvests rewards
      *  @param shuttle The address of this lending pool
      *  @param reinvestor The address of the caller who reinvested reward and received bounty
      *  @param rewardBalance The amount reinvested
-     *  @param reinvestReward The reward received by the reinvestor
-     *  @param daoReward The reward received by the DAO
+     *  @param reinvestReward The reward received by the reinvestor @param daoReward The reward received by the DAO
      *  @custom:event RechargeVoid Logs when rewards from the Masterchef/Rewarder are reinvested into more LP Tokens
      */
     event RechargeVoid(
@@ -73,43 +74,54 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     function DAO_REWARD() external pure returns (uint256);
 
     /**
+     *  @return lastReinvest The block timestamp of the last reinvest for this pool
+     */
+    function lastReinvest() external returns (uint256);
+
+    /**
      *  @notice Getter for this contract's void values (if activated) showing the rewarder address, pool id, etc.
-     *  @return _rewarder The address of the rewarder
-     *  @return _dexRouter The address of the dex' router used to swap between tokens
-     *  @return _rewardsToken The address of the rewards token from the Dex
-     *  @return _pid The pool ID the collateral's underlying LP Token belongs to in the rewarder
+     *  @return rewarder The address of the rewarder
+     *  @return dexRouter The address of the dex' router used to swap between tokens
+     *  @return rewardsToken The address of the rewards token from the Dex
+     *  @return pid The pool ID the collateral's underlying LP Token belongs to in the rewarder
      */
     function getCygnusVoid()
         external
         view
-        returns (IMiniChef _rewarder, IDexRouter02 _dexRouter, address _rewardsToken, uint256 _pid);
+        returns (IMiniChef rewarder, IDexRouter02 dexRouter, address rewardsToken, uint256 pid);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice 👽
-     *  @notice Initializes the rewarder for this pool
-     *  @param _dexRouter The address of the router that is used by the DEX that owns the liquidity pool
-     *  @param _rewarder The address of the rewarder contract
-     *  @param _rewardsToken The address of the token that rewards are paid in
+     *  @notice Initializes the pool id for the strategy (Masterchef/Goose pool ID)
      *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
-    function chargeVoid(IDexRouter02 _dexRouter, IMiniChef _rewarder, address _rewardsToken, uint256 _pid) external;
+    function chargeVoid(uint256 _pid) external;
 
     /**
      *  @notice Reinvests all rewards from the rewarder to buy more LP Tokens to then deposit back into the rewarder
      *          This makes totalBalance increase in this contract, increasing the exchangeRate between
-     *          CygnusLP and underlying, thus lowering user's debt ratios
-     *  @custom:security non-reentrant
+     *          CygnusLP and underlying and thus lowering user's debt ratios
+     *  @custom:security non-reentrant only-eoa
      */
     function reinvestRewards_y7b() external;
 
     /**
-     *  @notice Converts all the dust we may have from token0/token1 to rewardsToken
-     *  @custom:security non-reentrant
+     *  @notice Manually get rewards from the rewarder
+     *  @return pendingReward The amount of rewards in `rewardsToken` pending to harvest
+     *  @custom:security non-reentrant only-eoa
      */
-    function smokeDust() external;
+    function getRewards() external returns (uint256 pendingReward);
+
+    /**
+     *  @notice Converts all the dust we may have from token0/token1 to rewardsToken
+     *  @notice No check for underlying since tokenA/tokenB can't be liquidity token
+     *  @return amountTokenA The amount of tokenA swept
+     *  @return amountTokenB The amount of tokenB swept
+     *  @custom:security non-reentrant only-eoa
+     */
+    function smokeDust() external returns (uint256 amountTokenA, uint256 amountTokenB);
 }

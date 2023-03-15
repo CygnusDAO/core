@@ -18,7 +18,7 @@ async function deploy() {
   const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
 
   // Strateg}
-  const [voidRouter, masterChef, rewardToken, pid] = await Strategy();
+  const [, , , pid] = await Strategy();
 
   // Users
   const [owner, , , lender, borrower] = await Users();
@@ -26,7 +26,7 @@ async function deploy() {
   // ═════════════════════ INITIALIZE VOID ═══════════════════════════════════════════════════════════════
 
   // Initialize with: TRADERJOE ROUTER / MiniChefV3 proxy / JOE / pool id / swapfee
-  await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, pid);
+  await collateral.connect(owner).chargeVoid(pid);
 
   console.log("----------------------------------------------------------------------------------------------");
   console.log("Price of LP Token                    | %s USDC", (await collateral.getLPTokenPrice()) / 1e6);
@@ -63,13 +63,17 @@ async function deploy() {
   await usdc.connect(lender).approve(borrowable.address, max);
   await borrowable.connect(lender).deposit(BigInt(3000e6), lender._address);
 
-  const usdcBalanceBorrower = await usdc.balanceOf(borrower._address);
   const cygLPBalanceBorrower = await collateral.balanceOf(borrower._address);
+  const cygUSDBalanceLender = await borrowable.balanceOf(lender._address);
+
+  console.log("CygLP  balance of borrower           | %s CygLP", cygLPBalanceBorrower / 1e18);
+  console.log("CygUSD balance of Lender             | %s CygUSD", cygUSDBalanceLender / 1e6);
+
+  const usdcBalanceBorrower = await usdc.balanceOf(borrower._address);
 
   console.log("Total Balance of borrowable after    | %s USDC", (await borrowable.totalBalance()) / 1e6);
   console.log("Total Balance of collateral after    | %s LPs", (await collateral.totalBalance()) / 1e18);
-  console.log("CygUSDC balanceOf Lender             | %s CygUSDC", usdcBalanceBorrower / 1e6);
-  console.log("CygLP balanceOf Borrower             | %s CygLP", cygLPBalanceBorrower / 1e18);
+  console.log("USDC balanceOf before Borrow             | %s CygUSDC", usdcBalanceBorrower / 1e6);
 
   // Borrow
   await router.connect(borrower).borrow(borrowable.address, BigInt(50e6), borrower._address, max, "0x");

@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+// SPDX-License-Identifier: Unlicensed
+pragma solidity ^0.8.4;
 
-// Interfaces
 import { AggregatorV3Interface } from "./AggregatorV3Interface.sol";
 import { IDexPair } from "./IDexPair.sol";
+import { IERC20 } from "./IERC20.sol";
 
 /**
- *  @title IChainlinkNebulaOracle Interface to interact with Cygnus' Chainlink oracle
+ *  @title ICygnusNebulaOracle Interface to interact with Cygnus' Chainlink oracle
  */
-interface IChainlinkNebulaOracle {
+interface ICygnusNebulaOracle {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -99,16 +99,22 @@ interface IChainlinkNebulaOracle {
      *  @return initialized Whether an LP Token is being tracked or not
      *  @return oracleId The ID of the LP Token tracked by the oracle
      *  @return underlying The address of the LP Token
+     *  @return token0 Address of token0 from the LP
+     *  @return token1 Address of token1 from the LP
      *  @return priceFeedA The address of the Chainlink aggregator used for this LP Token's Token0
      *  @return priceFeedB The address of the Chainlink aggregator used for this LP Token's Token1
      */
-    function getNebula(address lpTokenPair)
+    function getNebula(
+        address lpTokenPair
+    )
         external
         view
         returns (
             bool initialized,
             uint24 oracleId,
             address underlying,
+            IERC20 token0,
+            IERC20 token1,
             AggregatorV3Interface priceFeedA,
             AggregatorV3Interface priceFeedB
         );
@@ -126,19 +132,9 @@ interface IChainlinkNebulaOracle {
     function name() external view returns (string memory);
 
     /**
-     *  @return The decimals for this Cygnus-Chainlink Nebula oracle
-     */
-    function decimals() external view returns (uint8);
-
-    /**
      *  @return The symbol for this Cygnus-Chainlink Nebula oracle
      */
     function symbol() external view returns (string memory);
-
-    /**
-     *  @return The address of Chainlink's USDC oracle
-     */
-    function usdc() external view returns (AggregatorV3Interface);
 
     /**
      *  @return The address of the Cygnus admin
@@ -153,36 +149,51 @@ interface IChainlinkNebulaOracle {
     /**
      *  @return The version of this oracle
      */
-    function version() external view returns (uint8);
+    function version() external view returns (string memory);
 
     /**
      *  @return How many LP Token pairs' prices are being tracked by this oracle
      */
     function nebulaSize() external view returns (uint24);
 
+    /**
+     *  @return The denomination token this oracle returns the price in
+     */
+    function denominationToken() external view returns (IERC20);
+
+    /**
+     *  @return The decimals for this Cygnus-Chainlink Nebula oracle
+     */
+    function decimals() external view returns (uint8);
+
+    /**
+     *  @return The address of Chainlink's denomination oracle
+     */
+    function denominationAggregator() external view returns (AggregatorV3Interface);
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @return The price of USDC with 18 decimals
+     *  @return The price of the denomination token
      */
-    function usdcPrice() external view returns (uint256);
+    function denominationTokenPrice() external view returns (uint256);
 
     /**
-     *  @notice Gets the latest price of the LP Token denominated in USDC
+     *  @notice Gets the latest price of the LP Token denominated in denomination token
      *  @notice LP Token pair must be initialized, else reverts with custom error
      *  @param lpTokenPair The address of the LP Token
-     *  @return lpTokenPrice The price of the LP Token denominated in USDC
+     *  @return lpTokenPrice The price of the LP Token denominated in denomination token
      */
-    function lpTokenPriceUsdc(address lpTokenPair) external view returns (uint256 lpTokenPrice);
+    function lpTokenPriceUsd(address lpTokenPair) external view returns (uint256 lpTokenPrice);
 
     /**
-     *  @notice Gets the latest price of the LP Token's token0 and token1 denominated in USDC
+     *  @notice Gets the latest price of the LP Token's token0 and token1 denominated in denomination token
      *  @notice Used by Cygnus Altair contract to calculate optimal amount of leverage
      *  @param lpTokenPair The address of the LP Token
-     *  @return tokenPriceA The price of the LP Token's token0 denominated in USDC
-     *  @return tokenPriceB The price of the LP Token's token1 denominated in USDC
+     *  @return tokenPriceA The price of the LP Token's token0 denominated in denomination token
+     *  @return tokenPriceB The price of the LP Token's token1 denominated in denomination token
      */
-    function assetPricesUsdc(address lpTokenPair) external view returns (uint256 tokenPriceA, uint256 tokenPriceB);
+    function assetPricesUsd(address lpTokenPair) external view returns (uint256 tokenPriceA, uint256 tokenPriceB);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -202,14 +213,6 @@ interface IChainlinkNebulaOracle {
         AggregatorV3Interface priceFeedA,
         AggregatorV3Interface priceFeedB
     ) external;
-
-    /**
-     *  @notice Deletes an LP token pair from the oracle
-     *  @notice After deleting, any call from a shuttle deployed that is using this pair will revert
-     *  @param lpTokenPair The contract address of the LP Token to remove from the oracle
-     *  @custom:security non-reentrant
-     */
-    function deleteNebula(address lpTokenPair) external;
 
     /**
      *  @notice Sets a new pending admin for the Oracle

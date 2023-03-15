@@ -17,11 +17,6 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      */
     error CygnusBorrowControl__ParameterNotInRange(uint256 min, uint256 max, uint256 value);
 
-    /**
-     *  @custom:error BorrowTrackerAlreadySet Reverts when the new borrow tracker is the same as current
-     */
-    error CygnusBorrowControl__BorrowTrackerAlreadySet(address currentTracker, address newTracker);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

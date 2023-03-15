@@ -2,17 +2,18 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowControl } from "./interfaces/ICygnusBorrowControl.sol";
-import { CygnusTerminal } from "./CygnusTerminal.sol";
-import { PRBMath, PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {ICygnusBorrowControl} from "./interfaces/ICygnusBorrowControl.sol";
 
 // Interfaces
-import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings
  *  @author CygnusDAO
- *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygUSDC Token.
+ *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygUSD Token.
  *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
  *          borrow tracker which tracks individual borrows to reward users in any token (if there is any),
  *          the reserve factor and the kink utilization rate.
@@ -27,41 +28,41 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @custom:library PRBMathUD60x18 for uint256 fixed point math, also imports the main library `PRBMath`.
      */
-    using PRBMathUD60x18 for uint256;
+    using FixedPointMathLib for uint256;
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     // ────────────────────── Min/Max this pool allows
 
     /**
-     *  @notice Maximum base interest rate allowed (20%)
+     *  @notice Maximum base interest rate allowed (10%)
      */
-    uint256 internal constant BASE_RATE_MAX = 0.10e18;
+    uint256 private constant BASE_RATE_MAX = 0.10e18;
 
     /**
-     *  @notice Maximum reserve factor that the protocol can keep as reserves
+     *  @notice Maximum reserve factor that the protocol can keep as reserves (20%)
      */
-    uint256 internal constant RESERVE_FACTOR_MAX = 0.20e18;
+    uint256 private constant RESERVE_FACTOR_MAX = 0.20e18;
 
     /**
-     *  @notice Minimum kink utilization point allowed, equivalent to 50%
+     *  @notice Minimum kink utilization point allowed (50%)
      */
-    uint256 internal constant KINK_UTILIZATION_RATE_MIN = 0.50e18;
+    uint256 private constant KINK_UTILIZATION_RATE_MIN = 0.50e18;
 
     /**
-     *  @notice Maximum Kink point allowed
+     *  @notice Maximum Kink point allowed (95%)
      */
-    uint256 internal constant KINK_UTILIZATION_RATE_MAX = 0.95e18;
+    uint256 private constant KINK_UTILIZATION_RATE_MAX = 0.95e18;
 
     /**
-     *  @notice Maximum Kink point allowed
+     *  @notice Maximum Kink multiplier
      */
-    uint256 internal constant KINK_MULTIPLIER_MAX = 10;
+    uint256 private constant KINK_MULTIPLIER_MAX = 10;
 
     /**
      *  @notice Used to calculate the per second interest rates
      */
-    uint256 internal constant SECONDS_PER_YEAR = 31536000;
+    uint256 private constant SECONDS_PER_YEAR = 31536000;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -87,7 +88,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override reserveFactor = 0.05e18;
+    uint256 public override reserveFactor = 0.10e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -119,22 +120,28 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Borrow arm of the pool. It assigns the factory, the underlying asset (USDC),
-     *          the collateral contract and the lending pool ID. Interest rate parameters get passed also and
+     *  @notice Constructs the Borrow arm of the pool. It assigns the underlying asset (stablecoin),
+     *          the collateral for this contract and their lending pool ID. Interest rate parameters get passed also and
      *          and stored during deployment
      */
     constructor() {
         // Get collateral contract and interest rate parameters
-        (, , address _collateral, , uint256 baseRate, uint256 multiplier) = IAlbireoOrbiter(_msgSender())
+        (, address _asset, address _collateral, , uint256 baseRate, uint256 multiplier) = IAlbireoOrbiter(_msgSender())
             .borrowParameters();
 
-        // Update the interest rate model and do min max checks
-        interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
+        // Name of this CygUSD with token symbol (ie `CygUSD: USDC`)
+        symbol = string(abi.encodePacked("CygUSD: ", IERC20(_asset).symbol()));
+
+        // Get decimals
+        decimals = IERC20(_asset).decimals();
 
         // Set collateral
         collateral = _collateral;
 
-        // Set initial exchange rate of CygUSD and underlying
+        // Update the interest rate model and do min max checks
+        interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
+
+        // Assurance
         exchangeRateStored = 1e18;
 
         // Assurance
@@ -156,7 +163,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     function validRange(uint256 min, uint256 max, uint256 value) internal pure {
         /// @custom:error Avoid outside range
         if (value < min || value > max) {
-            revert CygnusBorrowControl__ParameterNotInRange({ min: min, max: max, value: value });
+            revert CygnusBorrowControl__ParameterNotInRange({min: min, max: max, value: value});
         }
     }
 
@@ -200,7 +207,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         baseRatePerSecond = baseRatePerYear_ / SECONDS_PER_YEAR;
 
         // Calculate the Farm Multiplier per second and update to storage
-        multiplierPerSecond = multiplierPerYear_.div(SECONDS_PER_YEAR * kinkUtilizationRate_);
+        multiplierPerSecond = multiplierPerYear_.divWad(SECONDS_PER_YEAR * kinkUtilizationRate_);
 
         // Update kink multiplier
         kinkMultiplier = kinkMultiplier_;
@@ -209,7 +216,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         kinkUtilizationRate = kinkUtilizationRate_;
 
         // Calculate the Jump Multiplier per second and update to storage
-        jumpMultiplierPerSecond = PRBMath.mulDiv(multiplierPerYear_, kinkMultiplier_, SECONDS_PER_YEAR).div(
+        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(
             kinkUtilizationRate_
         );
 
@@ -220,9 +227,8 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
     function setInterestRateModel(
         uint256 baseRatePerYear_,
@@ -230,27 +236,17 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
     ) external override cygnusAdmin {
-        // Update Per second rates
+        // Update interest rate model with per second rates
         interestRateModelInternal(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
     function setCygnusBorrowRewarder(address newBorrowRewarder) external override cygnusAdmin {
         // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
         // case it's inactive
-
-        /// @custom:error BorrowTrackerAlreadySet Avoid Duplicate
-        if (newBorrowRewarder == cygnusBorrowRewarder) {
-            revert CygnusBorrowControl__BorrowTrackerAlreadySet({
-                currentTracker: cygnusBorrowRewarder,
-                newTracker: newBorrowRewarder
-            });
-        }
-
         // Old borrow tracker
         address oldBorrowRewarder = cygnusBorrowRewarder;
 
@@ -262,9 +258,8 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
     function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
         // Check if parameter is within range allowed

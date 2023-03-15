@@ -2,9 +2,9 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IERC20 } from "./interfaces/IERC20.sol";
-import { Context } from "./utils/Context.sol";
-import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {Context} from "./utils/Context.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 /// @title ERC20
 /// @author Paul Razvan Berg

@@ -23,6 +23,11 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      */
     error CygnusBorrow__InsufficientLiquidity(address cygnusCollateral, address borrower, uint256 borrowerBalance);
 
+    /**
+     *  @custom:error BorrowAndRepayOverload Reverts if borrowAmount and repayAmount are both non-zero
+     */
+    error CygnusBorrow__BorrowAndRepayOverload(uint256 borrowAmount, uint256 repayAmount);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

@@ -20,20 +20,19 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { Context } from "./utils/Context.sol";
-import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
+import {Context} from "./utils/Context.sol";
+import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
-import { CygnusPoolAddress } from "./libraries/CygnusPoolAddress.sol";
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 
 // Interfaces
-import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
+import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
 
 // Orbiters
-import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
-import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
+import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
+import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusFactory
@@ -111,7 +110,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    address public immutable override usdc;
+    address public immutable override usd;
 
     /**
      *  @inheritdoc ICygnusFactory
@@ -121,7 +120,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusFactory
      */
-    IChainlinkNebulaOracle public override cygnusNebulaOracle;
+    ICygnusNebulaOracle public override cygnusNebulaOracle;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -131,16 +130,16 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @notice Sets the important addresses which pools report back here to check for
      *  @param _admin Address of the Cygnus Admin to update important protocol parameters
      *  @param _daoReserves Address of the contract that handles weighted forwarding of Erc20 tokens
-     *  @param _usdc Address of the USDC contract on this chain (different for mainnet, c-chain, etc.)
+     *  @param _usd Address of the borrowable`s underlying (stablecoins USDC, DAI, BUSD, etc.).
      *  @param _nativeToken The address of this chain's native token
      *  @param _cygnusNebulaOracle Address of the price oracle
      */
     constructor(
         address _admin,
         address _daoReserves,
-        address _usdc,
+        address _usd,
         address _nativeToken,
-        IChainlinkNebulaOracle _cygnusNebulaOracle
+        ICygnusNebulaOracle _cygnusNebulaOracle
     ) {
         // Assign cygnus admin, has access to special functions
         admin = _admin;
@@ -152,7 +151,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         nativeToken = _nativeToken;
 
         // Address of DAI on this factory's chain
-        usdc = _usdc;
+        usd = _usd;
 
         // Assign oracle used by all pools
         cygnusNebulaOracle = _cygnusNebulaOracle;
@@ -164,7 +163,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         emit NewDaoReserves(address(0), _daoReserves);
 
         /// @custom:event NewCygnusNebulaOracle
-        emit NewCygnusNebulaOracle(IChainlinkNebulaOracle(address(0)), _cygnusNebulaOracle);
+        emit NewCygnusNebulaOracle(ICygnusNebulaOracle(address(0)), _cygnusNebulaOracle);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -191,7 +190,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     function isCygnusAdmin() private view {
         /// @custom:error CygnusAdminOnly Avoid unless caller is Cygnus admin
         if (_msgSender() != admin) {
-            revert CygnusFactory__CygnusAdminOnly({ sender: _msgSender(), admin: admin });
+            revert CygnusFactory__CygnusAdminOnly({sender: _msgSender(), admin: admin});
         }
     }
 
@@ -213,7 +212,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         for (uint256 i = 0; i < orbitersLength; i++) {
             /// @custom:error OrbiterAlreadySet Avoid setting the same orbiters twice
             if (orbiter[i].denebOrbiter == denebOrbiter && orbiter[i].albireoOrbiter == albireoOrbiter) {
-                revert CygnusFactory__OrbiterAlreadySet({ orbiter: orbiter[i] });
+                revert CygnusFactory__OrbiterAlreadySet({orbiter: orbiter[i]});
             }
         }
     }
@@ -255,7 +254,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles with the same orbiter ID
         if (shuttleId != 0) {
             // If we try to re-deploy the lending pool which actually has the ID of 0, the EVM will handle the revert
-            revert CygnusFactory__ShuttleAlreadyDeployed({ id: shuttleId, lpTokenPair: lpTokenPair });
+            revert CygnusFactory__ShuttleAlreadyDeployed({id: shuttleId, lpTokenPair: lpTokenPair});
         }
 
         // Assign shuttle/orbiter ids
@@ -301,7 +300,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         /// @custom:error OrbitersAreInactive Avoid deploying if orbiters are inactive or are not set
         if (!orbiter.status) {
-            revert CygnusFactory__OrbitersAreInactive({ orbiter: orbiter });
+            revert CygnusFactory__OrbitersAreInactive({orbiter: orbiter});
         }
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
 
@@ -321,7 +320,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Deploy borrow contract
         borrowable = orbiter.albireoOrbiter.deployAlbireo(
-            usdc,
+            usd,
             create2Collateral,
             shuttle.shuttleId,
             baseRate,
@@ -342,11 +341,11 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         //  ─────────────────────────────── Phase 4 ───────────────────────────────
 
         // Oracle should never NOT be initialized for this pair. If not initialized, deployment of collateral auto fails
-        (bool nebulaOracleInitialized, , , , ) = cygnusNebulaOracle.getNebula(lpTokenPair);
+        (bool nebulaOracleInitialized, , , , , , ) = cygnusNebulaOracle.getNebula(lpTokenPair);
 
         /// @custom:error LPTokenPairNotSupported Avoid deploying if the oracle for the LP token is not initalized
         if (!nebulaOracleInitialized) {
-            revert CygnusFactory__LPTokenPairNotSupported({ lpTokenPair: lpTokenPair });
+            revert CygnusFactory__LPTokenPairNotSupported({lpTokenPair: lpTokenPair});
         }
 
         //  ─────────────────────────────── Phase 5 ───────────────────────────────
@@ -366,7 +365,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         allShuttles.push(shuttle);
 
         /// @custom:event NewShuttleLaunched
-        emit NewShuttleLaunched(lpTokenPair, orbiterId, shuttle.shuttleId, shuttle.borrowable, shuttle.collateral);
+        emit NewShuttle(lpTokenPair, orbiterId, shuttle.shuttleId, shuttle.borrowable, shuttle.collateral);
     }
 
     /**
@@ -419,7 +418,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         /// @custom:error OrbiterNotSet Avoid switching on/off if orbiters are not set
         if ((address(orbiter.denebOrbiter) == address(0)) || address(orbiter.albireoOrbiter) == address(0)) {
-            revert CygnusFactory__OrbitersNotSet({ orbiterId: orbiterId });
+            revert CygnusFactory__OrbitersNotSet({orbiterId: orbiterId});
         }
 
         // Switch orbiter status. If currently active then future deployments with this orbiter will revert
@@ -446,10 +445,10 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         }
 
         // Assign old oracle address for event
-        IChainlinkNebulaOracle oldOracle = cygnusNebulaOracle;
+        ICygnusNebulaOracle oldOracle = cygnusNebulaOracle;
 
         // Address of the requested account to be Cygnus admin
-        cygnusNebulaOracle = IChainlinkNebulaOracle(newPriceOracle);
+        cygnusNebulaOracle = ICygnusNebulaOracle(newPriceOracle);
 
         /// @custom:event NewCygnusNebulaOracle
         emit NewCygnusNebulaOracle(oldOracle, cygnusNebulaOracle);
@@ -462,7 +461,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     function setPendingAdmin(address newPendingAdmin) external override cygnusAdmin {
         /// @custom:error CygnusAdminAlreadySet Avoid setting the pending admin as the current admin
         if (newPendingAdmin == admin) {
-            revert CygnusFactory__AdminAlreadySet({ newPendingAdmin: newPendingAdmin, admin: admin });
+            revert CygnusFactory__AdminAlreadySet({newPendingAdmin: newPendingAdmin, admin: admin});
         }
 
         // Address of the pending admin until this point

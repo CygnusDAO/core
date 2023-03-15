@@ -2,47 +2,49 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrow } from "./interfaces/ICygnusBorrow.sol";
-import { CygnusBorrowVoid } from "./CygnusBorrowVoid.sol";
+import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
+import {CygnusBorrowVoid} from "./CygnusBorrowVoid.sol";
 
 // Libraries
-import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import { ICygnusCollateral } from "./interfaces/ICygnusCollateral.sol";
-import { ICygnusTerminal } from "./CygnusTerminal.sol";
-import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { ICygnusAltairCall } from "./interfaces/ICygnusAltairCall.sol";
+import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {ICygnusTerminal} from "./CygnusTerminal.sol";
+import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
+import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
 
 /**
  *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
- *  @notice This is the main Borrow contract which is used for borrowing USDC and liquidating shortfall positions.
+ *  @notice This is the main Borrow contract which is used for borrowing stablecoins and liquidating shortfall
+ *          positions.
+ *
  *          It also overrides the `exchangeRate` function at CygnusTerminal and we add the accrue modifiers,
  *          to accrue interest during deposits and redeems.
  *
  *          Reserves are also minted to the address `daoReserves` of the CygnusFactory (`hangar18`). The way
- *          the DAO accumulates reserves is not through USDC but through the minting of CygUSD.
+ *          the DAO accumulates reserves is not through underlying but through the minting of CygUSD.
  *
- *          The `borrow` function allows anyone to borrow or leverage USDc to buy more LP Tokens. If calldata is
+ *          The `borrow` function allows anyone to borrow or leverage USD to buy more LP Tokens. If calldata is
  *          passed, then the function calls the `altairBorrow` function on the router, and leverages users'
  *          position. If there is no calldata, the user can simply borrow instead of leveraging. The same borrow
- *          function is used to repay a loan, by checking the totalBalance held of USDC (the router handles this).
+ *          function is used to repay a loan, by checking the totalBalance held of underlying.
  */
 contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*
-     *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
+    /**
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
     using SafeTransferLib for address;
 
     /**
-     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
      */
-    using PRBMathUD60x18 for uint256;
+    using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
          6. NON-CONSTANT FUNCTIONS
@@ -56,31 +58,26 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
      *  @return Latest exchange rate
      */
-    function mintReservesInternal(uint256 _exchangeRate) internal returns (uint256) {
+    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
         // Get current exchange rate stored for borrow contract
         uint256 exchangeRateLast = exchangeRateStored;
 
         // Calculate new exchange rate, if different to last mint reserves
         if (_exchangeRate > exchangeRateLast) {
             // Calculate new exchange rate taking reserves into account
-            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mul(reserveFactor));
+            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mulWad(reserveFactor));
 
             // Calculate new reserves if any
-            uint256 newReserves = totalReserves - mintedReserves;
+            uint256 newReserves = _totalSupply.fullMulDiv(_exchangeRate, newExchangeRate) - _totalSupply;
 
             // if there are no new reserves to mint, just return exchangeRate
-            if (newReserves == 0) {
-                return _exchangeRate;
+            if (newReserves > 0) {
+                // Get the current DAO reserves contract
+                address daoReserves = ICygnusFactory(hangar18).daoReserves();
+
+                // Mint new resereves and upate the exchange rate
+                mintInternal(daoReserves, newReserves);
             }
-
-            // Get the current DAO reserves contract
-            address daoReserves = ICygnusFactory(hangar18).daoReserves();
-
-            // Mint new resereves and upate the exchange rate
-            mintInternal(daoReserves, newReserves);
-
-            // Add to internal record of reserves
-            mintedReserves += newReserves;
 
             // Update exchange rate
             exchangeRateStored = newExchangeRate;
@@ -104,18 +101,14 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
         if (_totalSupply == 0) {
-            return 1e18;
+            return exchangeRateStored;
         }
 
-        // newExchangeRate = (totalBalance + totalBorrows - reserves) / totalSupply
-        // Factor in reserves in next mint function
-        uint256 _totalBalance = totalBalance + totalBorrows;
-
         // totalBalance * scale / total supply
-        uint256 _exchangeRate = _totalBalance.div(_totalSupply);
+        uint256 _exchangeRate = (totalBalance + totalBorrows).divWad(_totalSupply);
 
         // Check if there are new reserves to mint and thus new exchange rate, else just returns this _exchangeRate
-        return mintReservesInternal(_exchangeRate);
+        return mintReservesInternal(_exchangeRate, _totalSupply);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -134,7 +127,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Gas savings
         uint256 totalBalanceStored = totalBalance;
 
-        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than pool's USDC balance
+        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than pool's underlying balance
         if (borrowAmount > totalBalanceStored) {
             revert CygnusBorrow__BorrowExceedsTotalBalance({
                 invalidBorrowAmount: borrowAmount,
@@ -144,6 +137,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
         // Optimistically transfer borrowAmount to `receiver`
         if (borrowAmount > 0) {
+            // Withdraw `borrowAmount` from strategy
+            beforeWithdrawInternal(borrowAmount);
+
+            // Transfer
             underlying.safeTransfer(receiver, borrowAmount);
         }
 
@@ -152,11 +149,8 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             ICygnusAltairCall(receiver).altairBorrow_O9E(_msgSender(), borrowAmount, data);
         }
 
-        // Get total balance of the underlying asset
-        uint256 balance = underlying.balanceOf(address(this));
-
-        // Calculate the user's amount outstanding
-        uint256 repayAmount = (balance + borrowAmount) - totalBalanceStored;
+        // If repaying get the repay amount
+        uint256 repayAmount = contractBalanceOf(underlying);
 
         // Update internal record for `borrower` at Cygnus Borrow Tracker
         (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) = updateBorrowInternal(
@@ -164,6 +158,13 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             borrowAmount,
             repayAmount
         );
+
+        // We check both for non-zero, ideally we should add borrowAmount to the repayAmount and substract from the
+        // total balance, but can cause arithmetic underflow depending on current rewards earned
+        if (borrowAmount > 0 && repayAmount > 0) {
+            /// @custom:error BorrowAndRepayOverload Avoid borrowing and repaying on the same TX
+            revert CygnusBorrow__BorrowAndRepayOverload({borrowAmount: borrowAmount, repayAmount: repayAmount});
+        }
 
         // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {
@@ -178,7 +179,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
                     borrowerBalance: accountBorrows
                 });
             }
-        }
+        } else afterDepositInternal(repayAmount);
 
         /// @custom:event Borrow
         emit Borrow(
@@ -202,14 +203,11 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         address borrower,
         address liquidator
     ) external override nonReentrant update accrue returns (uint256 cygLPAmount) {
-        // Latest balance after accrue's sync
-        uint256 balance = underlying.balanceOf(address(this));
+        // Underlying balance sent to this contract
+        uint256 repayAmount = contractBalanceOf(underlying);
 
         // Borrow balance
         uint256 borrowerBalance = getBorrowBalance(borrower);
-
-        // Get amount liquidator is repaying
-        uint256 repayAmount = balance - totalBalance;
 
         // Avoid repaying more than borrower's borrow balance
         uint256 actualRepayAmount = borrowerBalance < repayAmount ? borrowerBalance : repayAmount;
@@ -223,6 +221,9 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             0,
             repayAmount
         );
+
+        // Deposit underlying in strategy
+        afterDepositInternal(repayAmount);
 
         /// @custom:event Liquidate
         emit Liquidate(

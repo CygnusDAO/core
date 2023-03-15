@@ -102,8 +102,7 @@ interface ICygnusTerminal is IERC20Permit {
     /**
      *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount
      *  @notice There are two exchange rates: 1 for collateral and 1 for borrow contracts. The borrow contract
-     *          exchangeRate function is used to mint DAO reserves, as such we keep this as a non-view function,
-     *          and instead use the `exchangeRateStored` state variable to keep track of the exchange rate.
+     *          exchangeRate function is used to mint DAO reserves, and is kept as a non-view function.
      *          For the collateral exchange rate, we override this function in CygnusCollateralControl and mark
      *          it as view.
      */

@@ -19,6 +19,8 @@ module.exports = async function Strategy() {
   // Pool ID in the masterchef
   const pid = 0;
 
+  const rewardTokenB = '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590'
+
   // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
-  return [voidRouter, masterChef, rewardToken, pid];
+  return [voidRouter, masterChef, rewardToken, pid, rewardTokenB];
 };

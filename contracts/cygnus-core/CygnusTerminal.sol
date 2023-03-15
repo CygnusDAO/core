@@ -19,7 +19,7 @@
 
      Smart contracts to `go long` on your liquidity.
 
-     Deposit liquidity, borrow USDC.
+     Deposit liquidity, borrow USD.
 
      Structure of all Cygnus Contracts:
 
@@ -42,36 +42,31 @@
               ├ Public              
               └ External            
 
-    @dev: This is a fork of Impermax with some small edits. It should only be tested with Solidity >=0.8 as some 
-          functions don't check for overflow/underflow and all errors are handled with the new `custom errors`
-          feature among other small things...                                                                    */
+    @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
+          only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
+          are handled with the new `custom errors` feature among other small things...                           */
 
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusTerminal } from "./interfaces/ICygnusTerminal.sol";
-import { ERC20Permit } from "./ERC20Permit.sol";
+import {ERC20Permit} from "./ERC20Permit.sol";
+import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
 
 // Libraries
-import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
-import { IMiniChef } from "./interfaces/IMiniChef.sol";
-
-import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
-import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
+import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
+import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
  *  @title  CygnusTerminal
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
- *          to get the vault token (CygUSD for USDC deposits or CygLP for LP Token deposits).
- *          It follows similar functionality to UniswapV2Pair with some small differences.
- *          We added only the `deposit` and `redeem` functions from the erc-4626 standard to save on byte size.
+ *          to get the vault token (CygUSD for stablecoin deposits and CygLP for Liquidity deposits).
  */
 contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -79,14 +74,14 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
-     */
-    using PRBMathUD60x18 for uint256;
-
-    /**
-     *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
     using SafeTransferLib for address;
+
+    /**
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
+     */
+    using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
@@ -178,7 +173,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      *  @custom:modifier cygnusAdmin Controls important parameters in both Collateral and Borrow contracts 👽
      */
     modifier cygnusAdmin() {
-        isCygnusAdmin();
+        checkAdmin();
         _;
     }
 
@@ -191,14 +186,24 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @notice Internal check for msg.sender admin, checks factory's current admin 👽
      */
-    function isCygnusAdmin() internal view {
+    function checkAdmin() internal view {
         // Current admin from the factory
         address admin = ICygnusFactory(hangar18).admin();
 
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
         if (_msgSender() != admin) {
-            revert CygnusTerminal__MsgSenderNotAdmin({ sender: _msgSender(), factoryAdmin: admin });
+            revert CygnusTerminal__MsgSenderNotAdmin({sender: _msgSender(), factoryAdmin: admin});
         }
+    }
+
+    /**
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return This contract's balance
+     */
+    function contractBalanceOf(address token) internal view returns (uint256) {
+        // Solady's `balanceOf`
+        return token.balanceOf(address(this));
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -211,7 +216,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         uint256 _totalSupply = totalSupply;
 
         // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? 1e18 : totalBalance.div(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalBalance.divWad(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -221,29 +226,30 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Internal hook for deposits into strategies
-     *  @param assets The amount of assets deposited
-     *  @param shares The amount of shares minted
-     */
-    function afterDepositInternal(uint256 assets, uint256 shares) internal virtual {}
-
-    /**
-     *  @notice Internal hook for withdrawals from strategies
-     *  @param assets The amount of assets being withdrawn
-     *  @param shares The amount of shares burnt
-     */
-    function beforeWithdrawInternal(uint256 assets, uint256 shares) internal virtual {}
-
-    /**
      *  @notice Updates this contract's total balance in terms of its underlying
      */
     function updateInternal() internal virtual {
-        // Match totalBalance state to balanceOf this contract
-        totalBalance = underlying.balanceOf(address(this));
+        // Get current balanceOf this contract
+        uint256 balance = contractBalanceOf(underlying);
+
+        // Assign to totalBalance
+        totalBalance = balance;
 
         /// @custom:event Sync
         emit Sync(totalBalance);
     }
+
+    /**
+     *  @notice Internal hook for deposits into strategies
+     *  @param assets The amount of assets deposited
+     */
+    function afterDepositInternal(uint256 assets) internal virtual {}
+
+    /**
+     *  @notice Internal hook for withdrawals from strategies
+     *  @param assets The amount of assets being withdrawn
+     */
+    function beforeWithdrawInternal(uint256 assets) internal virtual {}
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -253,7 +259,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      */
     function deposit(uint256 assets, address recipient) external override nonReentrant update returns (uint256 shares) {
         // Get the amount of shares to mint
-        shares = assets.div(exchangeRate());
+        shares = assets.divWad(exchangeRate());
 
         /// @custom:error CantMintZeroShares Avoid minting no shares
         if (shares <= 0) {
@@ -276,7 +282,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         mintInternal(recipient, shares);
 
         // Deposit assets into the strategy (if any)
-        afterDepositInternal(assets, shares);
+        afterDepositInternal(assets);
 
         /// @custom:event Deposit
         emit Deposit(_msgSender(), recipient, assets, shares);
@@ -301,7 +307,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         }
 
         // Get the amount of assets to redeem
-        assets = shares.mul(exchangeRate());
+        assets = shares.mulWad(exchangeRate());
 
         /// @custom:error CantRedeemZeroAssets Avoid redeeming no assets
         if (assets <= 0) {
@@ -309,11 +315,11 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         }
         /// @custom:error RedeemAmountInvalid Avoid redeeming if theres insufficient cash
         else if (assets > totalBalance) {
-            revert CygnusTerminal__RedeemAmountInvalid({ assets: assets, totalBalance: totalBalance });
+            revert CygnusTerminal__RedeemAmountInvalid({assets: assets, totalBalance: totalBalance});
         }
 
         // Withdraw assets from the strategy (if any)
-        beforeWithdrawInternal(assets, shares);
+        beforeWithdrawInternal(assets);
 
         // Burn shares
         burnInternal(owner, shares);
@@ -326,18 +332,17 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
-    function sweepToken(address token) external override nonReentrant cygnusAdmin update {
+    function sweepToken(address token) external override nonReentrant cygnusAdmin {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
         if (token == underlying) {
-            revert CygnusTerminal__CantSweepUnderlying({ token: token, underlying: underlying });
+            revert CygnusTerminal__CantSweepUnderlying({token: token, underlying: underlying});
         }
 
         // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = token.balanceOf(address(this));
+        uint256 balance = contractBalanceOf(token);
 
         // Transfer token
         token.safeTransfer(_msgSender(), balance);

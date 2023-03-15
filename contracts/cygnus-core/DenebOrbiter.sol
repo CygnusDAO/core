@@ -13,19 +13,19 @@
                        ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
            .                            .       .          .            .                          .             .⠀
     
-        COLLATERAL DEPLOYER V1 - `Deneb`                                                           
+        COLLATERAL ORBITER V1 - `Deneb`                                                           
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
-import { Context } from "./utils/Context.sol";
-import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
+import {Context} from "./utils/Context.sol";
+import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Contracts
-import { CygnusCollateral } from "./CygnusCollateral.sol";
+import {CygnusCollateral} from "./CygnusCollateral.sol";
 
 /**
  *  @title  DenebOrbiter Contract that deploys the Cygnus Collateral arm of the lending pool
@@ -91,7 +91,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         });
 
         // Create Collateral contract
-        collateral = address(new CygnusCollateral{ salt: keccak256(abi.encode(underlying, _msgSender())) }());
+        collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, _msgSender()))}());
 
         // Delete and refund some gas
         delete collateralParameters;

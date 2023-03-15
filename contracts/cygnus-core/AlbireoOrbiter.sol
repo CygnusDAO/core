@@ -20,12 +20,12 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { IAlbireoOrbiter } from "./interfaces/IAlbireoOrbiter.sol";
-import { Context } from "./utils/Context.sol";
-import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
+import {Context} from "./utils/Context.sol";
+import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Contracts
-import { CygnusBorrow } from "./CygnusBorrow.sol";
+import {CygnusBorrow} from "./CygnusBorrow.sol";
 
 /**
  *  @title  AlbireoOrbiter Contract that deploys the Cygnus Borrow arm of the lending pool
@@ -57,7 +57,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
         address collateral;
         uint256 shuttleId;
         uint256 baseRatePerYear;
-        uint256 multiplier;
+        uint256 multiplierPerYear;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -95,11 +95,11 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
             collateral: collateral,
             shuttleId: shuttleId,
             baseRatePerYear: baseRatePerYear,
-            multiplier: multiplier
+            multiplierPerYear: multiplier
         });
 
         // Create Borrow contract
-        borrowable = address(new CygnusBorrow{ salt: keccak256(abi.encode(collateral, _msgSender())) }());
+        borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, _msgSender()))}());
 
         // Delete and refund some gas
         delete borrowParameters;

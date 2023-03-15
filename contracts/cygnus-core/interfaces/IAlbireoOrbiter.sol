@@ -17,7 +17,7 @@ interface IAlbireoOrbiter {
      *  @return collateral The address of the Cygnus collateral contract for this borrow contract
      *  @return shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @return baseRatePerYear The base rate per year for this shuttle
-     *  @return multiplier The log10 of the farm APY
+     *  @return multiplierPerYear Farm APY
      */
     function borrowParameters()
         external
@@ -27,7 +27,7 @@ interface IAlbireoOrbiter {
             address collateral,
             uint256 shuttleId,
             uint256 baseRatePerYear,
-            uint256 multiplier
+            uint256 multiplierPerYear
         );
 
     /**
@@ -41,7 +41,7 @@ interface IAlbireoOrbiter {
      *  @param collateral The address of the Cygnus collateral contract for this borrow contract
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @param baseRatePerYear The base rate per year for this shuttle
-     *  @param multiplier The log10 of the farm APY
+     *  @param multiplierPerYear Farm APY
      *  @return cygnusDai The address of the new borrow contract
      */
     function deployAlbireo(
@@ -49,6 +49,6 @@ interface IAlbireoOrbiter {
         address collateral,
         uint256 shuttleId,
         uint256 baseRatePerYear,
-        uint256 multiplier
+        uint256 multiplierPerYear
     ) external returns (address cygnusDai);
 }

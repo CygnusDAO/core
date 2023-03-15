@@ -5,7 +5,7 @@ pragma solidity >=0.8.4;
 import { ICygnusTerminal } from "./ICygnusTerminal.sol";
 
 // Interfaces
-import { IChainlinkNebulaOracle } from "./IChainlinkNebulaOracle.sol";
+import { ICygnusNebulaOracle } from "./ICygnusNebulaOracle.sol";
 
 /**
  *  @title ICygnusCollateralControl Interface for the admin control of collateral contracts (incentives, debt ratios)
@@ -60,7 +60,7 @@ interface ICygnusCollateralControl is ICygnusTerminal {
     /**
      *  @return cygnusNebulaOracle The address of the Cygnus Price Oracle
      */
-    function cygnusNebulaOracle() external view returns (IChainlinkNebulaOracle);
+    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
 
     // ────────────── Current Pool Rates ──────────────
 

@@ -22,7 +22,7 @@ async function liquidate() {
   const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
   // Strategy
-  const [voidRouter, masterChef, rewardToken, pid] = await Strategy();
+  const [, , rewardToken, pid] = await Strategy();
 
   // Users to interact with contracts
   const [owner, , safeAddress2, lender, borrower] = await Users();
@@ -33,7 +33,7 @@ async function liquidate() {
   // ═════════════════════ INITIALIZE VOID ═══════════════════════════════════════════════════════════════
 
   // Initialize with: DEX ROUTER / MiniChefV3  / reward token / pool id
-  await collateral.connect(owner).chargeVoid(voidRouter, masterChef, rewardToken, pid);
+  await collateral.connect(owner).chargeVoid(pid);
 
   /*****************************************************************************************************
     
@@ -46,11 +46,11 @@ async function liquidate() {
 
   console.log("Price of LP Token                          | %s USDC", (await oneLPToken) / 1e6);
   console.log("----------------------------------------------------------------------------------------------");
-  console.log("Borrower deposits 100 LPs, Lender deposits 10,000 USDC");
+  console.log("Borrower deposits LPs, Lender deposits USD");
   console.log("----------------------------------------------------------------------------------------------");
 
-  console.log("Borrower`s LP Balance before Cygnus        | %s", (await lpToken.balanceOf(borrower._address)) / 1e18);
-  console.log("Lender`s USDC balance before Cygnus         | %s", (await usdc.balanceOf(lender._address)) / 1e6);
+  console.log("Borrower`s LP Balance before deposit       | %s", (await lpToken.balanceOf(borrower._address)) / 1e18);
+  console.log("Lender`s USDC balance before deposit       | %s", (await usdc.balanceOf(lender._address)) / 1e6);
 
   // Borrower: Approve collateral in LP Token
   await lpToken.connect(borrower).approve(collateral.address, max);
@@ -59,6 +59,9 @@ async function liquidate() {
   // Lender: Approve borrowable in USDC
   await usdc.connect(lender).approve(borrowable.address, max);
   await borrowable.connect(lender).deposit(BigInt(100000e6), lender._address);
+
+  console.log("Borrower`s LP Balance after deposit        | %s", (await lpToken.balanceOf(borrower._address)) / 1e18);
+  console.log("Lender`s USDC balance after deposit        | %s", (await usdc.balanceOf(lender._address)) / 1e6);
 
   console.log("----------------------------------------------------------------------------------------------");
   console.log("BEFORE LEVERAGE");
@@ -189,12 +192,15 @@ async function liquidate() {
   await collateral.connect(owner).setDebtRatio(BigInt(0.85e18));
   console.log("Borrowers new Debt Ratio: %s", (await collateral.getDebtRatio(borrower._address)) / 1e16);
 
-  // Checks that liquidate amount is never above borrowed balance in router (ie if user borrowed 20 usdc, router will repay 20 usdc, not 5000)
+  // Approve USDC to liquidate
   await usdc.connect(lender).approve(router.address, max);
+
+  // Approve Collateral to redeem CYG-LP on behalf of liquidator and burn
+  await collateral.connect(lender).approve(router.address, max);
 
   // Get deleverage call
   const deleverageLPAmount = ((newBorrowBalance * 1.025) / (oneLPToken / 1e6)) * 1e18;
-  console.log("Borrow Balance / LP Price: %s", deleverageLPAmount);
+  console.log("LP Amount deleveraging: %s", deleverageLPAmount);
 
   const deleverageCalls = await deleverageSwapData(
     chainId,
@@ -206,16 +212,15 @@ async function liquidate() {
     borrower,
   );
 
-  await lpToken.connect(lender).approve(router.address, max);
-  await collateral.connect(lender).approve(router.address, max);
 
   await router
     .connect(lender)
-    .liquidateToUsdc(
+    .liquidateToUsd(
       lpToken.address,
       collateral.address,
       borrowable.address,
       BigInt(10000e18),
+      0,
       borrower._address,
       lender._address,
       max,

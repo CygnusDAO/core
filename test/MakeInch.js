@@ -16,6 +16,7 @@ module.exports = async function Make() {
   // Addresses in this chain //
 
   // 1. LP Token address -----------------------------------------------------
+  // ETH-MATIC
   const lpTokenAddress = "0xc4e595acdd7d12fec385e5da5d43160e8a0bac0e";
 
   // 2. USDC address on this chain --------------------------------------------
@@ -25,13 +26,13 @@ module.exports = async function Make() {
   const nativeAddress = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
 
   // 4. Chainlink aggregators ------------------------------------------------
-
   // USDC aggregator
   const usdcAggregator = "0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7";
   // Token0 from LP Token
   const token0Aggregator = "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0";
   // Token1 from LP Token
   const token1Aggregator = "0xF9680D99D6C9589e2a93a78A04A279e509205945";
+  
 
   // 5. DEX of this LP Token -------------------------------------------------
 
@@ -40,7 +41,7 @@ module.exports = async function Make() {
 
   // 6. DEX Aggregator (1 Inch)
   //
-  const oneInchAggregatorV4 = "0x1111111254eeb25477b68fb85ed929f73a960582";
+  const oneInchAggregatorV5 = "0x1111111254eeb25477b68fb85ed929f73a960582";
 
   // ═══════════════════ 0. SETUP ══════════════════════════════════════════════════════════
 
@@ -56,10 +57,10 @@ module.exports = async function Make() {
 
   // ═══════════════════ 1. ORACLE ═══════════════════════════════════════════════════════════
 
-  const Oracle = await ethers.getContractFactory("ChainlinkNebulaOracle");
+  const Oracle = await ethers.getContractFactory("CygnusNebulaOracle");
 
   // Deploy with Chainlink's USDC Aggregator
-  const oracle = await Oracle.deploy(usdcAggregator);
+  const oracle = await Oracle.deploy(usdcAddress, usdcAggregator);
 
   // Initialize oracle, else the deployment for this lending pool fails
   await oracle.initializeNebula(lpTokenAddress, token0Aggregator, token1Aggregator);
@@ -106,15 +107,18 @@ module.exports = async function Make() {
   // Router
   const Router = await ethers.getContractFactory("CygnusAltairX");
 
-  const router = await Router.deploy(factory.address, oneInchAggregatorV4);
+  const router = await Router.deploy(factory.address, oneInchAggregatorV5);
 
   console.log("Cygnus Router      | %s", router.address);
   console.log("──────────────────────────────────────────────────────────────────────────────");
 
   // ═══════════════════ 6. SHUTTLE ════════════════════════════════════════════════════════
 
+  let baseRate = "10000000000000000" // 1%
+  let multi = "100000000000000000" // 4%
+
   // Shuttle with LP Token address from setup
-  await factory.deployShuttle(lpToken.address, 0, 0, 0);
+  await factory.deployShuttle(lpToken.address, 0, baseRate, multi);
 
   const shuttle = await factory.getShuttles(lpToken.address, 0);
 

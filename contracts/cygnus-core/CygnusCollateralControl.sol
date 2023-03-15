@@ -2,16 +2,18 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralControl } from "./interfaces/ICygnusCollateralControl.sol";
-import { ICygnusTerminal, CygnusTerminal } from "./CygnusTerminal.sol";
+import {ICygnusCollateralControl} from "./interfaces/ICygnusCollateralControl.sol";
+import {ICygnusTerminal, CygnusTerminal} from "./CygnusTerminal.sol";
 
 // Libraries
-import { PRBMathUD60x18 } from "./libraries/PRBMathUD60x18.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import { IChainlinkNebulaOracle } from "./interfaces/IChainlinkNebulaOracle.sol";
-import { ICygnusFactory } from "./interfaces/ICygnusFactory.sol";
-import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
+import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
+import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
+import {IDexPair} from "./interfaces/IDexPair.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
 
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
@@ -22,7 +24,7 @@ import { IDenebOrbiter } from "./interfaces/IDenebOrbiter.sol";
  *          and setting and the debt ratio for this shuttle.
  *
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
- *          borrow USDC from the borrowable.
+ *          borrow stablecoins from the borrowable.
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "", 0) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -32,40 +34,59 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
      */
-    using PRBMathUD60x18 for uint256;
+    using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     // ─────────────────────── Min/Max this pool allows
 
     /**
      *  @notice Minimum debt ratio at which the collateral becomes liquidatable
      */
-    uint256 internal constant DEBT_RATIO_MIN = 0.80e18;
+    uint256 private constant DEBT_RATIO_MIN = 0.80e18;
 
     /**
      *  @notice Maximum debt ratio at which the collateral becomes liquidatable
      */
-    uint256 internal constant DEBT_RATIO_MAX = 1.00e18;
+    uint256 private constant DEBT_RATIO_MAX = 1.00e18;
 
     /**
      *  @notice Minimum liquidation incentive for liquidators that can be set
      */
-    uint256 internal constant LIQUIDATION_INCENTIVE_MIN = 1.00e18;
+    uint256 private constant LIQUIDATION_INCENTIVE_MIN = 1.00e18;
 
     /**
      *  @notice Maximum liquidation incentive for liquidators that can be set
      */
-    uint256 internal constant LIQUIDATION_INCENTIVE_MAX = 1.10e18;
+    uint256 private constant LIQUIDATION_INCENTIVE_MAX = 1.10e18;
 
     /**
      *  @notice Maximum fee the protocol is keeps from each liquidation
      */
-    uint256 internal constant LIQUIDATION_FEE_MAX = 0.10e18;
+    uint256 private constant LIQUIDATION_FEE_MAX = 0.10e18;
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    // We assign these as immutable as they can be used by Strategy
+
+    /**
+     *  @notice Address of the chain's native token (ie WETH)
+     */
+    address internal immutable nativeToken;
+
+    /**
+     *  @notice The first token from the underlying LP Token
+     */
+    address internal immutable token0;
+
+    /**
+     *  @notice The second token from the underlying LP Token
+     */
+    address internal immutable token1;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -79,7 +100,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    IChainlinkNebulaOracle public immutable override cygnusNebulaOracle;
+    ICygnusNebulaOracle public immutable override cygnusNebulaOracle;
 
     // ───────────────────────────── Current pool rates
 
@@ -108,14 +129,26 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *          contract, which is taken from the most current one in the factory.
      */
     constructor() {
-        // Placeholder factory to get oracle
-        address factory;
-
         // Get factory, underlying, borrowable and lending pool id
-        (factory, , borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
+        (address _factory, address _asset, address _borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
+
+        // Token0 from the LP Token
+        (address tokenA, address tokenB) = (IDexPair(_asset).token0(), IDexPair(_asset).token1());
+
+        // Name of this CygLP with each token symbols
+        symbol = string(abi.encodePacked("CygLP: ", IERC20(tokenA).symbol(), "/", IERC20(tokenB).symbol()));
+
+        // Get decimals
+        decimals = IERC20(_asset).decimals();
+
+        // Borrowable
+        borrowable = _borrowable;
 
         // Assign latest price oracle from factory
-        cygnusNebulaOracle = ICygnusFactory(factory).cygnusNebulaOracle();
+        cygnusNebulaOracle = ICygnusFactory(_factory).cygnusNebulaOracle();
+
+        // Assign token0 and token1 from the underlying for immutable
+        (token0, token1, nativeToken) = (tokenA, tokenB, ICygnusFactory(_factory).nativeToken());
 
         // Assurance
         totalSupply = 0;
@@ -136,7 +169,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     function validRange(uint256 min, uint256 max, uint256 value) internal pure {
         /// @custom:error ParameterNotInRange Avoid outside range
         if (value < min || value > max) {
-            revert CygnusCollateralControl__ParameterNotInRange({ min: min, max: max, value: value });
+            revert CygnusCollateralControl__ParameterNotInRange({min: min, max: max, value: value});
         }
     }
 
@@ -150,7 +183,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         uint256 _totalSupply = totalSupply;
 
         // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? 1e18 : totalBalance.div(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalBalance.divWad(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -160,11 +193,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
-    function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin {
+    function setDebtRatio(uint256 newDebtRatio) external override nonReentrant cygnusAdmin {
         // Checks if new value is within ranges allowed. If false, reverts with custom error
         validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
@@ -179,11 +211,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
-    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override cygnusAdmin {
+    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override nonReentrant cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
@@ -198,11 +229,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
-    function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin {
+    function setLiquidationFee(uint256 newLiquidationFee) external override nonReentrant cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 

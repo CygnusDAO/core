@@ -6,7 +6,7 @@ import { IDenebOrbiter } from "./IDenebOrbiter.sol";
 import { IAlbireoOrbiter } from "./IAlbireoOrbiter.sol";
 
 // Oracles
-import { IChainlinkNebulaOracle } from "./IChainlinkNebulaOracle.sol";
+import { ICygnusNebulaOracle } from "./ICygnusNebulaOracle.sol";
 
 /**
  *  @title The interface for the Cygnus Factory
@@ -101,7 +101,7 @@ interface ICygnusFactory {
      *  @param newCygnusNebula Address of the new confirmed price oracle
      *  @custom:event NewCygnusNebulaOracle Logs when a new price oracle is set
      */
-    event NewCygnusNebulaOracle(IChainlinkNebulaOracle oldCygnusNebula, IChainlinkNebulaOracle newCygnusNebula);
+    event NewCygnusNebulaOracle(ICygnusNebulaOracle oldCygnusNebula, ICygnusNebulaOracle newCygnusNebula);
 
     /**
      *  @param lpTokenPair The address of the LP Token pair
@@ -109,9 +109,9 @@ interface ICygnusFactory {
      *  @param borrowable The address of the Cygnus borrow contract
      *  @param collateral The address of the Cygnus collateral contract
      *  @param shuttleId The ID of the lending pool
-     *  @custom:event NewShuttleLaunched Logs when a new lending pool is launched
+     *  @custom:event NewShuttle Logs when a new lending pool is launched
      */
-    event NewShuttleLaunched(
+    event NewShuttle(
         address indexed lpTokenPair,
         uint256 indexed shuttleId,
         uint256 orbiterId,
@@ -315,7 +315,7 @@ interface ICygnusFactory {
     /**
      * @return cygnusNebulaOracle The address of the Cygnus price oracle
      */
-    function cygnusNebulaOracle() external view returns (IChainlinkNebulaOracle);
+    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
 
     /**
      *  @return orbitersDeployed The total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter)
@@ -328,9 +328,9 @@ interface ICygnusFactory {
     function shuttlesDeployed() external view returns (uint256);
 
     /**
-     *  @return usdc The address of USDC
+     *  @return usd The address of the borrowable token (stablecoin)
      */
-    function usdc() external view returns (address);
+    function usd() external view returns (address);
 
     /**
      *  @return nativeToken The address of the chain's native token
