@@ -10,7 +10,7 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusTerminal} from "./CygnusTerminal.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
@@ -55,38 +55,28 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /**
      *  @notice mints reserves to CygnusReservesManager. Uses the mintedReserves variable to keep internal track
      *          of reserves instead of balanceOf
-     *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
+     *  @param _exchangeRate The current exchange rate between underlying and CygUSD
+     *  @param _totalReserves The total reserves up to this point
      *  @return Latest exchange rate
      */
-    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
-        // Get current exchange rate stored for borrow contract
-        uint256 exchangeRateLast = exchangeRateStored;
+    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalReserves) internal returns (uint256) {
+        // Calculate new reserves if any
+        uint256 newReserves = _totalReserves - mintedReserves;
 
-        // Calculate new exchange rate, if different to last mint reserves
-        if (_exchangeRate > exchangeRateLast) {
-            // Calculate new exchange rate taking reserves into account
-            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mulWad(reserveFactor));
+        // if there are no new reserves to mint, just return exchangeRate
+        if (newReserves > 0) {
+            // Get the current DAO reserves contract
+            address daoReserves = IHangar18(hangar18).daoReserves();
 
-            // Calculate new reserves if any
-            uint256 newReserves = _totalSupply.fullMulDiv(_exchangeRate, newExchangeRate) - _totalSupply;
+            // Mint new resereves
+            mintInternal(daoReserves, newReserves);
 
-            // if there are no new reserves to mint, just return exchangeRate
-            if (newReserves > 0) {
-                // Get the current DAO reserves contract
-                address daoReserves = ICygnusFactory(hangar18).daoReserves();
-
-                // Mint new resereves and upate the exchange rate
-                mintInternal(daoReserves, newReserves);
-            }
-
-            // Update exchange rate
-            exchangeRateStored = newExchangeRate;
-
-            // Return new exchange rate
-            return newExchangeRate;
+            // Update minted reserves
+            mintedReserves += newReserves;
         }
-        // Else return the previous exchange rate
-        else return _exchangeRate;
+
+        // Return new exchange rate
+        return _exchangeRate;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -100,15 +90,16 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 _totalSupply = totalSupply;
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
-        if (_totalSupply == 0) {
-            return exchangeRateStored;
-        }
+        if (_totalSupply == 0) return 1e18;
 
-        // totalBalance * scale / total supply
-        uint256 _exchangeRate = (totalBalance + totalBorrows).divWad(_totalSupply);
+        // Gas savings
+        uint256 _totalReserves = totalReserves;
 
-        // Check if there are new reserves to mint and thus new exchange rate, else just returns this _exchangeRate
-        return mintReservesInternal(_exchangeRate, _totalSupply);
+        // New Exchange Rate = (totalBalance + totalBorrows - reserves) / totalSupply
+        uint256 _exchangeRate = (totalBalance + totalBorrows - _totalReserves).divWad(_totalSupply);
+
+        // Check if there are new reserves to mint
+        return mintReservesInternal(_exchangeRate, _totalReserves);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -152,19 +143,19 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // If repaying get the repay amount
         uint256 repayAmount = contractBalanceOf(underlying);
 
-        // Update internal record for `borrower` at Cygnus Borrow Tracker
-        (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) = updateBorrowInternal(
-            borrower,
-            borrowAmount,
-            repayAmount
-        );
-
         // We check both for non-zero, ideally we should add borrowAmount to the repayAmount and substract from the
         // total balance, but can cause arithmetic underflow depending on current rewards earned
         if (borrowAmount > 0 && repayAmount > 0) {
             /// @custom:error BorrowAndRepayOverload Avoid borrowing and repaying on the same TX
             revert CygnusBorrow__BorrowAndRepayOverload({borrowAmount: borrowAmount, repayAmount: repayAmount});
         }
+
+        // Update internal record for `borrower` at Cygnus Borrow Tracker
+        (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) = updateBorrowInternal(
+            borrower,
+            borrowAmount,
+            repayAmount
+        );
 
         // If this is a borrow, check borrower's current liquidity/shortfall
         if (borrowAmount > repayAmount) {

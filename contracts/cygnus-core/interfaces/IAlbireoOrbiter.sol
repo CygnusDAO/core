@@ -33,7 +33,7 @@ interface IAlbireoOrbiter {
     /**
      *  @return BORROW_INIT_CODE_HASH The init code hash of the borrow contract for this deployer
      */
-    function BORROW_INIT_CODE_HASH() external view returns (bytes32);
+    function BORROWABLE_INIT_CODE_HASH() external view returns (bytes32);
 
     /**
      *  @notice Function to deploy the borrow contract of a lending pool
@@ -42,7 +42,7 @@ interface IAlbireoOrbiter {
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @param baseRatePerYear The base rate per year for this shuttle
      *  @param multiplierPerYear Farm APY
-     *  @return cygnusDai The address of the new borrow contract
+     *  @return borrowable The address of the new borrow contract
      */
     function deployAlbireo(
         address underlying,
@@ -50,5 +50,5 @@ interface IAlbireoOrbiter {
         uint256 shuttleId,
         uint256 baseRatePerYear,
         uint256 multiplierPerYear
-    ) external returns (address cygnusDai);
+    ) external returns (address borrowable);
 }

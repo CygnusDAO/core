@@ -51,4 +51,6 @@ interface IDexPair {
     function burn(address to) external returns (uint256 amount0, uint256 amount1);
 
     function mint(address to) external returns (uint256 liquidity);
+
+    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
 }

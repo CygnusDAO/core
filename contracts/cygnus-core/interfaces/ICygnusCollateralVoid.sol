@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Unlicense
-
 pragma solidity >=0.8.4;
 
 // Dependencies
 import {ICygnusCollateralModel} from "./ICygnusCollateralModel.sol";
 
 // Interfaces
-import {IDexRouter02} from "./IDexRouter.sol";
-import {IMiniChef} from "./IMiniChef.sol";
+import {IDexRouter02} from "./CollateralVoid/IDexRouter.sol";
+import {IMiniChef} from "./CollateralVoid/IMiniChef.sol";
+import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
 
 /**
  *  @title ICygnusCollateralVoid
@@ -25,9 +25,14 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     error CygnusCollateralVoid__OnlyEOAAllowed(address sender, address origin);
 
     /**
-     *  @custom:error VoidAlreadyInitialized Reverts when re-initalizing the strategy
+     *  @custom:error SwapNotAllowed Reverts if the receiver is not this contract, or token received is not underlying
      */
-    error CygnusCollateralVoid__VoidAlreadyInitialized(uint256 poolId);
+    error CygnusCollateralVoid__SwapNotAllowed(address dstReceiver, address dstToken);
+
+    /**
+     *  @custom:error SrcTokenNotValid Reverts if the src token we are swapping is not the rewards token
+     */
+    error CygnusCollateralVoid__SrcTokenNotValid(address srcToken, address rewardsToken);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -35,28 +40,28 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
 
     /**
      *  @notice Emitted when admin implements strategy
-     *  @param timestamp The current block timestamp
-     *  @param shuttleId This lending pool ID
-     *  @param underlying The underlying collateral asset (LP Token)
-     *  @param rewarderPoolId The pool ID of the rewarder (Masterchef PID)
+     *  @param underlying The address of the underlying LP token
+     *  @param shuttleId The unique ID of the lending pool
+     *  @param sender The address of the msg.sender (admin)
      *  @custom:event ChargeVoid Logs when the strategy is first initialized
      */
-    event ChargeVoid(uint256 timestamp, uint256 shuttleId, address underlying, uint256 rewarderPoolId);
+    event ChargeVoid(address underlying, uint256 shuttleId, address sender);
 
     /**
      *  @notice Emitted when user reinvests rewards
-     *  @param shuttle The address of this lending pool
      *  @param reinvestor The address of the caller who reinvested reward and received bounty
-     *  @param rewardBalance The amount reinvested
-     *  @param reinvestReward The reward received by the reinvestor @param daoReward The reward received by the DAO
+     *  @param rewardBalance The amount of `rewardsToken` reinvested
+     *  @param reinvestReward The reward received by the reinvestor
+     *  @param daoReward The reward received by the DAO
+     *  @param underlyingReceived The amount of underlying LP reinvested
      *  @custom:event RechargeVoid Logs when rewards from the Masterchef/Rewarder are reinvested into more LP Tokens
      */
     event RechargeVoid(
-        address indexed shuttle,
-        address reinvestor,
+        address indexed reinvestor,
         uint256 rewardBalance,
         uint256 reinvestReward,
-        uint256 daoReward
+        uint256 daoReward,
+        uint256 underlyingReceived
     );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -88,7 +93,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     function getCygnusVoid()
         external
         view
-        returns (IMiniChef rewarder, IDexRouter02 dexRouter, address rewardsToken, uint256 pid);
+        returns (IMiniChef rewarder, address dexRouter, address rewardsToken, uint256 pid);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -115,13 +120,4 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *  @custom:security non-reentrant only-eoa
      */
     function getRewards() external returns (uint256 pendingReward);
-
-    /**
-     *  @notice Converts all the dust we may have from token0/token1 to rewardsToken
-     *  @notice No check for underlying since tokenA/tokenB can't be liquidity token
-     *  @return amountTokenA The amount of tokenA swept
-     *  @return amountTokenB The amount of tokenB swept
-     *  @custom:security non-reentrant only-eoa
-     */
-    function smokeDust() external returns (uint256 amountTokenA, uint256 amountTokenB);
 }

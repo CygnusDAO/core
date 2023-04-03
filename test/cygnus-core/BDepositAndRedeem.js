@@ -1,219 +1,74 @@
+// JS
+const path = require("path")
+
 // Hardhat
-const chai = require("chai");
-const { solidity } = require("ethereum-waffle");
-const { expect } = chai;
-const hre = require("hardhat");
+const hre = require("hardhat")
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
+const ethers = hre.ethers
+const max = ethers.constants.MaxUint256
 
-// Node
-const fs = require("fs");
-const path = require("path");
+// Testers
+const { expect } = require("chai")
+const { describe, it } = require("mocha")
 
-// Ethers
-const addressZero = ethers.constants.AddressZero;
-const max = ethers.constants.MaxUint256;
+// Fixture
+const Make = require(path.resolve(__dirname, "../MakeInch.js"))
+const Users = require(path.resolve(__dirname, "../Users.js"))
+const Strategy = require(path.resolve(__dirname, "../Strategy.js"))
 
-// Custom
-const Make = require("../Make.js");
-const Users = require("../Users.js");
+describe("Borrowable Deposit and Redeem", function () {
+    async function deployFixure() {
+    const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make()
+    const [, , rewardToken, pid, rewardTokenB] = await Strategy()
+    const [owner, , safeAddress2, lender, borrower] = await Users()
 
-// Matchers
-chai.use(solidity);
+        await collateral.connect(owner).chargeVoid(pid)
+        await borrowable.connect(owner).chargeVoid(0)
 
-/*
- *
- *  Simple deposit and redeem for all borrow contracts
- *
- */
+        return { router, borrowable, collateral, usdc, lpToken, owner, lender, borrower, chainId, rewardTokenB }
+    }
 
-context("Borrow - Deposit and Redeem - Deposit DAI and Redeem CygDAI", function () {
-  // Cygnus contracts + lp + dai
-  let router, borrowable, collateral, dai, lpToken;
+    describe("Deployment", function () {
+        it("Should deploy borrowable pool with USDC underlying", async function () {
+            const { borrowable, usdc } = await loadFixture(deployFixure)
+            const underlying = await borrowable.underlying()
+            expect(underlying.toLowerCase()).to.equal(usdc.address)
+        })
 
-  // Main accounts that interact with Cygnus during this test
-  let borrower, lender;
+        it("Should have 0 total supply", async function () {
+            const { borrowable } = await loadFixture(deployFixure)
+            expect(await borrowable.totalSupply()).to.equal(0)
+        })
 
-  let lenderInitialDaiBalance;
-  let borrowerInitialLPBalance;
+        it("Should have 0 total balance", async function () {
+            const { borrowable } = await loadFixture(deployFixure)
+            expect(await borrowable.totalBalance()).to.equal(0)
+        })
 
-  const lenderDeposit = BigInt(1000e18);
+        it("Should have 0 total borrows", async function () {
+            const { borrowable } = await loadFixture(deployFixure)
+            expect(await borrowable.totalBorrows()).to.equal(0)
+        })
 
-  before(async () => {
-    // Cygnus contracts and underlyings
-    [, , router, borrowable, collateral, dai, lpToken] = await Make();
+        it("Should have 0 total reserves", async function () {
+            const { borrowable } = await loadFixture(deployFixure)
+            expect(await borrowable.totalReserves()).to.equal(0)
+        })
 
-    // Users
-    [, , , lender, borrower] = await Users();
+        it("Should have the initial exchange rate of one mantissa", async function () {
+            const { borrowable } = await loadFixture(deployFixure)
+            expect(await borrowable.callStatic.exchangeRate()).to.equal(BigInt(1e18))
+        })
+    })
 
-    // Initial DAI and LP balances for lender and borrower
-    lenderInitialDaiBalance = await dai.balanceOf(lender._address);
-    borrowerInitialLPBalance = await lpToken.balanceOf(borrower._address);
-
-    console.log("------------------------------------------------------------------------------");
-    console.log("DAI Balance of lender   | %s DAI", lenderInitialDaiBalance / 1e18);
-    console.log("------------------------------------------------------------------------------");
-    console.log("LP Balance of borrower  | %s LPs", borrowerInitialLPBalance / 1e18);
-    console.log("------------------------------------------------------------------------------");
-  });
-
-  describe("When Cygnus factory deploys collateral and borrow contracts", function () {
-    describe("When the collateral contract is deployed", function () {
-      // Collateral
-      it("Sets the name of the collateral pool token", async () => {
-        expect(await collateral.name()).to.eq("Cygnus: Collateral");
-      });
-      it("Has an exchange rate equal to INITIAL_EXCHANGE_RATE (1e18)", async () => {
-        expect(await collateral.exchangeRate()).to.eq(BigInt(1e18));
-      });
-
-      it("Has a total supply of 0", async () => {
-        expect(await collateral.totalSupply()).to.eq(0);
-      });
-
-      it("Has a total balance of 0", async () => {
-        expect(await collateral.totalBalance()).to.eq(0);
-      });
-
-      it("Sets the underlying asset as the LP Token", async () => {
-        expect(await collateral.underlying()).to.eq(lpToken.address);
-      });
-    });
-
-    describe("When the borrow contract is deployed", function () {
-      // Borrowable
-      it("Sets the name of borrow pool token", async () => {
-        expect(await borrowable.name()).to.eq("Cygnus: Borrow");
-      });
-
-      it("Has the default exchange rate of 1e18", async () => {
-        expect(await borrowable.exchangeRateStored()).to.eq(BigInt(1e18));
-      });
-
-      it("Has a total supply of 0", async () => {
-        expect(await borrowable.totalSupply()).to.eq(0);
-      });
-
-      it("Has a total balance of 0", async () => {
-        expect(await borrowable.totalBalance()).to.eq(0);
-      });
-
-      it("Sets the underling asset as DAI", async () => {
-        expect(await borrowable.underlying()).to.eq(dai.address);
-      });
-    });
-  });
-
-  // MINTS
-  describe("Lender deposits DAI for CygDAI", function () {
-    // Fail before approval
-    it("Deposits dai in borrowable and mints CygDAI without approving borrowable in DAI: FAIL { DAI_ERROR }", async () => {
-      // DAI error
-      await expect(borrowable.connect(lender).deposit(lenderDeposit, lender._address)).to.be.reverted;
-    });
-
-    it("Approves borrowable in dai contract", async () => {
-      await dai.connect(lender).approve(borrowable.address, max);
-
-      expect(await dai.allowance(lender._address, borrowable.address)).to.eq(max);
-    });
-
-    // Mint and transfer event
-    it("Deposits dai in borrowable and mints CygDAI and emits { Deposit }", async () => {
-      await expect(borrowable.connect(lender).deposit(lenderDeposit, lender._address))
-        .to.emit(borrowable, "Deposit")
-        .withArgs(lender._address, lender._address, lenderDeposit, lenderDeposit);
-    });
-
-    // Check that user has CygDAI and new dai Balance
-    it("Has CygDAI in wallet", async () => {
-      // CygDAI amount
-      expect(await borrowable.balanceOf(lender._address)).to.eq(lenderDeposit);
-
-      // Has less DAI
-      expect(await dai.balanceOf(lender._address)).to.eq(BigInt(lenderInitialDaiBalance) - lenderDeposit);
-    });
-  });
-
-  // REDEEMS
-  describe("Lender redeems CygDAI for dai", function () {
-    it("Redeems CygDAI for deposited amount without approving router in borrowable: FAIL { Erc20__InsufficientAllowance }", async () => {
-      await expect(router.connect(lender).redeem(borrowable.address, lenderDeposit, lender._address, max, "0x")).to.be
-        .reverted;
-    });
-
-    it("Approves router in Borrow contract and emits { Approval }", async () => {
-      // Approve router in borrowable
-      await expect(borrowable.connect(lender).approve(router.address, max))
-        .to.emit(borrowable, "Approval")
-        .withArgs(lender._address, router.address, max);
-
-      expect(await borrowable.allowance(lender._address, router.address)).to.eq(max);
-    });
-
-    it("Redeems CygDAI for more than deposited amount: FAIL", async () => {
-      // Another Lender: Random DAI
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: ["0xdfd74e3752c187c4ba899756238c76cbeefa954b"],
-      });
-
-      // Random Lender
-      anotherLender = await ethers.provider.getSigner("0xdfd74e3752c187c4ba899756238c76cbeefa954b");
-
-      await dai.connect(anotherLender).approve(router.address, max);
-
-      await expect(borrowable.connect(anotherLender).deposit(BigInt(500e18), anotherLender._address))
-        .to.emit(borrowable, "Deposit")
-        .withArgs(anotherLender._address, anotherLender._address, BigInt(500e18), BigInt(500e18));
-
-      await expect(
-        router.redeem(borrowable.address, lenderInitialDaiBalance + BigInt(1e18), lender._address, max, "0x"),
-      ).to.be.reverted;
-    });
-
-    it("Redeems CygDAI for deposited amount and emits { Redeem }", async () => {
-      let balance = await borrowable.balanceOf(lender._address);
-
-      // Redeem with no permit data
-      await expect(borrowable.connect(lender).redeem(balance, lender._address, lender._address))
-        .to.emit(borrowable, "Redeem")
-        .withArgs(lender._address, lender._address, balance, balance);
-    });
-
-    it("DAI Balance of lender is the same as before interacting wtih Cygnus if no one borrows", async () => {
-      // Check that CygDAI balance of lender is 0
-      expect(await borrowable.balanceOf(lender._address)).to.be.eq(0);
-
-      // Check that lender has the same dai balance they had before interacting with Cygnus when no borrows
-      expect(await dai.balanceOf(lender._address)).to.be.eq(lenderInitialDaiBalance);
-    });
-  });
-
-  // Shouldn't accrue reserves as no borrows yet
-  describe("When there are 0 borrows there are no reserves, borrow rate or exchange rate differences", function () {
-    it("Has 0 reserves accrued", async () => {
-      expect(await borrowable.totalReserves()).to.eq(0);
-    });
-
-    it("Has 0 borrow rate", async () => {
-      expect(await borrowable.borrowRate()).to.eq(0);
-    });
-
-    it("Has 0 total borrows accrued", async () => {
-      expect(await borrowable.totalBorrows()).to.eq(0);
-    });
-
-    it("Has no interest accruals", async () => {
-      await borrowable.connect(lender).accrueInterest();
-
-      expect(await borrowable.borrowIndex()).to.eq(BigInt(1e18));
-    });
-
-    it("Has the same exchange rate as initial", async () => {
-      expect(await borrowable.exchangeRateStored()).to.eq(BigInt(1e18));
-    });
-
-    it("Has the same exchange rate as initial (static call as borrow exchangeRate() accrues reserves)", async () => {
-      expect(await borrowable.callStatic.exchangeRate()).to.eq(BigInt(1e18));
-    });
-  });
-});
+    // Deposits
+    describe("Lender 1 deposits 3000 USDC", function () {
+        it("Should mint the correct amount of shares", async () => {
+            const { borrowable, lender, usdc } = await loadFixture(deployFixure)
+            await usdc.connect(lender).approve(borrowable.address, max)
+            await borrowable.connect(lender).deposit(BigInt(3000e6), lender._address)
+            // Take into account stargate rounding and the 1000 shares minted to 0xdead
+            expect(await borrowable.balanceOf(lender._address)).to.equal(BigInt(3000e6) - BigInt(1000) - BigInt(1))
+        })
+    })
+})

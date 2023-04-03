@@ -10,11 +10,10 @@ const Users = require(path.resolve(__dirname, "../test/Users.js"))
 const Strategy = require(path.resolve(__dirname, "../test/Strategy.js"))
 const leverageSwapData = require(path.resolve(__dirname, "./aggregation-router-v5/OneInchLeverage.js"))
 
-// eslint-disable-next-line
-const { time } = require("@openzeppelin/test-helpers")
-
 // Ethers
 const max = ethers.constants.MaxUint256
+
+const { mine } = require("@nomicfoundation/hardhat-network-helpers")
 
 async function borrowLiquidate() {
     // Cygnus contracts and underlyings
@@ -132,7 +131,7 @@ async function borrowLiquidate() {
     console.log("Reinvestor`s totalBalance before reinvest  | %s JOE (or reward token)", reinvestorBalance / 1e18)
 
     // Increase 7 days
-    await time.increase(60 * 60 * 24 * 110)
+  await mine(10000);
 
     console.log("----------------------------------------------------------------------------------------------")
     console.log("60 Days pass...")

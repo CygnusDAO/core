@@ -11,15 +11,15 @@ module.exports = async function Strategy() {
   const voidRouter = "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506";
 
   // Masterchef for this LP Token
-  const masterChef = "0x0769fd68dfb93167989c6f7254cd0d766fb2841f";
+  const masterChef = "0xf4d73326c13a4fc5fd7a064217e12780e9bd62c3";
 
   // reward token
-  const rewardToken = "0x0b3f868e0be5597d5db7feb59e1cadbb0fdda50a";
+  const rewardToken = "0xd4d42F0b6DEF4CE0383636770eF773390d85c61A";
 
   // Pool ID in the masterchef
-  const pid = 0;
+  const pid = 13;
 
-  const rewardTokenB = '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590'
+  const rewardTokenB = '0x6694340fc020c5E6B96567843da2df01b2CE1eb6'
 
   // Return standard + optional void (router, masterchef, reward token, pid, swapfee)
   return [voidRouter, masterChef, rewardToken, pid, rewardTokenB];

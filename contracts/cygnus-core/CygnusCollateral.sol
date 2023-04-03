@@ -10,10 +10,12 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {ERC20} from "./ERC20.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
-import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
+
+// Overrides
+import {ERC20} from "./ERC20.sol";
 
 /**
  *  @title  CygnusCollateral Main Collateral contract handles transfers and seizings of collateral
@@ -130,7 +132,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
             cygnusFee = cygLPAmount.mulWad(liquidationFee);
 
             // Assign reserves account
-            address daoReserves = ICygnusFactory(hangar18).daoReserves();
+            address daoReserves = IHangar18(hangar18).daoReserves();
 
             // update borrower's balance
             balances[borrower] -= cygnusFee;

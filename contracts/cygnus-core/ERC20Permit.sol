@@ -21,7 +21,7 @@ contract ERC20Permit is IERC20Permit, ERC20 {
     mapping(address => uint256) public override nonces;
 
     /// @inheritdoc IERC20Permit
-    string public constant override version = "1";
+    string public constant override version = "1.0.0";
 
     /// CONSTRUCTOR ///
 

@@ -2,9 +2,11 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import {CygnusTerminal} from "./CygnusTerminal.sol";
-import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {ICygnusBorrowControl} from "./interfaces/ICygnusBorrowControl.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
+
+// Libraries
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -83,11 +85,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override exchangeRateStored;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
     uint256 public override reserveFactor = 0.10e18;
 
     /**
@@ -140,9 +137,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
         // Update the interest rate model and do min max checks
         interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
-
-        // Assurance
-        exchangeRateStored = 1e18;
 
         // Assurance
         totalSupply = 0;
@@ -235,7 +229,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         uint256 multiplierPerYear_,
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
-    ) external override cygnusAdmin {
+    ) external override nonReentrant cygnusAdmin {
         // Update interest rate model with per second rates
         interestRateModelInternal(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
@@ -244,7 +238,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant only-admin 👽
      */
-    function setCygnusBorrowRewarder(address newBorrowRewarder) external override cygnusAdmin {
+    function setCygnusBorrowRewarder(address newBorrowRewarder) external override nonReentrant cygnusAdmin {
         // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
         // case it's inactive
         // Old borrow tracker
@@ -261,7 +255,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security non-reentrant only-admin 👽
      */
-    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
+    function setReserveFactor(uint256 newReserveFactor) external override nonReentrant cygnusAdmin {
         // Check if parameter is within range allowed
         validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
 

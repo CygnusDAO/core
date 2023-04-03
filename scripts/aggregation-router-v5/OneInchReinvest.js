@@ -11,7 +11,7 @@ module.exports = async function ReinvestBorrowable(chainId, fromToken, toToken, 
     const oneInch = async (chainId, fromToken, toToken, amount, borrowable) => {
         // Fetch 1inch API
         const swapData = await fetch(
-            `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${borrowable}&slippage=0.5&disableEstimate=true&compatibilityMode=true&complexityLevel=3&protocols=POLYGON_QUICKSWAP,POLYGON_CURVE,POLYGON_SUSHISWAP,POLYGON_AAVE_V2,COMETH,POLYGON_MSTABLE,POLYGON_DODO,POLYGON_BALANCER_V2,POLYGON_QUICKSWAP_V3,POLYGON_SWAAP,POLYGON_ELK,POLYGON_QUICKSWAP_V3,POLYGON_UNISWAP_V3,MM_FINANCE,DFYN,POLYDEX_FINANCE,IRONSWAP`
+            `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${borrowable}&slippage=0.5&disableEstimate=true&compatibilityMode=true&complexityLevel=3&protocols=ARBITRUM_DODO,ARBITRUM_DODO_V2,ARBITRUM_SUSHISWAP,ARBITRUM_DXSWAP,ARBITRUM_UNISWAP_V3,ARBITRUM_CURVE,ARBITRUM_CURVE_V2,ARBITRUM_GMX,ARBITRUM_SYNAPSE,ARBITRUM_SADDLE,ARBITRUM_AAVE_V3,ARBITRUM_ELK,ARBITRUM_CAMELOT,ARBITRUM_TRADERJOE,ARBITRUM_TRADERJOE_V2,ARBITRUM_SWAPFISH,ARBITRUM_ZYBER,ARBITRUM_ZYBER_STABLE,ARBITRUM_SOLIDLIZARD,ARBITRUM_ZYBER_V3,ARBITRUM_MYCELIUM,ARBITRUM_TRIDENT,ARBITRUM_SHELL_OCEAN`
         ).then((response) => response.json())
 
         return swapData

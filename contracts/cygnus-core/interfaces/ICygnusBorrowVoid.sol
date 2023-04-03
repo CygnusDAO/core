@@ -6,9 +6,9 @@ pragma solidity >=0.8.4;
 import {ICygnusBorrowModel} from "./ICygnusBorrowModel.sol";
 // Stargate
 import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
-import {IStargatePool} from "./IStargatePool.sol";
-import {IStargateRouter} from "./IStargateRouter.sol";
-import {IStargateLPStaking} from "./IStargateLPStaking.sol";
+import {IStargatePool} from "./BorrowableVoid/IStargatePool.sol";
+import {IStargateRouter} from "./BorrowableVoid/IStargateRouter.sol";
+import {IStargateLPStaking} from "./BorrowableVoid/IStargateLPStaking.sol";
 
 /**
  *  @title ICygnusBorrowVoid
@@ -24,34 +24,48 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     error CygnusBorrowVoid__OnlyEOAAllowed(address sender, address origin);
 
     /**
-     *  @custom:error SwapNotAllowed Reverts if the receiver is not this contract, or token received is not underlying
+     *  @custom:error DstReceiverNotValid Reverts if the receiver of the swap is not this contract
      */
-    error CygnusBorrowVoid__SwapNotAllowed(address dstReceiver, address dstToken);
+    error CygnusBorrowVoid__DstReceiverNotValid(address dstReceiver, address receiver);
+
+    /**
+     *  @custom:error SwapNotAllowed Reverts if the token received is not underlying
+     */
+    error CygnusBorrowVoid__DstTokenNotValid(address dstToken, address token);
 
     /**
      *  @custom:error SrcTokenNotValid Reverts if the src token we are swapping is not the rewards token
      */
-   error CygnusBorrowVoid__SrcTokenNotValid(address srcToken, address rewardsToken);
+    error CygnusBorrowVoid__SrcTokenNotValid(address srcToken, address token);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
+     *  @notice Emitted when admin implements strategy or re-approves contracts
+     *  @param underlying The address of the underlying stablecoin
+     *  @param shuttleId The unique ID of the lending pool
+     *  @param sender The address of the msg.sender (admin)
+     *  @custom:event ChargeVoid Logs when the strategy is first initialized or re-approves contracts
+     */
+    event ChargeVoid(address underlying, uint256 shuttleId, address sender);
+
+    /**
      *  @notice Emitted when user reinvests rewards
-     *  @param shuttle The address of this lending pool
      *  @param reinvestor The address of the caller who reinvested reward and received bounty
-     *  @param rewardBalance The amount reinvested
+     *  @param rewardBalance The amount of `rewardsToken` reinvested
      *  @param reinvestReward The reward received by the reinvestor
      *  @param daoReward The reward received by the DAO
-     *  @custom:event RechargeVoid Logs when rewards from the Masterchef/Rewarder are reinvested into more LP Tokens
+     *  @param underlyingReceived The amount of underlying stablecoin reinvested
+     *  @custom:event RechargeVoid Logs when rewards from the STG rewarder to buy more underlying
      */
     event RechargeVoid(
-        address indexed shuttle,
-        address reinvestor,
+        address indexed reinvestor,
         uint256 rewardBalance,
         uint256 reinvestReward,
-        uint256 daoReward
+        uint256 daoReward,
+        uint256 underlyingReceived
     );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -99,6 +113,13 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @notice Initializes the pool id for the strategy (Masterchef/Goose pool ID)
+     *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
+     *  @custom:security non-reentrant only-admin 👽
+     */
+    function chargeVoid(uint256 _pid) external;
 
     /**
      *  @notice Get the pending rewards manually

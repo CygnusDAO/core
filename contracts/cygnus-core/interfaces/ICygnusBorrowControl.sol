@@ -70,11 +70,6 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     // ───────────────────────────── Current pool rates
 
     /**
-     *  @return exchangeRateStored The current exchange rate of tokens
-     */
-    function exchangeRateStored() external view returns (uint256);
-
-    /**
      *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
      */
     function reserveFactor() external view returns (uint256);

@@ -8,14 +8,14 @@ import {CygnusCollateralModel} from "./CygnusCollateralModel.sol";
 // Libraries
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {CygnusDexLib} from "./libraries/CygnusDexLib.sol";
 
 // Interfaces
-import {IWETH} from "./interfaces/IWETH.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IDexPair} from "./interfaces/IDexPair.sol";
-import {IDexRouter02} from "./interfaces/IDexRouter.sol";
-import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
-import {IRewarder, IMiniChef} from "./interfaces/IMiniChef.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
+import {IDexRouter02} from "./interfaces/CollateralVoid/IDexRouter.sol";
+import {IRewarder, IMiniChef} from "./interfaces/CollateralVoid/IMiniChef.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -28,7 +28,7 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
  *
  *          It is the only contract in Cygnus that should be changed according to the LP Token's rewarder.
  *          As such most functions are kept private as they are only relevant to this contract and the others
- *          are indifferent to this. Do not modify constructor.
+ *          are indifferent to this.
  */
 contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -52,19 +52,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Whether strategy is initialized or not
-     */
-    bool private initialized;
-
-    /**
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
      */
-    uint256 private sushiPoolId;
+    uint256 private sushiPoolId = type(uint256).max;
 
     /**
      *  @notice The token that is given as rewards by the dex' rewarder contract
      */
-    address private constant REWARDS_TOKEN = 0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a;
+    address private constant REWARDS_TOKEN = 0xd4d42F0b6DEF4CE0383636770eF773390d85c61A;
 
     /**
      *  @notice The address of this dex' router
@@ -74,19 +69,19 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Address of the Rewarder contract
      */
-    IMiniChef private constant REWARDER = IMiniChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F);
+    IMiniChef private constant REWARDER = IMiniChef(0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3);
 
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override REINVEST_REWARD = 0.02e18;
+    uint256 public constant override REINVEST_REWARD = 0.04e18;
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override DAO_REWARD = 0.01e18;
+    uint256 public constant override DAO_REWARD = 0.02e18;
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
@@ -101,14 +96,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @notice Constructs the Cygnus Void contract which handles the strategy for the collateral`s underlying.
      */
     constructor() {}
-
-    /**
-     *  @notice Accepts native deposits and immediately wraps in native contract
-     */
-    receive() external payable {
-        // Deposit in nativeToken (WETH) contract
-        IWETH(nativeToken).deposit{value: msg.value}();
-    }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. MODIFIERS
@@ -140,27 +127,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         }
     }
 
-    /**
-     *  @dev Compute swap amount of tokenA to swap to tokenB to mint Liquidity
-     *  @notice Dex swap fee of 997 (This dex' swap fee of 0.3%)
-     *  @param amountA amount of token A desired to deposit
-     *  @param reservesA Reserves of token A from the DEX
-     */
-    function optimalDepositA(uint256 amountA, uint256 reservesA) private pure returns (uint256) {
-        uint256 a = uint256(1997) * reservesA;
-        uint256 b = amountA * 1000 * reservesA * 3988;
-        uint256 c = (a * a + b).sqrt();
-        return (c - a) / 1994;
-    }
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function getCygnusVoid() external view override returns (IMiniChef, IDexRouter02, address, uint256) {
+    function getCygnusVoid() external view override returns (IMiniChef, address, address, uint256) {
         // Return all the private storage variables from this contract
-        return (REWARDER, DEX_ROUTER, REWARDS_TOKEN, sushiPoolId);
+        return (REWARDER, address(DEX_ROUTER), REWARDS_TOKEN, sushiPoolId);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -182,6 +156,58 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
         // Is less than amount, safe approve max
         token.safeApprove(to, type(uint256).max);
+    }
+
+    /**
+     *  @notice Swap tokens function used by Reinvest to turn reward token into more LP Tokens
+     *  @param tokenIn Address of the token we are swapping
+     *  @param tokenOut Address of the token we are receiving
+     *  @param amount Amount of TokenIn we are swapping
+     */
+    function swapTokensPrivate(address tokenIn, address tokenOut, uint256 amount) private {
+        // Create the path to swap from tokenIn to tokenOut
+        address[] memory path = new address[](2);
+
+        // Create path for tokenIn to tokenOut
+        (path[0], path[1]) = (tokenIn, tokenOut);
+
+        // Safe Approve router
+        approveTokenPrivate(tokenIn, address(DEX_ROUTER), amount);
+
+        // Swap tokens
+        DEX_ROUTER.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp);
+    }
+
+
+    /**
+     *  @notice Gets the rewards from the rewarder contract for multiple tokens and converts to rewardToken
+     */
+    function getRewardsPrivate() private returns (uint256) {
+        // Get bonus rewards address
+        address bonusRewarder = REWARDER.rewarder(sushiPoolId);
+
+        // If active then harvest and swap all to reward token
+        if (bonusRewarder != address(0)) {
+            // Get all reward tokens and amounts
+            (address[] memory rewardTokens, uint256[] memory rewardAmounts) = IRewarder(bonusRewarder).pendingTokens(
+                sushiPoolId,
+                address(this),
+                0
+            );
+
+            // Harvest Sushi
+            REWARDER.harvest(sushiPoolId, address(this));
+
+            // Harvest all tokens and swap to Sushi
+            for (uint i = 0; i < rewardTokens.length; i++) {
+                if (rewardAmounts[i] > 0) swapTokensPrivate(rewardTokens[i], REWARDS_TOKEN, rewardAmounts[i]);
+            }
+        }
+        // Bonus token rewards not active, Harvest sushi
+        else REWARDER.harvest(sushiPoolId, address(this));
+
+        // Return balance harvested
+        return contractBalanceOf(REWARDS_TOKEN);
     }
 
     /**
@@ -217,61 +243,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         );
     }
 
-    /**
-     *  @notice Swap tokens function used by Reinvest to turn reward token into more LP Tokens
-     *  @param tokenIn Address of the token we are swapping
-     *  @param tokenOut Address of the token we are receiving
-     *  @param amount Amount of TokenIn we are swapping
-     */
-    function swapTokensPrivate(address tokenIn, address tokenOut, uint256 amount) private {
-        // Create the path to swap from tokenIn to tokenOut
-        address[] memory path = new address[](2);
-
-        // Create path for tokenIn to tokenOut
-        (path[0], path[1]) = (tokenIn, tokenOut);
-
-        // Safe Approve router
-        approveTokenPrivate(tokenIn, address(DEX_ROUTER), amount);
-
-        // Swap tokens
-        DEX_ROUTER.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp);
-    }
-
-    /**
-     *  @notice Gets the rewards from the rewarder contract for multiple tokens and converts to rewardToken
-     */
-    function getRewardsPrivate() private returns (uint256) {
-        // Get bonus rewards address
-        address bonusRewarder = REWARDER.rewarder(sushiPoolId);
-
-        // If active then harvest and swap all to reward token
-        if (bonusRewarder != address(0)) {
-            // Get all reward tokens and amounts
-            (address[] memory rewardTokens, uint256[] memory rewardAmounts) = IRewarder(bonusRewarder).pendingTokens(
-                sushiPoolId,
-                address(this),
-                0
-            );
-
-            // Harvest Sushi
-            REWARDER.harvest(sushiPoolId, address(this));
-
-            // Harvest all tokens and swap to Sushi
-            for (uint i = 0; i < rewardTokens.length; i++) {
-                if (rewardAmounts[i] > 0) {
-                    swapTokensPrivate(rewardTokens[i], REWARDS_TOKEN, contractBalanceOf(rewardTokens[i]));
-                }
-            }
-        } else {
-            // Not active, harvest Sushi
-            REWARDER.harvest(sushiPoolId, address(this));
-        }
-
-        // Return balance harvested
-        return contractBalanceOf(REWARDS_TOKEN);
-    }
-
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Preview total balance from the LP strategy
+     *  @notice Cygnus Terminal Override
+     *  @inheritdoc CygnusTerminal
+     */
+    function previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
+        // Get this contracts deposited LP amount
+        (balance, ) = REWARDER.userInfo(sushiPoolId, address(this));
+    }
 
     /**
      *  @notice Syncs total balance of this contract with LP token deposits from the rewarder
@@ -279,11 +261,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @inheritdoc CygnusTerminal
      */
     function updateInternal() internal override(CygnusTerminal) {
-        // Get this contracts deposited LP amount
-        (uint256 amountLP, ) = REWARDER.userInfo(sushiPoolId, address(this));
+        // Get total balance
+        uint256 balance = previewTotalBalance();
 
         // Assign to totalBalance
-        totalBalance = amountLP;
+        totalBalance = balance;
 
         /// @custom:event Sync
         emit Sync(totalBalance);
@@ -292,7 +274,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
-     *  @param assets The amount of shares to withdraw from the strategy
+     *  @param assets The amount of assets to withdraw from the strategy
      */
     function beforeWithdrawInternal(uint256 assets) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy
@@ -302,12 +284,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
-     *  @param assets The amount of shares to withdraw from the strategy
+     *  @param assets The amount of assets to deposit in the strategy
      */
     function afterDepositInternal(uint256 assets) internal override(CygnusTerminal) {
-        // Check allowance and approve if necessary
-        approveTokenPrivate(underlying, address(REWARDER), assets);
-
         // Deposit assets into the strategy
         REWARDER.deposit(sushiPoolId, assets, address(this));
     }
@@ -319,19 +298,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @custom:security non-reentrant only-admin 👽
      */
     function chargeVoid(uint256 _sushiPoolId) external override nonReentrant cygnusAdmin {
-        /// @custom:error VoidAlreadyInitialized Avoid initializing twice
-        if (initialized) {
-            revert CygnusCollateralVoid__VoidAlreadyInitialized({ poolId: _sushiPoolId });
+        // Avoid initializing pool twice (pool id is never -1)
+        if (sushiPoolId == type(uint256).max) {
+            // Store pool ID from rewarder contract
+            sushiPoolId = _sushiPoolId;
         }
 
-        // Store pool ID from rewarder contract
-        sushiPoolId = _sushiPoolId;
-
-        // Set initialized, can't be set again
-        initialized = true;
+        // Allow rewarder to access our underlying
+        approveTokenPrivate(underlying, address(REWARDER), type(uint256).max);
 
         /// @custom:event ChargeVoid
-        emit ChargeVoid(block.timestamp, shuttleId, underlying, _sushiPoolId);
+        emit ChargeVoid(underlying, shuttleId, _msgSender());
     }
 
     /**
@@ -366,11 +343,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // Calculate reward for DAO (DAO_REWARD %)
         uint256 daoReward = currentRewards.mulWad(DAO_REWARD);
         // Get the current DAO reserves contract
-        address daoReserves = ICygnusFactory(hangar18).daoReserves();
+        address daoReserves = IHangar18(hangar18).daoReserves();
         // Transfer the reward to the DAO vault
         REWARDS_TOKEN.safeTransfer(daoReserves, daoReward);
 
-        // ─────────────────────── 3. Convert all rewardsToken to token0 or token1
+        // ─────────────────────── 3. Convert all rewardsToken to tokenA and assign
         // Placeholders to sort tokens
         address tokenA;
         address tokenB;
@@ -381,7 +358,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             (tokenA, tokenB) = token0 == REWARDS_TOKEN ? (token0, token1) : (token1, token0);
         } else {
             // Swap token reward token to native token
-            swapTokensPrivate(REWARDS_TOKEN, nativeToken, contractBalanceOf(REWARDS_TOKEN));
+            swapTokensPrivate(REWARDS_TOKEN, nativeToken, currentRewards - eoaReward - daoReward);
 
             // Check if token0 or token1 is native token
             if (token0 == nativeToken || token1 == nativeToken) {
@@ -407,7 +384,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         uint256 reservesA = tokenA == token0 ? reserves0 : reserves1;
 
         // Get optimal swap amount for token A
-        uint256 swapAmount = optimalDepositA(totalAmountA, reservesA);
+        uint256 swapAmount = CygnusDexLib.optimalDepositA(totalAmountA, reservesA, 997);
 
         // Swap optimal amount to tokenA to tokenB for liquidity deposit
         swapTokensPrivate(tokenA, tokenB, swapAmount);
@@ -423,28 +400,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         lastReinvest = block.timestamp;
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(address(this), _msgSender(), currentRewards, eoaReward, daoReward);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
-     *  @custom:security non-reentrant only-eoa
-     */
-    function smokeDust() external override nonReentrant onlyEOA returns (uint256 amountTokenA, uint256 amountTokenB){
-        // Get dust amount of token0
-        amountTokenA = contractBalanceOf(token0);
-
-        // Swap to rewards token
-        if (amountTokenA > 0) {
-            swapTokensPrivate(token0, REWARDS_TOKEN, amountTokenA);
-        }
-
-        // Get dust amount of token1
-        amountTokenB = contractBalanceOf(token1);
-
-        // Swap to rewards token
-        if (amountTokenB > 0) {
-            swapTokensPrivate(token1, REWARDS_TOKEN, amountTokenB);
-        }
+        emit RechargeVoid(_msgSender(), currentRewards, eoaReward, daoReward, liquidity);
     }
 }

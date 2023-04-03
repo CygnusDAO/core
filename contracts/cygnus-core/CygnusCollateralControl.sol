@@ -10,7 +10,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
-import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
 import {IDexPair} from "./interfaces/IDexPair.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -71,10 +71,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
-    // We assign these as immutable as they can be used by Strategy
+    // We assign these as immutable as they can be used by any Strategy
 
     /**
-     *  @notice Address of the chain's native token (ie WETH)
+     *  @notice The chain's native token (WETH) taken from factory
      */
     address internal immutable nativeToken;
 
@@ -145,10 +145,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         borrowable = _borrowable;
 
         // Assign latest price oracle from factory
-        cygnusNebulaOracle = ICygnusFactory(_factory).cygnusNebulaOracle();
+        cygnusNebulaOracle = IHangar18(_factory).cygnusNebulaOracle();
 
         // Assign token0 and token1 from the underlying for immutable
-        (token0, token1, nativeToken) = (tokenA, tokenB, ICygnusFactory(_factory).nativeToken());
+        (token0, token1, nativeToken) = (tokenA, tokenB, IHangar18(_factory).nativeToken());
 
         // Assurance
         totalSupply = 0;
@@ -233,7 +233,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @custom:security non-reentrant only-admin 👽
      */
     function setLiquidationFee(uint256 newLiquidationFee) external override nonReentrant cygnusAdmin {
-        // Checks if parameter is within bounds
+        // Checks if parameter is within bounds, 0 is allowed since collateral contract checks for 0 fee
         validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 
         // Valid, update

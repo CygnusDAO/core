@@ -14,24 +14,19 @@ interface ICygnusTerminal is IERC20Permit {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error CantMintZeroShares Reverts when attempting to mint zero amount of tokens
+     *  @custom:error CantMintZeroShares Reverts when attempting to mint zero shares
      */
     error CygnusTerminal__CantMintZeroShares();
 
     /**
-     *  @custom:error CantBurnZeroAssets Reverts when attempting to redeem zero amount of tokens
+     *  @custom:error CantBurnZeroAssets Reverts when attempting to redeem zero assets
      */
     error CygnusTerminal__CantRedeemZeroAssets();
 
     /**
-     *  @custom:error RedeemAmountInvalid Reverts when attempting to redeem over amount of tokens
-     */
-    error CygnusTerminal__RedeemAmountInvalid(uint256 assets, uint256 totalBalance);
-
-    /**
      *  @custom:error MsgSenderNotAdmin Reverts when attempting to call Admin-only functions
      */
-    error CygnusTerminal__MsgSenderNotAdmin(address sender, address factoryAdmin);
+    error CygnusTerminal__MsgSenderNotAdmin(address sender, address admin);
 
     /**
      *  @custom:error CantSweepUnderlying Reverts when trying to sweep the underlying asset from this contract

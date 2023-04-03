@@ -9,10 +9,10 @@ module.exports = async function Users() {
   const [owner, daoReservesManager, safeAddress1] = await ethers.getSigners();
 
   // Lender
-  const lenderAddress = "0xc882b111a75c0c657fc507c04fbfcd2cc984f071";
+  const lenderAddress = "0x7b7b957c284c2c227c980d6e2f804311947b84d0";
 
   // Borrower
-  const borrowerAddress = "0x9854179bbbda1154f439116d31a646b15ec26e2d";
+  const borrowerAddress = "0x8d2c76d83af250ee7fcb16307a2addc87e91fd3f";
 
   // Lender: Random DAI Whale //
   await hre.network.provider.request({

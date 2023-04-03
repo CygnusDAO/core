@@ -21,7 +21,7 @@ pragma solidity >=0.8.4;
 
 // Dependencies
 import {Context} from "./utils/Context.sol";
-import {ICygnusFactory} from "./interfaces/ICygnusFactory.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
@@ -29,6 +29,7 @@ import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 
 // Interfaces
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
+import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
 
 // Orbiters
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
@@ -60,7 +61,7 @@ import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
  *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol) or to add
  *                DAO liquidation fees if any (in CygnusCollateral.sol)
  */
-contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
+contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -68,59 +69,65 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     mapping(uint256 => Orbiter) public override getOrbiters;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     Orbiter[] public override allOrbiters;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     mapping(address => mapping(uint256 => Shuttle)) public override getShuttles;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     Shuttle[] public override allShuttles;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     address public override admin;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     address public override pendingAdmin;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     address public override daoReserves;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     address public override pendingDaoReserves;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
+     */
+    ICygnusNebulaOracle public override cygnusNebulaOracle;
+
+    /**
+     *  @inheritdoc IHangar18
      */
     address public immutable override usd;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     address public immutable override nativeToken;
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
-    ICygnusNebulaOracle public override cygnusNebulaOracle;
+    IAggregationRouterV5 public constant override AGGREGATION_ROUTER_V5 =
+        IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -196,22 +203,18 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice Checks if the same pair of collateral and borrowable deployers we are setting already exist
-     *  @param albireoOrbiter The address of the borrowable deployer
-     *  @param denebOrbiter The address of the collateral deployer
+     *  @param uniqueHash The keccak256 hash of the borrowableInitCodeHash and collateralInitCodeHash
      *  @param orbitersLength How many orbiter pairs we have deployed
      */
-    function checkOrbitersInternal(
-        IAlbireoOrbiter albireoOrbiter,
-        IDenebOrbiter denebOrbiter,
-        uint256 orbitersLength
-    ) private view {
+    function checkOrbitersInternal(bytes32 uniqueHash, uint256 orbitersLength) private view {
         // Load orbiter to memory
         Orbiter[] memory orbiter = allOrbiters;
 
-        // Check if orbiters already exist
+        // Loop through all orbiters
         for (uint256 i = 0; i < orbitersLength; i++) {
-            /// @custom:error OrbiterAlreadySet Avoid setting the same orbiters twice
-            if (orbiter[i].denebOrbiter == denebOrbiter && orbiter[i].albireoOrbiter == albireoOrbiter) {
+            // Check unique hash
+            if (uniqueHash == orbiter[i].uniqueHash) {
+                /// @custom:error OrbiterAlreadySet Avoid setting the same orbiters twice
                 revert CygnusFactory__OrbiterAlreadySet({orbiter: orbiter[i]});
             }
         }
@@ -220,7 +223,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function orbitersDeployed() external view override returns (uint256) {
         // Return how many borrow/collateral orbiters this contract has
@@ -228,7 +231,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function shuttlesDeployed() external view override returns (uint256) {
         // Return how many shuttles this contract has launched
@@ -245,11 +248,11 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *  @notice Creates a record of each shuttle deployed by this contract
      *  @dev Prepares shuttle for deployment and stores the orbiter used for this Shuttle
      *  @param lpTokenPair Address of the LP Token for this shuttle
-     *  @param orbiter The orbiter used to deploy this shuttle
+     *  @param orbiterId The orbiter ID used to deploy this shuttle
      */
-    function boardShuttle(address lpTokenPair, Orbiter memory orbiter) private returns (Shuttle storage) {
+    function boardShuttle(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
-        uint256 shuttleId = getShuttles[lpTokenPair][orbiter.orbiterId].shuttleId;
+        uint256 shuttleId = getShuttles[lpTokenPair][orbiterId].shuttleId;
 
         /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles with the same orbiter ID
         if (shuttleId != 0) {
@@ -259,12 +262,12 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Assign shuttle/orbiter ids
         return
-            getShuttles[lpTokenPair][orbiter.orbiterId] = Shuttle(
-                false, // Initialized, default false until oracle is set
+            getShuttles[lpTokenPair][orbiterId] = Shuttle(
+                false, // False until `deployShuttle` call succeeds
                 uint88(allShuttles.length), // Lending pool ID
                 address(0), // Borrowable address
                 address(0), // Collateral address
-                uint96(orbiter.orbiterId) // The orbiter ID used to launch this shuttle
+                uint96(orbiterId) // The orbiter ID used to launch this shuttle
             );
     }
 
@@ -284,7 +287,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
      *    Phase5: Initialize shuttle
      *              - Initialize and store record of this shuttle in this contract
      *
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      *  @custom:security non-reentrant
      */
     function deployShuttle(
@@ -306,7 +309,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
         // Load shuttle to storage
-        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiter);
+        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiter.orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
@@ -315,7 +318,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
             lpTokenPair,
             address(this),
             address(orbiter.denebOrbiter),
-            orbiter.denebOrbiter.COLLATERAL_INIT_CODE_HASH()
+            orbiter.collateralInitCodeHash
         );
 
         // Deploy borrow contract
@@ -369,7 +372,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
     }
 
     /**
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function initializeOrbiter(
         string memory orbiterName,
@@ -379,23 +382,36 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         // Total orbiters
         uint256 totalOrbiters = allOrbiters.length;
 
-        // Check if collateral orbiter already exists, reverts if it does
-        checkOrbitersInternal(albireoOrbiter, denebOrbiter, totalOrbiters);
+        // Collateral init code hash
+        bytes32 collateralInitCodeHash = denebOrbiter.COLLATERAL_INIT_CODE_HASH();
+        // Borrowable init code hash
+        bytes32 borrowableInitCodeHash = albireoOrbiter.BORROWABLE_INIT_CODE_HASH();
+        // Unique hash of both orbiters
+        bytes32 uniqueHash = keccak256(abi.encode(collateralInitCodeHash, borrowableInitCodeHash));
+
+        // Check if we already initialized these orbiter pair, reverts if we have
+        checkOrbitersInternal(uniqueHash, totalOrbiters);
 
         // Create storage for orbiters with this ID
         Orbiter storage orbiter = getOrbiters[totalOrbiters];
 
         // ID for this group of collateral and borrow orbiters
-        orbiter.orbiterId = uint24(totalOrbiters);
+        orbiter.orbiterId = uint88(totalOrbiters);
 
-        // Name of the exchange these orbiters are for
+        // Name of the dex/strategy these orbiters are for or human readable identifier
         orbiter.orbiterName = orbiterName;
-
-        // Borrow orbiter address
-        orbiter.albireoOrbiter = albireoOrbiter;
 
         // Collateral orbiter address
         orbiter.denebOrbiter = denebOrbiter;
+        // Borrow orbiter address
+        orbiter.albireoOrbiter = albireoOrbiter;
+
+        // Collateral init code hash
+        orbiter.collateralInitCodeHash = collateralInitCodeHash;
+        // Borrowable init code hash
+        orbiter.borrowableInitCodeHash = borrowableInitCodeHash;
+        // Unique hash
+        orbiter.uniqueHash = uniqueHash;
 
         // ID for this group of collateral/borrow orbiters
         orbiter.status = true;
@@ -404,17 +420,17 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
         allOrbiters.push(orbiter);
 
         /// @custom:event InitializeOrbiters
-        emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, orbiterName);
+        emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, uniqueHash, orbiterName);
     }
 
     /**
      *  @notice 👽
      *  @notice Reverts future deployments with disabled orbiter
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function switchOrbiterStatus(uint256 orbiterId) external override cygnusAdmin {
         // Get the orbiter by the ID
-        ICygnusFactory.Orbiter storage orbiter = getOrbiters[orbiterId];
+        IHangar18.Orbiter storage orbiter = getOrbiters[orbiterId];
 
         /// @custom:error OrbiterNotSet Avoid switching on/off if orbiters are not set
         if ((address(orbiter.denebOrbiter) == address(0)) || address(orbiter.albireoOrbiter) == address(0)) {
@@ -436,7 +452,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function setNewNebulaOracle(address newPriceOracle) external override cygnusAdmin {
         /// @custom:error CygnusNebulaCantBeZero Avoid zero address oracle
@@ -456,7 +472,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function setPendingAdmin(address newPendingAdmin) external override cygnusAdmin {
         /// @custom:error CygnusAdminAlreadySet Avoid setting the pending admin as the current admin
@@ -476,7 +492,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function setNewCygnusAdmin() external override cygnusAdmin {
         /// @custom:error PendingAdminCantBeZero Avoid setting cygnus admin as address(0)
@@ -499,7 +515,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function setPendingDaoReserves(address newPendingDaoReserves) external override cygnusAdmin {
         /// @custom:error DaoReservesAlreadySet Avoid setting the pending dao reserves as the current dao reserves
@@ -522,7 +538,7 @@ contract CygnusFactory is ICygnusFactory, Context, ReentrancyGuard {
 
     /**
      *  @notice 👽
-     *  @inheritdoc ICygnusFactory
+     *  @inheritdoc IHangar18
      */
     function setNewDaoReserves() external override cygnusAdmin {
         /// @custom:error DaoReservesCantBeZero Avoid setting the dao reserves as the zero address

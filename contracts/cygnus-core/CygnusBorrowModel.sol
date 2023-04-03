@@ -50,7 +50,13 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     mapping(address => BorrowSnapshot) internal borrowBalances;
 
+    /**
+     *  @notice Internal accounting of minted reserves, We store this to not mint reserves on strategy's reinvestments
+     */
+    uint256 internal mintedReserves;
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
 
     // 2 memory slots on every accrual
 
@@ -148,9 +154,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         BorrowSnapshot memory borrowSnapshot = borrowBalances[borrower];
 
         // If interestIndex = 0 then borrowBalance is 0, return 0 instead of fail division
-        if (borrowSnapshot.interestIndex == 0) {
-            return 0;
-        }
+        if (borrowSnapshot.interestIndex == 0) return 0;
 
         // Calculate new borrow balance with the interest index
         return
@@ -167,9 +171,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 _totalBorrows = uint256(totalBorrows);
 
         // Util is 0 if there are no borrows
-        if (_totalBorrows == 0) {
-            return 0;
-        }
+        if (_totalBorrows == 0) return 0;
 
         // Return the current pool utilization rate
         return _totalBorrows.divWad((totalBalance + _totalBorrows) - totalReserves);
@@ -183,9 +185,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 rateToPool = uint256(borrowRate).mulWad(1e18 - reserveFactor);
 
         // Return 0 when borrow rate is 0
-        if (rateToPool == 0) { 
-          return 0;
-        }
+        if (rateToPool == 0) return 0;
 
         // Utilization rate
         uint256 util = uint256(totalBorrows).divWad((totalBalance + totalBorrows) - totalReserves);

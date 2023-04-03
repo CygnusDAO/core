@@ -46,7 +46,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
      *  @custom:struct BorrowParameters Important parameters for the borrow contracts and interest rate model
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of USDC)
-     *  @custom:member collateral The address of the Cygnus collateral contract for this borrow token
+     *  @custom:member collateral The address of the Cygnus collateral contract for this borrowable
      *  @custom:member shuttleId The ID for the shuttle we are deploying (shared by collateral/borrow)
      *  @custom:member baseRatePerYear The base rate per year
      *  @custom:member multiplier The slope of the interest rate
@@ -70,7 +70,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IAlbireoOrbiter
      */
-    bytes32 public constant override BORROW_INIT_CODE_HASH = keccak256(type(CygnusBorrow).creationCode);
+    bytes32 public constant override BORROWABLE_INIT_CODE_HASH = keccak256(type(CygnusBorrow).creationCode);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             6. NON-CONSTANT FUNCTIONS

@@ -46,13 +46,13 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
      *  @custom:struct CollateralParameters Important parameters for the collateral contracts
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
-     *  @custom:member cygnusDai The address of the Cygnus borrow contract for this collateral
+     *  @custom:member borrowable The address of the Cygnus borrow contract for this collateral
      *  @custom:member shuttleId The unique id of this lending pool (shared by borrowable)
      */
     struct CollateralParameters {
         address factory;
         address underlying;
-        address cygnusDai;
+        address borrowable;
         uint256 shuttleId;
     }
 
@@ -79,14 +79,14 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
      */
     function deployDeneb(
         address underlying,
-        address cygnusDai,
+        address borrowable,
         uint256 shuttleId
     ) external override nonReentrant returns (address collateral) {
         // Assign important addresses to pass to collateral contracts
         collateralParameters = CollateralParameters({
             factory: _msgSender(),
             underlying: underlying,
-            cygnusDai: cygnusDai,
+            borrowable: borrowable,
             shuttleId: shuttleId
         });
 

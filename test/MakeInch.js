@@ -11,27 +11,27 @@ const ethers = hre.ethers;
  */
 module.exports = async function Make() {
   // 0. Chain ID
-  const chainId = 137;
+  const chainId = 42161;
 
   // Addresses in this chain //
 
   // 1. LP Token address -----------------------------------------------------
   // ETH-MATIC
-  const lpTokenAddress = "0xc4e595acdd7d12fec385e5da5d43160e8a0bac0e";
+  const lpTokenAddress = "0xb7e50106a5bd3cf21af210a755f9c8740890a8c9";
 
   // 2. USDC address on this chain --------------------------------------------
-  const usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+  const usdcAddress = "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8";
 
   // 3. Native chain token ---------------------------------------------------
-  const nativeAddress = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
+  const nativeAddress = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
 
   // 4. Chainlink aggregators ------------------------------------------------
   // USDC aggregator
-  const usdcAggregator = "0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7";
+  const usdcAggregator = "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3";
   // Token0 from LP Token
-  const token0Aggregator = "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0";
+  const token0Aggregator = "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612";
   // Token1 from LP Token
-  const token1Aggregator = "0xF9680D99D6C9589e2a93a78A04A279e509205945";
+  const token1Aggregator = "0x47E55cCec6582838E173f252D08Afd8116c2202d";
   
 
   // 5. DEX of this LP Token -------------------------------------------------
@@ -90,7 +90,7 @@ module.exports = async function Make() {
   // ═══════════════════ 4. FACTORY ═════════════════════════════════════════════════════════
 
   // Factory
-  const Factory = await ethers.getContractFactory("CygnusFactory");
+  const Factory = await ethers.getContractFactory("Hangar18");
 
   const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, oracle.address);
 

@@ -30,6 +30,7 @@ async function deploy() {
 
     // INITIALIZE VOID
     await collateral.connect(owner).chargeVoid(pid)
+    await borrowable.connect(owner).chargeVoid(0)
 
     /********************************************************************************************************
    
@@ -49,7 +50,7 @@ async function deploy() {
     console.log("PRICE OF 1 LP TOKEN                            | %s USDC", oneLPToken / 1e6)
     console.log("----------------------------------------------------------------------------------------------")
 
-    const lpTokenBalanceBeforeDeposit = (await lpToken.balanceOf(borrower._address)) / 8
+    const lpTokenBalanceBeforeDeposit = await lpToken.balanceOf(borrower._address)
     const usdcBalanceBeforeDeposit = await usdc.balanceOf(lender._address)
 
     console.log("Borrower`s LP balance before deposit           | %s LP Tokens", lpTokenBalanceBeforeDeposit / 1e18)
@@ -61,7 +62,7 @@ async function deploy() {
 
     // Borrower: Approve collateral in LP Token
     await lpToken.connect(borrower).approve(collateral.address, max)
-    await collateral.connect(borrower).deposit(BigInt(1e18), borrower._address)
+    await collateral.connect(borrower).deposit(BigInt(10e18), borrower._address)
 
     // Lender: Approve borrowable in USDC
     await usdc.connect(lender).approve(borrowable.address, max)
@@ -182,7 +183,6 @@ async function deploy() {
     console.log("STG Amount to reinvest:                                | %s STG", stgAmount)
 
     // Remove DAO and reinvestor reward, the final amount gets updated on the swap anyways
-
     const swapData = await borrowableSwapData(chainId, rewardTokenB, usdc.address, stgAmount * 0.97, borrowable.address)
 
     await borrowable.connect(safeAddress2).reinvestRewards_y7b(swapData)

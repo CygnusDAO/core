@@ -8,11 +8,14 @@ import { IAlbireoOrbiter } from "./IAlbireoOrbiter.sol";
 // Oracles
 import { ICygnusNebulaOracle } from "./ICygnusNebulaOracle.sol";
 
+// One inch
+import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
+
 /**
  *  @title The interface for the Cygnus Factory
  *  @notice The Cygnus factory facilitates creation of collateral and borrow pools
  */
-interface ICygnusFactory {
+interface IHangar18 {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -153,6 +156,7 @@ interface ICygnusFactory {
      *  @param borrowOrbiter The address of the borrow orbiter for this dex
      *  @param denebOrbiter The address of the collateral orbiter for this dex
      *  @param orbitersName The name of the dex for these orbiters
+     *  @param uniqueHash The keccack256 hash of the collateral init code hash and borrowable init code hash
      *  @custom:event InitializeOrbiters Logs when orbiters are initialized in the factory
      */
     event InitializeOrbiters(
@@ -160,6 +164,7 @@ interface ICygnusFactory {
         uint256 orbitersLength,
         IAlbireoOrbiter borrowOrbiter,
         IDenebOrbiter denebOrbiter,
+        bytes32 uniqueHash,
         string orbitersName
     );
 
@@ -190,15 +195,18 @@ interface ICygnusFactory {
      *  @custom:struct Official record of all collateral and borrow deployer contracts, unique per dex
      *  @custom:member status Whether or not these orbiters are active and usable
      *  @custom:member orbiterId The ID for this pair of orbiters
-     *  @custom:member orbiterName The name of the dex
-     *  @custom:member denebOrbiter The address of the collateral deployer contract
      *  @custom:member albireoOrbiter The address of the borrow deployer contract
+     *  @custom:member denebOrbiter The address of the collateral deployer contract
+     *  @custom:member orbiterName The name of the dex
      */
     struct Orbiter {
         bool status;
         uint88 orbiterId;
         IAlbireoOrbiter albireoOrbiter;
         IDenebOrbiter denebOrbiter;
+        bytes32 collateralInitCodeHash;
+        bytes32 borrowableInitCodeHash;
+        bytes32 uniqueHash;
         string orbiterName;
     }
 
@@ -227,6 +235,9 @@ interface ICygnusFactory {
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return borrowableInitCodeHash The init code hash of the borrowable
+     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
      *  @return orbiterName The name of the dex
      */
     function getOrbiters(
@@ -239,6 +250,9 @@ interface ICygnusFactory {
             uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
             IDenebOrbiter denebOrbiter,
+            bytes32 collateralInitCodeHash,
+            bytes32 borrowableInitCodeHash,
+            bytes32 uniqueHash,
             string memory orbiterName
         );
 
@@ -249,6 +263,9 @@ interface ICygnusFactory {
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return borrowableInitCodeHash The init code hash of the borrowable
+     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
      *  @return orbiterName The name of the dex
      */
     function allOrbiters(
@@ -261,6 +278,9 @@ interface ICygnusFactory {
             uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
             IDenebOrbiter denebOrbiter,
+            bytes32 collateralInitCodeHash,
+            bytes32 borrowableInitCodeHash,
+            bytes32 uniqueHash,
             string memory orbiterName
         );
 
@@ -336,6 +356,11 @@ interface ICygnusFactory {
      *  @return nativeToken The address of the chain's native token
      */
     function nativeToken() external view returns (address);
+
+    /**
+     *  @return AGGREGATION_ROUTER_V5 The address of the 1inch router used for the swaps
+     */
+    function AGGREGATION_ROUTER_V5() external pure returns (IAggregationRouterV5);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
