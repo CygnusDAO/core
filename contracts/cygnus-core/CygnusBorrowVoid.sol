@@ -21,9 +21,11 @@ import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregat
 import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
- *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin
+ *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin using Stargate.
  *  @author CygnusDAO
- *  @notice Strategy for the underlying stablecoin deposits.
+ *  @notice Strategy for the underlying stablecoin deposits. Funds that are not being lent get deposited in Stargate
+ *          to earn STG rewards. By reinvesting into more USDC, the pool balance increases and utilization rate
+ *          decreases, keeping the pool healthy while helping borrowers.
  */
 contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -51,7 +53,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     uint256 private stgPoolId = type(uint256).max;
 
     /**
-     *  @notice Stargate Router Pool Id to add liquidity after reinvesting rewards
+     *  @notice Stargate Router Pool Id
      */
     uint256 private constant STG_ROUTER_POOL_ID = 1;
 
@@ -61,7 +63,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     address private constant REWARDS_TOKEN = 0x6694340fc020c5E6B96567843da2df01b2CE1eb6;
 
     /**
-     *  @notice Stargate pool for the underlying 0x1205f31718499dBf1fCa446663B532Ef87481fe1
+     *  @notice Stargate pool for USDC
      */
     IStargatePool private constant STG_POOL = IStargatePool(0x892785f33CdeE22A30AEF750F285E18c18040c3e);
 
