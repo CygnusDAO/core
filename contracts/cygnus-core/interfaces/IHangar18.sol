@@ -33,7 +33,7 @@ interface IHangar18 {
     /**
      *  @custom:error ShuttleAlreadyDeployed Reverts when trying to deploy a shuttle that already exists
      */
-    error CygnusFactory__ShuttleAlreadyDeployed(uint256 id, address lpTokenPair);
+    error CygnusFactory__ShuttleAlreadyDeployed(address lpTokenPair, uint256 orbiterId);
 
     /**
      *  @custom:error OrbitersAreInactive Reverts when deploying a shuttle with orbiters that are inactive or dont exist
@@ -204,9 +204,9 @@ interface IHangar18 {
         uint88 orbiterId;
         IAlbireoOrbiter albireoOrbiter;
         IDenebOrbiter denebOrbiter;
-        ICygnusNebulaOracle nebulaOracle;
-        bytes32 collateralInitCodeHash;
         bytes32 borrowableInitCodeHash;
+        bytes32 collateralInitCodeHash;
+        ICygnusNebulaOracle nebulaOracle;
         bytes32 uniqueHash;
         string orbiterName;
     }
@@ -236,9 +236,9 @@ interface IHangar18 {
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
-     *  @return nebulaOracle The oracle for this orbiter
-     *  @return collateralInitCodeHash The init code hash of the collateral
      *  @return borrowableInitCodeHash The init code hash of the borrowable
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return nebulaOracle The oracle for this orbiter
      *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
      *  @return orbiterName The name of the dex
      */
@@ -252,9 +252,9 @@ interface IHangar18 {
             uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
             IDenebOrbiter denebOrbiter,
-            ICygnusNebulaOracle nebulaOracle,
-            bytes32 collateralInitCodeHash,
             bytes32 borrowableInitCodeHash,
+            bytes32 collateralInitCodeHash,
+            ICygnusNebulaOracle nebulaOracle,
             bytes32 uniqueHash,
             string memory orbiterName
         );
@@ -279,10 +279,10 @@ interface IHangar18 {
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
-     *  @return nebulaOracle The oracle for this orbiter
-     *  @return collateralInitCodeHash The init code hash of the collateral
      *  @return borrowableInitCodeHash The init code hash of the borrowable
-     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return nebulaOracle The oracle for this orbiter
+     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash and oracle address
      *  @return orbiterName The name of the dex
      */
     function getOrbiters(
@@ -295,9 +295,9 @@ interface IHangar18 {
             uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
             IDenebOrbiter denebOrbiter,
-            ICygnusNebulaOracle nebulaOracle,
-            bytes32 collateralInitCodeHash,
             bytes32 borrowableInitCodeHash,
+            bytes32 collateralInitCodeHash,
+            ICygnusNebulaOracle nebulaOracle,
             bytes32 uniqueHash,
             string memory orbiterName
         );

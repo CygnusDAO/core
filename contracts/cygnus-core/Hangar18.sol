@@ -196,7 +196,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     function checkOrbitersInternal(bytes32 uniqueHash, uint256 orbitersLength) private view {
         // Load orbiter to memory
         Orbiter[] memory orbiter = allOrbiters;
-      
+
         // Loop through all orbiters
         for (uint256 i = 0; i < orbitersLength; i++) {
             // Check unique hash
@@ -228,9 +228,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function nebulasDeployed() external view override returns (uint256) { 
-      // Return how many oracles we deployed
-      return allNebulas.length;
+    function nebulasDeployed() external view override returns (uint256) {
+        // Return how many oracles we deployed
+        return allNebulas.length;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -247,15 +247,14 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      */
     function boardShuttle(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
-        uint256 shuttleId = getShuttles[lpTokenPair][orbiterId].shuttleId;
+        bool deployed = getShuttles[lpTokenPair][orbiterId].launched;
 
-        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles with the same orbiter ID
-        if (shuttleId != 0) {
-            // If we try to re-deploy the lending pool which actually has the ID of 0, the EVM will handle the revert
-            revert CygnusFactory__ShuttleAlreadyDeployed({id: shuttleId, lpTokenPair: lpTokenPair});
+        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
+        if (deployed == true) {
+            revert CygnusFactory__ShuttleAlreadyDeployed({lpTokenPair: lpTokenPair, orbiterId: orbiterId});
         }
 
-        // Assign shuttle/orbiter ids
+        // Create shuttle
         return
             getShuttles[lpTokenPair][orbiterId] = Shuttle(
                 false, // False until `deployShuttle` call succeeds
@@ -269,21 +268,21 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *    Phase1: Orbiter check
-     *              - Orbiters (deployers) are active and usable
-     *    Phase2: Board shuttle check
-     *              - No shuttle with the same LP Token AND Orbiter has been deployed before
-     *    Phase3: Deploy Collateral and Borrow contracts
-     *              - Calculate address of the collateral and deploy borrow contract with calculated collateral address
-     *              - Deploy the collateral contract with the deployed borrow address
-     *              - Check that collateral contract address is equal to the calculated collateral address, else revert
-     *    Phase4: Price Oracle check:
-     *              - Assert price oracle exists for this LP Token pair
-     *    Phase5: Initialize shuttle
+     *  Phase1: Orbiter check
+     *            - Orbiters (deployers) are active and usable
+     *  Phase2: Board shuttle check
+     *            - No shuttle with the same LP Token AND Orbiter has been deployed before
+     *  Phase3: Deploy Collateral and Borrow contracts
+     *            - Calculate address of the collateral and deploy borrow contract with calculated collateral address
+     *            - Deploy the collateral contract with the deployed borrow address
+     *            - Check that collateral contract address is equal to the calculated collateral address, else revert
+     *  Phase4: Price Oracle check:
+     *            - Assert price oracle exists for this LP Token pair
+     *  Phase5: Initialize shuttle
      *              - Initialize and store record of this shuttle in this contract
      *
      *  @inheritdoc IHangar18
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-admin 👽
      */
     function deployShuttle(
         address lpTokenPair,
@@ -308,7 +307,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
 
         // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
-        address c2Collateral = CygnusPoolAddress.getCollateralContract(
+        address create2Collateral = CygnusPoolAddress.getCollateralContract(
             lpTokenPair,
             address(this),
             address(orbiter.denebOrbiter),
@@ -318,7 +317,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Deploy borrow contract
         borrowable = orbiter.albireoOrbiter.deployAlbireo(
             usd,
-            c2Collateral,
+            create2Collateral,
             address(orbiter.nebulaOracle),
             shuttle.shuttleId
         );
@@ -332,9 +331,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         );
 
         /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
-        if (collateral != c2Collateral) {
+        if (collateral != create2Collateral) {
             revert CygnusFactory__CollateralAddressMismatch({
-                calculatedCollateral: c2Collateral,
+                calculatedCollateral: create2Collateral,
                 deployedCollateral: collateral
             });
         }
@@ -371,6 +370,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
 
     /**
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function initializeOrbiter(
         string memory orbiterName,
@@ -387,8 +387,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Borrowable init code hash
         bytes32 borrowableInitCodeHash = albireoOrbiter.BORROWABLE_INIT_CODE_HASH();
 
-        // Unique hash of both orbiters
-        bytes32 uniqueHash = keccak256(abi.encode(collateralInitCodeHash, borrowableInitCodeHash));
+        // Unique hash of both orbiters and oracle
+        bytes32 uniqueHash = keccak256(abi.encode(collateralInitCodeHash, borrowableInitCodeHash, nebulaOracle));
 
         // Check if we already initialized these orbiter pair, reverts if we have
         checkOrbitersInternal(uniqueHash, totalOrbiters);
@@ -426,17 +426,32 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Push struct to array
         allOrbiters.push(orbiter);
 
-        // Push oracle to array
-        allNebulas.push(nebulaOracle);
+        // Gas savings
+        ICygnusNebulaOracle[] memory oracles = allNebulas;
+
+        // Add oracle
+        for (uint256 i = 0; i < oracles.length; i++) {
+            // Get oracle array
+            ICygnusNebulaOracle oracle = oracles[i];
+
+            // Check if deployers use same oracle
+            if (oracle == nebulaOracle) {
+                // Exit loop
+                break;
+            }
+
+            // Push oracle to array
+            allNebulas.push(nebulaOracle);
+        }
 
         /// @custom:event InitializeOrbiters
         emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, uniqueHash, orbiterName);
     }
 
     /**
-     *  @notice 👽
      *  @notice Reverts future deployments with disabled orbiter
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function switchOrbiterStatus(uint256 orbiterId) external override cygnusAdmin {
         // Get the orbiter by the ID
@@ -461,8 +476,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function setPendingAdmin(address newPendingAdmin) external override cygnusAdmin {
         /// @custom:error CygnusAdminAlreadySet Avoid setting the pending admin as the current admin
@@ -481,8 +496,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function setNewCygnusAdmin() external override cygnusAdmin {
         /// @custom:error PendingAdminCantBeZero Avoid setting cygnus admin as address(0)
@@ -504,8 +519,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function setPendingDaoReserves(address newPendingDaoReserves) external override cygnusAdmin {
         /// @custom:error DaoReservesAlreadySet Avoid setting the pending dao reserves as the current dao reserves
@@ -527,8 +542,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     }
 
     /**
-     *  @notice 👽
      *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
      */
     function setNewDaoReserves() external override cygnusAdmin {
         /// @custom:error DaoReservesCantBeZero Avoid setting the dao reserves as the zero address
