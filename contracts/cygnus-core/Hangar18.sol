@@ -111,7 +111,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    ICygnusNebulaOracle[] public override cygnusNebulaOracle;
+    ICygnusNebulaOracle[] public override allNebulas;
 
     /**
      *  @inheritdoc IHangar18
@@ -196,7 +196,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     function checkOrbitersInternal(bytes32 uniqueHash, uint256 orbitersLength) private view {
         // Load orbiter to memory
         Orbiter[] memory orbiter = allOrbiters;
-
+      
         // Loop through all orbiters
         for (uint256 i = 0; i < orbitersLength; i++) {
             // Check unique hash
@@ -223,6 +223,14 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     function shuttlesDeployed() external view override returns (uint256) {
         // Return how many shuttles this contract has launched
         return allShuttles.length;
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function nebulasDeployed() external view override returns (uint256) { 
+      // Return how many oracles we deployed
+      return allNebulas.length;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -417,6 +425,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
 
         // Push struct to array
         allOrbiters.push(orbiter);
+
+        // Push oracle to array
+        allNebulas.push(nebulaOracle);
 
         /// @custom:event InitializeOrbiters
         emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, uniqueHash, orbiterName);

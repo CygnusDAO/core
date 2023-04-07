@@ -340,7 +340,7 @@ interface IHangar18 {
     /**
      * @return cygnusNebulaOracle The address of the Cygnus price oracle
      */
-    function cygnusNebulaOracle(uint256 oracleId) external view returns (ICygnusNebulaOracle);
+    function allNebulas(uint256 oracleId) external view returns (ICygnusNebulaOracle);
 
     /**
      *  @return orbitersDeployed The total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter)
@@ -351,6 +351,11 @@ interface IHangar18 {
      *  @return shuttlesDeployed The total number of shuttles deployed
      */
     function shuttlesDeployed() external view returns (uint256);
+
+    /**
+     *  @return nebulasDeployed The total number of oracles deployed
+     */
+    function nebulasDeployed() external view returns (uint256);
 
     /**
      *  @return usd The address of the borrowable token (stablecoin)
