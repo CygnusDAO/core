@@ -9,11 +9,11 @@ import {ICygnusTerminal, CygnusTerminal} from "./CygnusTerminal.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IOrbiter} from "./interfaces/IOrbiter.sol";
+import {IDexPair} from "./interfaces/IDexPair.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
-import {IDexPair} from "./interfaces/IDexPair.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
 
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
@@ -69,25 +69,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      */
     uint256 private constant LIQUIDATION_FEE_MAX = 0.10e18;
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    // We assign these as immutable as they can be used by any Strategy
-
-    /**
-     *  @notice The chain's native token (WETH) taken from factory
-     */
-    address internal immutable nativeToken;
-
-    /**
-     *  @notice The first token from the underlying LP Token
-     */
-    address internal immutable token0;
-
-    /**
-     *  @notice The second token from the underlying LP Token
-     */
-    address internal immutable token1;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     // ──────────────────────────── Important Addresses
@@ -96,11 +77,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @inheritdoc ICygnusCollateralControl
      */
     address public immutable override borrowable;
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    ICygnusNebulaOracle public immutable override cygnusNebulaOracle;
 
     // ───────────────────────────── Current pool rates
 
@@ -124,31 +100,20 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Collateral arm of the pool. It assigns the Factory, the underlying LP Token and the
-     *          borrow contract for this collateral. It also assigns the Oracle to be used for the collateral model
-     *          contract, which is taken from the most current one in the factory.
+     *  @notice Constructs the Collateral arm of the pool and assigns the Borrow contract.
      */
     constructor() {
-        // Get factory, underlying, borrowable and lending pool id
-        (address _factory, address _asset, address _borrowable, ) = IDenebOrbiter(_msgSender()).collateralParameters();
+        // Underlying, Borrowable
+        (, address asset, address twinStar, , ) = IOrbiter(_msgSender()).shuttleParameters();
 
-        // Token0 from the LP Token
-        (address tokenA, address tokenB) = (IDexPair(_asset).token0(), IDexPair(_asset).token1());
+        // Name of this CygLP with token symbol (ie `CygLP: USDC/WETH`)
+        symbol = string(abi.encodePacked("CygLP: ", IERC20(asset).symbol()));
 
-        // Name of this CygLP with each token symbols
-        symbol = string(abi.encodePacked("CygLP: ", IERC20(tokenA).symbol(), "/", IERC20(tokenB).symbol()));
+        // Same decimals as the underlying
+        decimals = IERC20(asset).decimals();
 
-        // Get decimals
-        decimals = IERC20(_asset).decimals();
-
-        // Borrowable
-        borrowable = _borrowable;
-
-        // Assign latest price oracle from factory
-        cygnusNebulaOracle = IHangar18(_factory).cygnusNebulaOracle();
-
-        // Assign token0 and token1 from the underlying for immutable
-        (token0, token1, nativeToken) = (tokenA, tokenB, IHangar18(_factory).nativeToken());
+        // Assign the borrowable arm of the lending pool
+        borrowable = twinStar;
 
         // Assurance
         totalSupply = 0;

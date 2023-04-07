@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
+// Interfaces
+import {IHangar18} from "./IHangar18.sol";
+import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
+
 // Dependencies
 import { IERC20Permit } from "./IERC20Permit.sol";
 
@@ -75,14 +79,19 @@ interface ICygnusTerminal is IERC20Permit {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
+     *  @return hangar18 The address of the Cygnus Factory contract used to deploy this shuttle  🛸
+     */
+    function hangar18() external view returns (IHangar18);
+
+    /**
      *  @return underlying The address of the underlying (LP Token for collateral contracts, USDC for borrow contracts)
      */
     function underlying() external view returns (address);
 
     /**
-     *  @return hangar18 The address of the Cygnus Factory contract used to deploy this shuttle  🛸
+     *  @return cygnusNebulaOracle The address of the oracle for this lending pool
      */
-    function hangar18() external view returns (address);
+    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
 
     /**
      *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)

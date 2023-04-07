@@ -8,7 +8,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 420,
+        runs: 800,
       },
       outputSelection: {
         "*": {

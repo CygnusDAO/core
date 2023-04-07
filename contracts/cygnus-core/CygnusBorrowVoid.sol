@@ -21,11 +21,9 @@ import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregat
 import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
- *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin using Stargate.
+ *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin
  *  @author CygnusDAO
- *  @notice Strategy for the underlying stablecoin deposits. Funds that are not being lent get deposited in Stargate
- *          to earn STG rewards. By reinvesting into more USDC, the pool balance increases and utilization rate
- *          decreases, keeping the pool healthy while helping borrowers.
+ *  @notice Strategy for the underlying stablecoin deposits.
  */
 contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -53,29 +51,29 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     uint256 private stgPoolId = type(uint256).max;
 
     /**
-     *  @notice Stargate Router Pool Id
+     *  @notice Stargate Router Pool Id to add liquidity after reinvesting rewards
      */
     uint256 private constant STG_ROUTER_POOL_ID = 1;
 
     /**
      *  @notice Rewards Token
      */
-    address private constant REWARDS_TOKEN = 0x6694340fc020c5E6B96567843da2df01b2CE1eb6;
+    address private constant REWARDS_TOKEN = 0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590;
 
     /**
-     *  @notice Stargate pool for USDC
+     *  @notice Stargate pool for the underlying 0x1205f31718499dBf1fCa446663B532Ef87481fe1
      */
-    IStargatePool private constant STG_POOL = IStargatePool(0x892785f33CdeE22A30AEF750F285E18c18040c3e);
+    IStargatePool private constant STG_POOL = IStargatePool(0x1205f31718499dBf1fCa446663B532Ef87481fe1);
 
     /**
      *  @notice Stargate Router
      */
-    IStargateRouter private constant STG_ROUTER = IStargateRouter(0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614);
+    IStargateRouter private constant STG_ROUTER = IStargateRouter(0x45A01E4e04F14f7A4a6702c74187c5F6222033cd);
 
     /**
      *  @notice Stargate LP Staking rewards
      */
-    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176);
+    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0x8731d54E9D02c286767d56ac03e8037C07e01e98);
 
     /**
      *  @notice 1Inch aggregation router v5
@@ -232,7 +230,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // S*USD LP Balance from the rewarder
         (uint256 stgRewarderBalance, ) = REWARDER.userInfo(stgPoolId, address(this));
 
-        // Convert S*USD LP balance to underlying (doing a full round up)
+        // Convert S*USD LP balance to underlying
         balance = stgRewarderBalance.fullMulDiv(STG_POOL.totalLiquidity(), STG_POOL.totalSupply());
     }
 
@@ -243,10 +241,10 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     function updateInternal() internal override(CygnusTerminal) {
         // Convert S*USD LP balance to underlying (doing a full round up)
-        uint256 balance = previewTotalBalance();
+        uint256 amountUSD = previewTotalBalance();
 
         // Assign to total balance
-        totalBalance = balance;
+        totalBalance = amountUSD;
 
         /// @custom:event Sync
         emit Sync(totalBalance);
@@ -290,11 +288,11 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     function chargeVoid(uint256 _stgPoolId) external override nonReentrant cygnusAdmin {
         // Avoid initializing pool twice
         if (stgPoolId == type(uint256).max) {
-            // Store pool ID from rewarder contract
+            // Assign pool id for rewarder underlying
             stgPoolId = _stgPoolId;
         }
 
-        // Allow Stargate router to use our USDC to deposit
+        // Allow Stargate router to use our USDC to deposits
         approveTokenPrivate(underlying, address(STG_ROUTER), type(uint256).max);
 
         // Allow Stargate Rewarder to use our S*Underlying to deposit

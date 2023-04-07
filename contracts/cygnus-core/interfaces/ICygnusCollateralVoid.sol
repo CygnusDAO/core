@@ -4,11 +4,6 @@ pragma solidity >=0.8.4;
 // Dependencies
 import {ICygnusCollateralModel} from "./ICygnusCollateralModel.sol";
 
-// Interfaces
-import {IDexRouter02} from "./CollateralVoid/IDexRouter.sol";
-import {IMiniChef} from "./CollateralVoid/IMiniChef.sol";
-import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
-
 /**
  *  @title ICygnusCollateralVoid
  *  @notice Interface for `CygnusCollateralVoid` which is in charge of connecting the collateral LP Tokens with
@@ -85,15 +80,8 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
 
     /**
      *  @notice Getter for this contract's void values (if activated) showing the rewarder address, pool id, etc.
-     *  @return rewarder The address of the rewarder
-     *  @return dexRouter The address of the dex' router used to swap between tokens
-     *  @return rewardsToken The address of the rewards token from the Dex
-     *  @return pid The pool ID the collateral's underlying LP Token belongs to in the rewarder
      */
-    function getCygnusVoid()
-        external
-        view
-        returns (IMiniChef rewarder, address dexRouter, address rewardsToken, uint256 pid);
+    function getCygnusVoid() external view returns (address token, address rewarder, address dexRouter, uint256 poolId);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -101,10 +89,9 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
 
     /**
      *  @notice Initializes the pool id for the strategy (Masterchef/Goose pool ID)
-     *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
      *  @custom:security non-reentrant only-admin 👽
      */
-    function chargeVoid(uint256 _pid) external;
+    function chargeVoid(uint256 poolId) external;
 
     /**
      *  @notice Reinvests all rewards from the rewarder to buy more LP Tokens to then deposit back into the rewarder

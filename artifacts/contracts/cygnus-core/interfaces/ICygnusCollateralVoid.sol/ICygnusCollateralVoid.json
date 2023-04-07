@@ -6,33 +6,6 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "origin",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralChef__OnlyEOAAllowed",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenReward",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralChef__VoidAlreadyInitialized",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint256",
           "name": "min",
           "type": "uint256"
@@ -49,6 +22,86 @@
         }
       ],
       "name": "CygnusCollateralControl__ParameterNotInRange",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "invalidBorrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "validBorrowable",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralModel__BorrowableInvalid",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "origin",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralModel__BorrowerCantBeAddressZero",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "origin",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__OnlyEOAAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "srcToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "rewardsToken",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__SrcTokenNotValid",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "dstReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "dstToken",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__SwapNotAllowed",
       "type": "error"
     },
     {
@@ -86,7 +139,7 @@
         },
         {
           "internalType": "address",
-          "name": "factoryAdmin",
+          "name": "admin",
           "type": "address"
         }
       ],
@@ -96,17 +149,58 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ERC20Permit__InvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__OwnerZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
-          "name": "assets",
+          "name": "currentTime",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "totalBalance",
+          "name": "deadline",
           "type": "uint256"
         }
       ],
-      "name": "CygnusTerminal__RedeemAmountInvalid",
+      "name": "ERC20Permit__PermitExpired",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__RecoveredOwnerZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__SpenderZeroAddress",
       "type": "error"
     },
     {
@@ -217,27 +311,21 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
-          "type": "address"
-        },
-        {
-          "indexed": false,
           "internalType": "address",
-          "name": "_rewardsToken",
+          "name": "underlying",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "shuttleId",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
         }
       ],
       "name": "ChargeVoid",
@@ -337,12 +425,6 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "shuttle",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
           "name": "reinvestor",
           "type": "address"
         },
@@ -362,6 +444,12 @@
           "indexed": false,
           "internalType": "uint256",
           "name": "daoReward",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "underlyingReceived",
           "type": "uint256"
         }
       ],
@@ -454,6 +542,32 @@
         }
       ],
       "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "PERMIT_TYPEHASH",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -552,23 +666,61 @@
     {
       "inputs": [
         {
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
-          "type": "address"
-        },
-        {
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
+          "internalType": "address",
+          "name": "borrower",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "_rewardsToken",
+          "name": "borrowableToken",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "borrowAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "canBorrow",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "redeemAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "canRedeem",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "poolId",
           "type": "uint256"
         }
       ],
@@ -582,7 +734,7 @@
       "name": "cygnusNebulaOracle",
       "outputs": [
         {
-          "internalType": "contract IChainlinkNebulaOracle",
+          "internalType": "contract ICygnusNebulaOracle",
           "name": "",
           "type": "address"
         }
@@ -654,27 +806,23 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getCygnusVoid",
-      "outputs": [
-        {
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
-          "type": "address"
-        },
-        {
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
-          "type": "address"
-        },
+      "inputs": [
         {
           "internalType": "address",
-          "name": "_rewardsToken",
+          "name": "borrower",
           "type": "address"
+        }
+      ],
+      "name": "getAccountLiquidity",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "liquidity",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "shortfall",
           "type": "uint256"
         }
       ],
@@ -683,15 +831,101 @@
     },
     {
       "inputs": [],
-      "name": "hangar18",
+      "name": "getCygnusVoid",
       "outputs": [
         {
           "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "rewarder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "dexRouter",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "poolId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        }
+      ],
+      "name": "getDebtRatio",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "borrowersDebtRatio",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getLPTokenPrice",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "lpTokenPrice",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getRewards",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "pendingReward",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "hangar18",
+      "outputs": [
+        {
+          "internalType": "contract IHangar18",
           "name": "",
           "type": "address"
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastReinvest",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -731,6 +965,68 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "nonces",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "permit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -934,6 +1230,19 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "version",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
         }
       ],
       "stateMutability": "view",

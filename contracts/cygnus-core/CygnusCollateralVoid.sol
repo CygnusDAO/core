@@ -2,23 +2,26 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import {ICygnusCollateralVoid} from "./interfaces/ICygnusCollateralVoid.sol";
-import {CygnusCollateralModel} from "./CygnusCollateralModel.sol";
+import { ICygnusCollateralVoid } from "./interfaces/ICygnusCollateralVoid.sol";
+import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
 
 // Libraries
-import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
-import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
-import {CygnusDexLib} from "./libraries/CygnusDexLib.sol";
+import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
+import { FixedPointMathLib } from "./libraries/FixedPointMathLib.sol";
+import { CygnusDexLib } from "./libraries/CygnusDexLib.sol";
 
 // Interfaces
-import {IERC20} from "./interfaces/IERC20.sol";
-import {IDexPair} from "./interfaces/IDexPair.sol";
-import {IHangar18} from "./interfaces/IHangar18.sol";
-import {IDexRouter02} from "./interfaces/CollateralVoid/IDexRouter.sol";
-import {IRewarder, IMiniChef} from "./interfaces/CollateralVoid/IMiniChef.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
+import { IDexPair } from "./interfaces/IDexPair.sol";
+import { IOrbiter } from "./interfaces/IOrbiter.sol";
+import { IHangar18 } from "./interfaces/IHangar18.sol";
+
+// Strategy
+import { IDexRouter02 } from "./interfaces/CollateralVoid/IDexRouter.sol";
+import { IRewarder, IMiniChef } from "./interfaces/CollateralVoid/IMiniChef.sol";
 
 // Overrides
-import {CygnusTerminal} from "./CygnusTerminal.sol";
+import { CygnusTerminal } from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusCollateralVoid The strategy contract for the underlying LP Tokens
@@ -59,7 +62,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice The token that is given as rewards by the dex' rewarder contract
      */
-    address private constant REWARDS_TOKEN = 0xd4d42F0b6DEF4CE0383636770eF773390d85c61A;
+    address private constant REWARDS_TOKEN = 0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a;
 
     /**
      *  @notice The address of this dex' router
@@ -69,7 +72,24 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Address of the Rewarder contract
      */
-    IMiniChef private constant REWARDER = IMiniChef(0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3);
+    IMiniChef private constant REWARDER = IMiniChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F);
+
+    /*  ─────────── Immutables for all 2 token pools */
+
+    /**
+     *  @notice The chain's native token (WETH) taken from factory
+     */
+    address private immutable nativeToken;
+
+    /**
+     *  @notice The first token from the underlying LP Token
+     */
+    address private immutable token0;
+
+    /**
+     *  @notice The second token from the underlying LP Token
+     */
+    address private immutable token1;
 
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
 
@@ -95,7 +115,13 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Constructs the Cygnus Void contract which handles the strategy for the collateral`s underlying.
      */
-    constructor() {}
+    constructor() {
+        // Get factory for nativeToken, and asset for token0 and token1
+        (IHangar18 hangar, address asset, , , ) = IOrbiter(_msgSender()).shuttleParameters();
+
+        // Assign as immutables for gas savings
+        (token0, token1, nativeToken) = (IDexPair(asset).token0(), IDexPair(asset).token1(), hangar.nativeToken());
+    }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. MODIFIERS
@@ -123,7 +149,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // solhint-disable-next-line
         if (_msgSender() != tx.origin) {
             // solhint-disable-next-line
-            revert CygnusCollateralVoid__OnlyEOAAllowed({sender: _msgSender(), origin: tx.origin});
+            revert CygnusCollateralVoid__OnlyEOAAllowed({ sender: _msgSender(), origin: tx.origin });
         }
     }
 
@@ -132,9 +158,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function getCygnusVoid() external view override returns (IMiniChef, address, address, uint256) {
+    function getCygnusVoid() external view override returns (address, address, address, uint256) {
         // Return all the private storage variables from this contract
-        return (REWARDER, address(DEX_ROUTER), REWARDS_TOKEN, sushiPoolId);
+        return (address(REWARDER), address(DEX_ROUTER), REWARDS_TOKEN, sushiPoolId);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -177,7 +203,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // Swap tokens
         DEX_ROUTER.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp);
     }
-
 
     /**
      *  @notice Gets the rewards from the rewarder contract for multiple tokens and converts to rewardToken
@@ -261,11 +286,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @inheritdoc CygnusTerminal
      */
     function updateInternal() internal override(CygnusTerminal) {
-        // Get total balance
-        uint256 balance = previewTotalBalance();
+        // Get total balance of LP in the rewarder
+        uint256 amountLP = previewTotalBalance();
 
         // Assign to totalBalance
-        totalBalance = balance;
+        totalBalance = amountLP;
 
         /// @custom:event Sync
         emit Sync(totalBalance);

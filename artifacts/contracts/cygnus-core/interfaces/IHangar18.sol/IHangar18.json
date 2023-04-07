@@ -1,0 +1,951 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IHangar18",
+  "sourceName": "contracts/cygnus-core/interfaces/IHangar18.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newPendingAdmin",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "admin",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__AdminAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "calculatedCollateral",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "deployedCollateral",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__CollateralAddressMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "admin",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__CygnusAdminOnly",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "priceOracle",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "newPriceOracle",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__CygnusNebulaAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CygnusFactory__CygnusNebulaCantBeZero",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newPendingDaoReserves",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "daoReserves",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__DaoReservesAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CygnusFactory__DaoReservesCantBeZero",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "lpTokenPair",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__LPTokenPairNotSupported",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "status",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint88",
+              "name": "orbiterId",
+              "type": "uint88"
+            },
+            {
+              "internalType": "contract IAlbireoOrbiter",
+              "name": "albireoOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract IDenebOrbiter",
+              "name": "denebOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract ICygnusNebulaOracle",
+              "name": "nebulaOracle",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "collateralInitCodeHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "borrowableInitCodeHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "uniqueHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "string",
+              "name": "orbiterName",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct IHangar18.Orbiter",
+          "name": "orbiter",
+          "type": "tuple"
+        }
+      ],
+      "name": "CygnusFactory__OrbiterAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "status",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint88",
+              "name": "orbiterId",
+              "type": "uint88"
+            },
+            {
+              "internalType": "contract IAlbireoOrbiter",
+              "name": "albireoOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract IDenebOrbiter",
+              "name": "denebOrbiter",
+              "type": "address"
+            },
+            {
+              "internalType": "contract ICygnusNebulaOracle",
+              "name": "nebulaOracle",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "collateralInitCodeHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "borrowableInitCodeHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "uniqueHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "string",
+              "name": "orbiterName",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct IHangar18.Orbiter",
+          "name": "orbiter",
+          "type": "tuple"
+        }
+      ],
+      "name": "CygnusFactory__OrbitersAreInactive",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "CygnusFactory__OrbitersNotSet",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newPendingAdmin",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "pendingAdmin",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__PendingAdminAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CygnusFactory__PendingAdminCantBeZero",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newPendingDaoReserves",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "pendingDaoReserves",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__PendingDaoReservesAlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "lpTokenPair",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusFactory__ShuttleAlreadyDeployed",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "orbitersLength",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "borrowOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "uniqueHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "orbitersName",
+          "type": "string"
+        }
+      ],
+      "name": "InitializeOrbiters",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldAdmin",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newAdmin",
+          "type": "address"
+        }
+      ],
+      "name": "NewCygnusAdmin",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "oldCygnusNebula",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "newCygnusNebula",
+          "type": "address"
+        }
+      ],
+      "name": "NewCygnusNebulaOracle",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldDaoReserves",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "daoReserves",
+          "type": "address"
+        }
+      ],
+      "name": "NewDaoReserves",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "pendingAdmin",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_admin",
+          "type": "address"
+        }
+      ],
+      "name": "NewPendingCygnusAdmin",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldPendingdaoReservesContract",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newPendingdaoReservesContract",
+          "type": "address"
+        }
+      ],
+      "name": "NewPendingDaoReserves",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "lpTokenPair",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "shuttleId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        }
+      ],
+      "name": "NewShuttle",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "orbiterName",
+          "type": "string"
+        }
+      ],
+      "name": "SwitchOrbiterStatus",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "AGGREGATION_ROUTER_V5",
+      "outputs": [
+        {
+          "internalType": "contract IAggregationRouterV5",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "admin",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "allOrbiters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint88",
+          "name": "orbiterId",
+          "type": "uint88"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "collateralInitCodeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "borrowableInitCodeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "uniqueHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "orbiterName",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_shuttleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "allShuttles",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "launched",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint88",
+          "name": "shuttleId",
+          "type": "uint88"
+        },
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        },
+        {
+          "internalType": "uint96",
+          "name": "orbiterId",
+          "type": "uint96"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "oracleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "cygnusNebulaOracle",
+      "outputs": [
+        {
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "daoReserves",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "lpTokenPair",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "deployShuttle",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getOrbiters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint88",
+          "name": "orbiterId",
+          "type": "uint88"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "collateralInitCodeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "borrowableInitCodeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "uniqueHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "orbiterName",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_lpTokenPair",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getShuttles",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "launched",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint88",
+          "name": "shuttleId",
+          "type": "uint88"
+        },
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        },
+        {
+          "internalType": "uint96",
+          "name": "orbiterId",
+          "type": "uint96"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "contract IAlbireoOrbiter",
+          "name": "albireoOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IDenebOrbiter",
+          "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
+          "type": "address"
+        }
+      ],
+      "name": "initializeOrbiter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nativeToken",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "orbitersDeployed",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingAdmin",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingDaoReserves",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "setNewCygnusAdmin",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "setNewDaoReserves",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newCygnusAdmin",
+          "type": "address"
+        }
+      ],
+      "name": "setPendingAdmin",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newDaoReserves",
+          "type": "address"
+        }
+      ],
+      "name": "setPendingDaoReserves",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "shuttlesDeployed",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
+        }
+      ],
+      "name": "switchOrbiterStatus",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "usd",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

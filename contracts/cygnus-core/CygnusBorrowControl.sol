@@ -10,7 +10,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
 /**
  *  @title  CygnusBorrowControl Contract for controlling borrow settings
@@ -117,26 +117,20 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Borrow arm of the pool. It assigns the underlying asset (stablecoin),
-     *          the collateral for this contract and their lending pool ID. Interest rate parameters get passed also and
-     *          and stored during deployment
+     *  @notice Constructs the Collateral arm of the pool and assigns the Collateral contract.
      */
     constructor() {
-        // Get collateral contract and interest rate parameters
-        (, address _asset, address _collateral, , uint256 baseRate, uint256 multiplier) = IAlbireoOrbiter(_msgSender())
-            .borrowParameters();
+        // Underlying, Collateral
+        (, address asset, address twinStar, ,) = IOrbiter(_msgSender()).shuttleParameters();
 
         // Name of this CygUSD with token symbol (ie `CygUSD: USDC`)
-        symbol = string(abi.encodePacked("CygUSD: ", IERC20(_asset).symbol()));
+        symbol = string(abi.encodePacked("CygUSD: ", IERC20(asset).symbol()));
 
-        // Get decimals
-        decimals = IERC20(_asset).decimals();
+        // Same decimals as the underlying
+        decimals = IERC20(asset).decimals();
 
-        // Set collateral
-        collateral = _collateral;
-
-        // Update the interest rate model and do min max checks
-        interestRateModelInternal(baseRate, multiplier, kinkMultiplier, kinkUtilizationRate);
+        // Assign the collateral arm of the lending pool
+        collateral = twinStar;
 
         // Assurance
         totalSupply = 0;

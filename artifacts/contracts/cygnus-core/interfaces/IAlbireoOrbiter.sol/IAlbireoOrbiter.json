@@ -5,7 +5,7 @@
   "abi": [
     {
       "inputs": [],
-      "name": "BORROW_INIT_CODE_HASH",
+      "name": "BORROWABLE_INIT_CODE_HASH",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -17,8 +17,42 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "underlying",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "collateral",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "oracle",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "shuttleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "deployAlbireo",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
-      "name": "borrowParameters",
+      "name": "shuttleParameters",
       "outputs": [
         {
           "internalType": "address",
@@ -36,58 +70,14 @@
           "type": "address"
         },
         {
-          "internalType": "uint256",
-          "name": "shuttleId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "baseRatePerYear",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "multiplier",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "address",
-          "name": "underlying",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "collateral",
+          "name": "oracle",
           "type": "address"
         },
         {
           "internalType": "uint256",
           "name": "shuttleId",
           "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "baseRatePerYear",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "multiplier",
-          "type": "uint256"
-        }
-      ],
-      "name": "deployAlbireo",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "cygnusDai",
-          "type": "address"
         }
       ],
       "stateMutability": "nonpayable",

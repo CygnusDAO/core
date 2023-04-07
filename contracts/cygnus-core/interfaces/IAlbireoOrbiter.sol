@@ -15,20 +15,12 @@ interface IAlbireoOrbiter {
      *  @return factory The address of the Cygnus factory assigned to `Hangar18`
      *  @return underlying The address of the underlying borrow token (address of USDC)
      *  @return collateral The address of the Cygnus collateral contract for this borrow contract
-     *  @return shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
-     *  @return baseRatePerYear The base rate per year for this shuttle
-     *  @return multiplierPerYear Farm APY
+     *  @return oracle The address of the oracle for this lending pool
+     *  @return shuttleId The lending pool ID
      */
-    function borrowParameters()
+    function shuttleParameters()
         external
-        returns (
-            address factory,
-            address underlying,
-            address collateral,
-            uint256 shuttleId,
-            uint256 baseRatePerYear,
-            uint256 multiplierPerYear
-        );
+        returns (address factory, address underlying, address collateral, address oracle, uint256 shuttleId);
 
     /**
      *  @return BORROW_INIT_CODE_HASH The init code hash of the borrow contract for this deployer
@@ -40,15 +32,12 @@ interface IAlbireoOrbiter {
      *  @param underlying The address of the underlying borrow token (address of USDc)
      *  @param collateral The address of the Cygnus collateral contract for this borrow contract
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
-     *  @param baseRatePerYear The base rate per year for this shuttle
-     *  @param multiplierPerYear Farm APY
      *  @return borrowable The address of the new borrow contract
      */
     function deployAlbireo(
         address underlying,
         address collateral,
-        uint256 shuttleId,
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear
+        address oracle,
+        uint256 shuttleId
     ) external returns (address borrowable);
 }

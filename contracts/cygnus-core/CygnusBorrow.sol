@@ -66,13 +66,15 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // if there are no new reserves to mint, just return exchangeRate
         if (newReserves > 0) {
             // Get the current DAO reserves contract
-            address daoReserves = IHangar18(hangar18).daoReserves();
+            address daoReserves = hangar18.daoReserves();
 
             // Mint new resereves
             mintInternal(daoReserves, newReserves);
 
-            // Update minted reserves
-            mintedReserves += newReserves;
+            unchecked {
+                // Update minted reserves
+                mintedReserves += newReserves;
+            }
         }
 
         // Return new exchange rate

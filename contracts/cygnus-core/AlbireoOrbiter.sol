@@ -48,16 +48,13 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
      *  @custom:member underlying The address of the underlying borrow token (address of USDC)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrowable
      *  @custom:member shuttleId The ID for the shuttle we are deploying (shared by collateral/borrow)
-     *  @custom:member baseRatePerYear The base rate per year
-     *  @custom:member multiplier The slope of the interest rate
      */
     struct BorrowParameters {
         address factory;
         address underlying;
         address collateral;
+        address oracle;
         uint256 shuttleId;
-        uint256 baseRatePerYear;
-        uint256 multiplierPerYear;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -65,7 +62,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IAlbireoOrbiter
      */
-    BorrowParameters public override borrowParameters;
+    BorrowParameters public override shuttleParameters;
 
     /**
      *  @inheritdoc IAlbireoOrbiter
@@ -84,24 +81,22 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
     function deployAlbireo(
         address underlying,
         address collateral,
-        uint256 shuttleId,
-        uint256 baseRatePerYear,
-        uint256 multiplier
+        address oracle,
+        uint256 shuttleId
     ) external override nonReentrant returns (address borrowable) {
         // Assign important addresses to pass to borrow contracts
-        borrowParameters = BorrowParameters({
+        shuttleParameters = BorrowParameters({
             factory: _msgSender(),
             underlying: underlying,
             collateral: collateral,
-            shuttleId: shuttleId,
-            baseRatePerYear: baseRatePerYear,
-            multiplierPerYear: multiplier
+            oracle: oracle,
+            shuttleId: shuttleId
         });
 
         // Create Borrow contract
         borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, _msgSender()))}());
 
         // Delete and refund some gas
-        delete borrowParameters;
+        delete shuttleParameters;
     }
 }

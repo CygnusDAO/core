@@ -17,34 +17,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "collateralParameters",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "factory",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "underlying",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "cygnusDai",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "shuttleId",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -53,7 +25,12 @@
         },
         {
           "internalType": "address",
-          "name": "cygnusDai",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "oracle",
           "type": "address"
         },
         {
@@ -68,6 +45,39 @@
           "internalType": "address",
           "name": "collateral",
           "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "shuttleParameters",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "factory",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "underlying",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "borrowable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "oracle",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "shuttleId",
+          "type": "uint256"
         }
       ],
       "stateMutability": "nonpayable",

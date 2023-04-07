@@ -53,6 +53,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         address factory;
         address underlying;
         address borrowable;
+        address oracle;
         uint256 shuttleId;
     }
 
@@ -61,7 +62,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IDenebOrbiter
      */
-    CollateralParameters public override collateralParameters;
+    CollateralParameters public override shuttleParameters;
 
     /**
      *  @inheritdoc IDenebOrbiter
@@ -80,13 +81,15 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
     function deployDeneb(
         address underlying,
         address borrowable,
+        address oracle,
         uint256 shuttleId
     ) external override nonReentrant returns (address collateral) {
         // Assign important addresses to pass to collateral contracts
-        collateralParameters = CollateralParameters({
+        shuttleParameters = CollateralParameters({
             factory: _msgSender(),
             underlying: underlying,
             borrowable: borrowable,
+            oracle: oracle,
             shuttleId: shuttleId
         });
 
@@ -94,6 +97,6 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, _msgSender()))}());
 
         // Delete and refund some gas
-        delete collateralParameters;
+        delete shuttleParameters;
     }
 }

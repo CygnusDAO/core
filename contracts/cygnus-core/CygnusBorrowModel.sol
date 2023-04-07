@@ -372,7 +372,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mulWad(borrowIndexStored);
 
-        // ────── Store values: 2 memory slots with uint32 lastAccrualTime ──────
+        // ────── Store values: 2 memory slots with lastAccrualTime ──────
 
         // Store total borrows
         totalBorrows = uint128(totalBorrowsStored);

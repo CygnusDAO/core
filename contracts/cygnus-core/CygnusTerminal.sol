@@ -58,9 +58,9 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
+import {IOrbiter} from "./interfaces/IOrbiter.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
-import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
-import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
 
 /**
  *  @title  CygnusTerminal
@@ -92,17 +92,22 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    address public immutable override hangar18;
-
-    /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    uint256 public immutable override shuttleId;
+    IHangar18 public immutable override hangar18;
 
     /**
      *  @inheritdoc ICygnusTerminal
      */
     address public immutable override underlying;
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    ICygnusNebulaOracle public immutable override cygnusNebulaOracle;
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    uint256 public immutable override shuttleId;
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -115,43 +120,18 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
 
     /**
      *  @notice Constructs tokens for both Collateral and Borrow arms
-     *  @notice We have to do a try/catch if we want to store underlying as immutables. This is because both borrowable and
-     *          collateral contracts call different deployer contracts which have their unique params.
      *  @param _name ERC20 name of the Borrow/Collateral token
      *  @param _symbol ERC20 symbol of the Borrow/Collateral token
      *  @param _decimals Decimals of the Borrow/Collateral token
      */
     constructor(string memory _name, string memory _symbol, uint8 _decimals) ERC20Permit(_name, _symbol, _decimals) {
-        // Set placeholders for try/catch
-        // Factory
-        address _hangar18;
-
-        // Asset
-        address _underlying;
-
-        // Lending Pool ID (shared by both borrowable and collateral)
-        uint256 _shuttleId;
-
-        // Try Collateral parameters: factory, underlying, borrowable (assigned on child contract), shuttleId
-        try IDenebOrbiter(_msgSender()).collateralParameters() returns (
-            address _factory,
-            address _asset,
-            address,
-            uint256 _poolId
-        ) {
-            // Try collateral: factory, LP Token, pool Id
-            (_hangar18, _underlying, _shuttleId) = (_factory, _asset, _poolId);
-        } catch {
-            // Catch borrowable: factory, stablecoin, pool Id
-            (_hangar18, _underlying, , _shuttleId, , ) = IAlbireoOrbiter(_msgSender()).borrowParameters();
-        }
-
-        // Assign placeholders to immutables
-        (hangar18, underlying, shuttleId) = (_hangar18, _underlying, _shuttleId);
+        // Get immutables from deployer contracts
+        // Factory, asset, twin contract, oracle, lending pool ID
+        (hangar18, underlying, , cygnusNebulaOracle, shuttleId) = IOrbiter(_msgSender()).shuttleParameters();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            4. MODIFIERS
+            6. MODIFIERS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
@@ -181,7 +161,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      */
     function checkAdmin() internal view {
         // Current admin from the factory
-        address admin = IHangar18(hangar18).admin();
+        address admin = hangar18.admin();
 
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
         if (_msgSender() != admin) {
@@ -266,7 +246,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         // Balance after
         uint256 balanceAfter = previewTotalBalance();
 
-        // Get the shares amount 
+        // Get the shares amount
         shares = (balanceAfter - balanceBefore).divWad(exchangeRate());
 
         /// @custom:error CantMintZeroShares Avoid minting no shares

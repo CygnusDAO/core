@@ -172,7 +172,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // Pass data to router
         if (data.length > 0) {
-            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), assets, token0, token1, data);
+            ICygnusAltairCall(redeemer).altairRedeem_u91A(_msgSender(), assets, data);
         }
 
         // Total balance of CygLP tokens in this contract

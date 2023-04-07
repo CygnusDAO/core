@@ -6,33 +6,6 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "origin",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralChef__OnlyEOAAllowed",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenReward",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralChef__VoidAlreadyInitialized",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint256",
           "name": "min",
           "type": "uint256"
@@ -87,16 +60,48 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "borrower",
+          "name": "sender",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "liquidator",
+          "name": "origin",
           "type": "address"
         }
       ],
-      "name": "CygnusCollateral__CantLiquidateSelf",
+      "name": "CygnusCollateralVoid__OnlyEOAAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "srcToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "rewardsToken",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__SrcTokenNotValid",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "dstReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "dstToken",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__SwapNotAllowed",
       "type": "error"
     },
     {
@@ -229,7 +234,7 @@
         },
         {
           "internalType": "address",
-          "name": "factoryAdmin",
+          "name": "admin",
           "type": "address"
         }
       ],
@@ -239,17 +244,58 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ERC20Permit__InvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__OwnerZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
-          "name": "assets",
+          "name": "currentTime",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "totalBalance",
+          "name": "deadline",
           "type": "uint256"
         }
       ],
-      "name": "CygnusTerminal__RedeemAmountInvalid",
+      "name": "ERC20Permit__PermitExpired",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__RecoveredOwnerZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20Permit__SpenderZeroAddress",
       "type": "error"
     },
     {
@@ -360,27 +406,21 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
-          "type": "address"
-        },
-        {
-          "indexed": false,
           "internalType": "address",
-          "name": "_rewardsToken",
+          "name": "underlying",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "shuttleId",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
         }
       ],
       "name": "ChargeVoid",
@@ -480,12 +520,6 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "shuttle",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
           "name": "reinvestor",
           "type": "address"
         },
@@ -505,6 +539,12 @@
           "indexed": false,
           "internalType": "uint256",
           "name": "daoReward",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "underlyingReceived",
           "type": "uint256"
         }
       ],
@@ -597,6 +637,32 @@
         }
       ],
       "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "PERMIT_TYPEHASH",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -748,23 +814,8 @@
     {
       "inputs": [
         {
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
-          "type": "address"
-        },
-        {
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "_rewardsToken",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "poolId",
           "type": "uint256"
         }
       ],
@@ -778,7 +829,7 @@
       "name": "cygnusNebulaOracle",
       "outputs": [
         {
-          "internalType": "contract IChainlinkNebulaOracle",
+          "internalType": "contract ICygnusNebulaOracle",
           "name": "",
           "type": "address"
         }
@@ -901,23 +952,23 @@
       "name": "getCygnusVoid",
       "outputs": [
         {
-          "internalType": "contract IMiniChef",
-          "name": "_rewarder",
-          "type": "address"
-        },
-        {
-          "internalType": "contract IDexRouter02",
-          "name": "_dexRouter",
+          "internalType": "address",
+          "name": "token",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "_rewardsToken",
+          "name": "rewarder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "dexRouter",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "_pid",
+          "name": "poolId",
           "type": "uint256"
         }
       ],
@@ -958,15 +1009,41 @@
     },
     {
       "inputs": [],
+      "name": "getRewards",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "pendingReward",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "hangar18",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "contract IHangar18",
           "name": "",
           "type": "address"
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastReinvest",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -1006,6 +1083,68 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "nonces",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "permit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -1238,6 +1377,19 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "version",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
         }
       ],
       "stateMutability": "view",

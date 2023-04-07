@@ -1,0 +1,56 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "FixedPointMathLib",
+  "sourceName": "contracts/cygnus-core/libraries/FixedPointMathLib.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "DivFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DivWadFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ExpOverflow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "FactorialOverflow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "FullMulDivFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "LnWadUndefined",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "Log2Undefined",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "MulDivFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "MulWadFailed",
+      "type": "error"
+    }
+  ],
+  "bytecode": "0x60566037600b82828239805160001a607314602a57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea264697066735822122053da4f3cbac03240c8f1f86da751b77cb5184f4cde25fa95d4e973bfbd8a3f4b64736f6c63430008040033",
+  "deployedBytecode": "0x73000000000000000000000000000000000000000030146080604052600080fdfea264697066735822122053da4f3cbac03240c8f1f86da751b77cb5184f4cde25fa95d4e973bfbd8a3f4b64736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

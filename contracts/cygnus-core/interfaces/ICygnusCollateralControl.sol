@@ -2,10 +2,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusTerminal } from "./ICygnusTerminal.sol";
-
-// Interfaces
-import { ICygnusNebulaOracle } from "./ICygnusNebulaOracle.sol";
+import {ICygnusTerminal} from "./ICygnusTerminal.sol";
 
 /**
  *  @title ICygnusCollateralControl Interface for the admin control of collateral contracts (incentives, debt ratios)
@@ -56,11 +53,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      *  @return borrowable The address of the Cygnus borrow contract for this collateral which holds USDC
      */
     function borrowable() external view returns (address);
-
-    /**
-     *  @return cygnusNebulaOracle The address of the Cygnus Price Oracle
-     */
-    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
 
     // ────────────── Current Pool Rates ──────────────
 

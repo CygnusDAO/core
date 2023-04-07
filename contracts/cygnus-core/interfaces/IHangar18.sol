@@ -2,11 +2,11 @@
 pragma solidity >=0.8.4;
 
 // Orbiters
-import { IDenebOrbiter } from "./IDenebOrbiter.sol";
-import { IAlbireoOrbiter } from "./IAlbireoOrbiter.sol";
+import {IDenebOrbiter} from "./IDenebOrbiter.sol";
+import {IAlbireoOrbiter} from "./IAlbireoOrbiter.sol";
 
 // Oracles
-import { ICygnusNebulaOracle } from "./ICygnusNebulaOracle.sol";
+import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
 // One inch
 import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
@@ -204,6 +204,7 @@ interface IHangar18 {
         uint88 orbiterId;
         IAlbireoOrbiter albireoOrbiter;
         IDenebOrbiter denebOrbiter;
+        ICygnusNebulaOracle nebulaOracle;
         bytes32 collateralInitCodeHash;
         bytes32 borrowableInitCodeHash;
         bytes32 uniqueHash;
@@ -229,40 +230,13 @@ interface IHangar18 {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @notice Official record of all obiters deployed
-     *  @param _orbiterId The ID of the orbiter deployed
-     *  @return status Whether or not these orbiters are active and usable
-     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
-     *  @return albireoOrbiter The address of the borrow deployer contract
-     *  @return denebOrbiter The address of the collateral deployer contract
-     *  @return collateralInitCodeHash The init code hash of the collateral
-     *  @return borrowableInitCodeHash The init code hash of the borrowable
-     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
-     *  @return orbiterName The name of the dex
-     */
-    function getOrbiters(
-        uint256 _orbiterId
-    )
-        external
-        view
-        returns (
-            bool status,
-            uint88 orbiterId,
-            IAlbireoOrbiter albireoOrbiter,
-            IDenebOrbiter denebOrbiter,
-            bytes32 collateralInitCodeHash,
-            bytes32 borrowableInitCodeHash,
-            bytes32 uniqueHash,
-            string memory orbiterName
-        );
-
-    /**
      *  @notice Array of structs containing all orbiters deployed
      *  @param _orbiterId The ID of the orbiter pair
      *  @return status Whether or not these orbiters are active and usable
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
      *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return nebulaOracle The oracle for this orbiter
      *  @return collateralInitCodeHash The init code hash of the collateral
      *  @return borrowableInitCodeHash The init code hash of the borrowable
      *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
@@ -278,6 +252,50 @@ interface IHangar18 {
             uint88 orbiterId,
             IAlbireoOrbiter albireoOrbiter,
             IDenebOrbiter denebOrbiter,
+            ICygnusNebulaOracle nebulaOracle,
+            bytes32 collateralInitCodeHash,
+            bytes32 borrowableInitCodeHash,
+            bytes32 uniqueHash,
+            string memory orbiterName
+        );
+
+    /**
+     *  @notice Array of LP Token pairs deployed
+     *  @param _shuttleId The ID of the shuttle deployed
+     *  @return launched Whether this pair exists or not
+     *  @return shuttleId The ID of this shuttle
+     *  @return borrowable The address of the borrow contract
+     *  @return collateral The address of the collateral contract
+     *  @return orbiterId The ID of the orbiters used to deploy this lending pool
+     */
+    function allShuttles(
+        uint256 _shuttleId
+    ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
+
+    /**
+     *  @notice Mapping of structs containing all orbiters deployed
+     *  @param _orbiterId The ID of the orbiter pair
+     *  @return status Whether or not these orbiters are active and usable
+     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
+     *  @return albireoOrbiter The address of the borrow deployer contract
+     *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return nebulaOracle The oracle for this orbiter
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return borrowableInitCodeHash The init code hash of the borrowable
+     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
+     *  @return orbiterName The name of the dex
+     */
+    function getOrbiters(
+        uint256 _orbiterId
+    )
+        external
+        view
+        returns (
+            bool status,
+            uint88 orbiterId,
+            IAlbireoOrbiter albireoOrbiter,
+            IDenebOrbiter denebOrbiter,
+            ICygnusNebulaOracle nebulaOracle,
             bytes32 collateralInitCodeHash,
             bytes32 borrowableInitCodeHash,
             bytes32 uniqueHash,
@@ -297,19 +315,6 @@ interface IHangar18 {
     function getShuttles(
         address _lpTokenPair,
         uint256 _orbiterId
-    ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
-
-    /**
-     *  @notice Array of LP Token pairs deployed
-     *  @param _shuttleId The ID of the shuttle deployed
-     *  @return launched Whether this pair exists or not
-     *  @return shuttleId The ID of this shuttle
-     *  @return borrowable The address of the borrow contract
-     *  @return collateral The address of the collateral contract
-     *  @return orbiterId The ID of the orbiters used to deploy this lending pool
-     */
-    function allShuttles(
-        uint256 _shuttleId
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
 
     /**
@@ -335,7 +340,7 @@ interface IHangar18 {
     /**
      * @return cygnusNebulaOracle The address of the Cygnus price oracle
      */
-    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
+    function cygnusNebulaOracle(uint256 oracleId) external view returns (ICygnusNebulaOracle);
 
     /**
      *  @return orbitersDeployed The total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter)
@@ -378,17 +383,13 @@ interface IHangar18 {
      *  @notice Initializes both Borrow arms and the collateral arm
      *  @param lpTokenPair The address of the underlying LP Token this pool is for
      *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
-     *  @param baseRate The interest rate model's base rate this shuttle uses
-     *  @param multiplier The multiplier this shuttle uses for calculating the interest rate
      *  @return borrowable The address of the Cygnus borrow contract for this pool
      *  @return collateral The address of the Cygnus collateral contract for both borrow tokens
      *  @custom:security non-reentrant
      */
     function deployShuttle(
         address lpTokenPair,
-        uint256 orbiterId,
-        uint256 baseRate,
-        uint256 multiplier
+        uint256 orbiterId
     ) external returns (address borrowable, address collateral);
 
     /**
@@ -396,16 +397,15 @@ interface IHangar18 {
      *  @param name The name of the strategy OR the dex these orbiters are for
      *  @param albireoOrbiter the address of this orbiter's borrow deployer
      *  @param denebOrbiter The address of this orbiter's collateral deployer
+     *  @param nebulaOracle The oracle for this orbiter
      *  @custom:security non-reentrant
      */
-    function initializeOrbiter(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
-
-    /**
-     *  @notice 👽
-     *  @notice Sets a new price oracle
-     *  @param newpriceoracle address of the new price oracle
-     */
-    function setNewNebulaOracle(address newpriceoracle) external;
+    function initializeOrbiter(
+        string memory name,
+        IAlbireoOrbiter albireoOrbiter,
+        IDenebOrbiter denebOrbiter,
+        ICygnusNebulaOracle nebulaOracle
+    ) external;
 
     /**
      *  @notice 👽
