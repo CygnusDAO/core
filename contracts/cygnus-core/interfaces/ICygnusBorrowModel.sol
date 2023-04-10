@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowControl } from "./ICygnusBorrowControl.sol";
+import {ICygnusBorrowControl} from "./ICygnusBorrowControl.sol";
 
 interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -32,14 +32,9 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return totalReserves The current total USDC reserves stored for this lending pool
-     */
-    function totalReserves() external view returns (uint128);
-
-    /**
      *  @return totalBorrows Total borrows stored in the lending pool
      */
-    function totalBorrows() external view returns (uint128);
+    function totalBorrows() external view returns (uint256);
 
     /**
      *  @return borrowIndex Borrow index stored of this lending pool, starts at 1e18

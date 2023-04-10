@@ -111,12 +111,7 @@ interface ICygnusNebulaOracle {
      *  @notice Returns the struct record of each oracle used by Cygnus
      *  @param lpTokenPair The address of the LP Token
      */
-    function getNebula(
-        address lpTokenPair
-    )
-        external
-        view
-        returns (CygnusNebula memory);
+    function getNebula(address lpTokenPair) external view returns (CygnusNebula memory);
 
     /**
      *  @notice Gets the address of the LP Token that (if) is being tracked by this oracle
@@ -226,10 +221,7 @@ interface ICygnusNebulaOracle {
      *  @param aggregators Array of Chainlink aggregators for this LP token's tokens
      *  @custom:security non-reentrant
      */
-    function initializeNebula(
-        address lpTokenPair,
-        AggregatorV3Interface[] calldata aggregators
-    ) external;
+    function initializeNebula(address lpTokenPair, AggregatorV3Interface[] calldata aggregators) external;
 
     /**
      *  @notice Sets a new pending admin for the Oracle

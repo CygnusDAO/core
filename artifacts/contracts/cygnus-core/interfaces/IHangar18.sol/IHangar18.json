@@ -129,9 +129,9 @@
               "type": "address"
             },
             {
-              "internalType": "contract ICygnusNebulaOracle",
-              "name": "nebulaOracle",
-              "type": "address"
+              "internalType": "bytes32",
+              "name": "borrowableInitCodeHash",
+              "type": "bytes32"
             },
             {
               "internalType": "bytes32",
@@ -139,9 +139,9 @@
               "type": "bytes32"
             },
             {
-              "internalType": "bytes32",
-              "name": "borrowableInitCodeHash",
-              "type": "bytes32"
+              "internalType": "contract ICygnusNebulaOracle",
+              "name": "nebulaOracle",
+              "type": "address"
             },
             {
               "internalType": "bytes32",
@@ -187,9 +187,9 @@
               "type": "address"
             },
             {
-              "internalType": "contract ICygnusNebulaOracle",
-              "name": "nebulaOracle",
-              "type": "address"
+              "internalType": "bytes32",
+              "name": "borrowableInitCodeHash",
+              "type": "bytes32"
             },
             {
               "internalType": "bytes32",
@@ -197,9 +197,9 @@
               "type": "bytes32"
             },
             {
-              "internalType": "bytes32",
-              "name": "borrowableInitCodeHash",
-              "type": "bytes32"
+              "internalType": "contract ICygnusNebulaOracle",
+              "name": "nebulaOracle",
+              "type": "address"
             },
             {
               "internalType": "bytes32",
@@ -271,14 +271,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        },
-        {
           "internalType": "address",
           "name": "lpTokenPair",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "orbiterId",
+          "type": "uint256"
         }
       ],
       "name": "CygnusFactory__ShuttleAlreadyDeployed",
@@ -526,6 +526,25 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "oracleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "allNebulas",
+      "outputs": [
+        {
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "_orbiterId",
           "type": "uint256"
         }
@@ -553,9 +572,9 @@
           "type": "address"
         },
         {
-          "internalType": "contract ICygnusNebulaOracle",
-          "name": "nebulaOracle",
-          "type": "address"
+          "internalType": "bytes32",
+          "name": "borrowableInitCodeHash",
+          "type": "bytes32"
         },
         {
           "internalType": "bytes32",
@@ -563,9 +582,9 @@
           "type": "bytes32"
         },
         {
-          "internalType": "bytes32",
-          "name": "borrowableInitCodeHash",
-          "type": "bytes32"
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
+          "type": "address"
         },
         {
           "internalType": "bytes32",
@@ -615,25 +634,6 @@
           "internalType": "uint96",
           "name": "orbiterId",
           "type": "uint96"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "oracleId",
-          "type": "uint256"
-        }
-      ],
-      "name": "cygnusNebulaOracle",
-      "outputs": [
-        {
-          "internalType": "contract ICygnusNebulaOracle",
-          "name": "",
-          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -712,9 +712,9 @@
           "type": "address"
         },
         {
-          "internalType": "contract ICygnusNebulaOracle",
-          "name": "nebulaOracle",
-          "type": "address"
+          "internalType": "bytes32",
+          "name": "borrowableInitCodeHash",
+          "type": "bytes32"
         },
         {
           "internalType": "bytes32",
@@ -722,9 +722,9 @@
           "type": "bytes32"
         },
         {
-          "internalType": "bytes32",
-          "name": "borrowableInitCodeHash",
-          "type": "bytes32"
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
+          "type": "address"
         },
         {
           "internalType": "bytes32",
@@ -820,6 +820,19 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nebulasDeployed",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",

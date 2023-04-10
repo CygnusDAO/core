@@ -112,6 +112,11 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     uint256 public override kinkMultiplier = 2;
 
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    uint256 public override exchangeRateStored = 1e18;
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -121,7 +126,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     constructor() {
         // Underlying, Collateral
-        (, address asset, address twinStar, ,) = IOrbiter(_msgSender()).shuttleParameters();
+        (, address asset, address twinStar, , ) = IOrbiter(_msgSender()).shuttleParameters();
 
         // Name of this CygUSD with token symbol (ie `CygUSD: USDC`)
         symbol = string(abi.encodePacked("CygUSD: ", IERC20(asset).symbol()));

@@ -2,26 +2,26 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusCollateralVoid } from "./interfaces/ICygnusCollateralVoid.sol";
-import { CygnusCollateralModel } from "./CygnusCollateralModel.sol";
+import {ICygnusCollateralVoid} from "./interfaces/ICygnusCollateralVoid.sol";
+import {CygnusCollateralModel} from "./CygnusCollateralModel.sol";
 
 // Libraries
-import { SafeTransferLib } from "./libraries/SafeTransferLib.sol";
-import { FixedPointMathLib } from "./libraries/FixedPointMathLib.sol";
-import { CygnusDexLib } from "./libraries/CygnusDexLib.sol";
+import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {CygnusDexLib} from "./libraries/CygnusDexLib.sol";
 
 // Interfaces
-import { IERC20 } from "./interfaces/IERC20.sol";
-import { IDexPair } from "./interfaces/IDexPair.sol";
-import { IOrbiter } from "./interfaces/IOrbiter.sol";
-import { IHangar18 } from "./interfaces/IHangar18.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IDexPair} from "./interfaces/IDexPair.sol";
+import {IOrbiter} from "./interfaces/IOrbiter.sol";
+import {IHangar18} from "./interfaces/IHangar18.sol";
 
 // Strategy
-import { IDexRouter02 } from "./interfaces/CollateralVoid/IDexRouter.sol";
-import { IRewarder, IMiniChef } from "./interfaces/CollateralVoid/IMiniChef.sol";
+import {IDexRouter02} from "./interfaces/CollateralVoid/IDexRouter.sol";
+import {IRewarder, IMiniChef} from "./interfaces/CollateralVoid/IMiniChef.sol";
 
 // Overrides
-import { CygnusTerminal } from "./CygnusTerminal.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusCollateralVoid The strategy contract for the underlying LP Tokens
@@ -149,7 +149,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // solhint-disable-next-line
         if (_msgSender() != tx.origin) {
             // solhint-disable-next-line
-            revert CygnusCollateralVoid__OnlyEOAAllowed({ sender: _msgSender(), origin: tx.origin });
+            revert CygnusCollateralVoid__OnlyEOAAllowed({sender: _msgSender(), origin: tx.origin});
         }
     }
 

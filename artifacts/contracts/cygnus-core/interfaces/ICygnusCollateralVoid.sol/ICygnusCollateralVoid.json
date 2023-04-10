@@ -73,38 +73,6 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "srcToken",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "rewardsToken",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__SrcTokenNotValid",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "dstReceiver",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "dstToken",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__SwapNotAllowed",
-      "type": "error"
-    },
-    {
       "inputs": [],
       "name": "CygnusTerminal__CantMintZeroShares",
       "type": "error"

@@ -19,16 +19,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      */
     error CygnusCollateralVoid__OnlyEOAAllowed(address sender, address origin);
 
-    /**
-     *  @custom:error SwapNotAllowed Reverts if the receiver is not this contract, or token received is not underlying
-     */
-    error CygnusCollateralVoid__SwapNotAllowed(address dstReceiver, address dstToken);
-
-    /**
-     *  @custom:error SrcTokenNotValid Reverts if the src token we are swapping is not the rewards token
-     */
-    error CygnusCollateralVoid__SrcTokenNotValid(address srcToken, address rewardsToken);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

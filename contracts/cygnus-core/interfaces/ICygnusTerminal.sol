@@ -6,7 +6,7 @@ import {IHangar18} from "./IHangar18.sol";
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
 // Dependencies
-import { IERC20Permit } from "./IERC20Permit.sol";
+import {IERC20Permit} from "./IERC20Permit.sol";
 
 /**
  *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts

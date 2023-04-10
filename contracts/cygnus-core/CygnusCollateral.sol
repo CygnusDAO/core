@@ -178,7 +178,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Total balance of CygLP tokens in this contract
         uint256 cygLPTokens = balances[address(this)];
 
-
         // Calculate user's redeem (amount * scale / exch)
         uint256 shares = assets.divWad(exchangeRate());
 

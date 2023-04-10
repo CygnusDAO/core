@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusTerminal } from "./ICygnusTerminal.sol";
+import {ICygnusTerminal} from "./ICygnusTerminal.sol";
 
 /**
  *  @title ICygnusBorrowControl Interface for the control of borrow contracts (interest rate params, reserves, etc.)
@@ -98,6 +98,11 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @return kinkMultiplier The multiplier that is applied to the interest rate once util > kink
      */
     function kinkMultiplier() external view returns (uint256);
+
+    /**
+     *  @return exchangeRateStored The exchange rate used to mint reserves
+     */
+    function exchangeRateStored() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

@@ -53,32 +53,39 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice mints reserves to CygnusReservesManager. Uses the mintedReserves variable to keep internal track
-     *          of reserves instead of balanceOf
-     *  @param _exchangeRate The current exchange rate between underlying and CygUSD
-     *  @param _totalReserves The total reserves up to this point
+     *  @notice mints reserves to `daoReserves` if exchange rate increases
+     *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
      *  @return Latest exchange rate
      */
-    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalReserves) internal returns (uint256) {
-        // Calculate new reserves if any
-        uint256 newReserves = _totalReserves - mintedReserves;
+    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
+        // Get current exchange rate stored for borrow contract
+        uint256 exchangeRateLast = exchangeRateStored;
 
-        // if there are no new reserves to mint, just return exchangeRate
-        if (newReserves > 0) {
-            // Get the current DAO reserves contract
-            address daoReserves = hangar18.daoReserves();
+        // Calculate new exchange rate, if different to last mint reserves
+        if (_exchangeRate > exchangeRateLast) {
+            // Calculate new exchange rate taking reserves into account
+            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mulWad(reserveFactor));
 
-            // Mint new resereves
-            mintInternal(daoReserves, newReserves);
+            // Calculate new reserves if any
+            uint256 newReserves = _totalSupply.fullMulDiv(_exchangeRate, newExchangeRate) - _totalSupply;
 
-            unchecked {
-                // Update minted reserves
-                mintedReserves += newReserves;
+            // if there are no new reserves to mint, just return exchangeRate
+            if (newReserves > 0) {
+                // Get the current DAO reserves contract
+                address daoReserves = hangar18.daoReserves();
+
+                // Mint new resereves and upate the exchange rate
+                mintInternal(daoReserves, newReserves);
             }
-        }
 
-        // Return new exchange rate
-        return _exchangeRate;
+            // Update exchange rate
+            exchangeRateStored = newExchangeRate;
+
+            // Return new exchange rate
+            return newExchangeRate;
+        }
+        // Else return the previous exchange rate
+        else return _exchangeRate;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -92,16 +99,15 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 _totalSupply = totalSupply;
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
-        if (_totalSupply == 0) return 1e18;
+        if (_totalSupply == 0) {
+            return exchangeRateStored;
+        }
 
-        // Gas savings
-        uint256 _totalReserves = totalReserves;
+        // totalBalance * scale / total supply
+        uint256 _exchangeRate = (totalBalance + totalBorrows).divWad(_totalSupply);
 
-        // New Exchange Rate = (totalBalance + totalBorrows - reserves) / totalSupply
-        uint256 _exchangeRate = (totalBalance + totalBorrows - _totalReserves).divWad(_totalSupply);
-
-        // Check if there are new reserves to mint
-        return mintReservesInternal(_exchangeRate, _totalReserves);
+        // Check if there are new reserves to mint and thus new exchange rate, else just returns this _exchangeRate
+        return mintReservesInternal(_exchangeRate, _totalSupply);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */

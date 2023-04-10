@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
-import { IERC20 } from "./IERC20.sol";
+import {IERC20} from "./IERC20.sol";
 
 /**
  *  @title Interface for making arbitrary calls during swap

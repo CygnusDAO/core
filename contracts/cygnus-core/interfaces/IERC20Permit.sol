@@ -2,7 +2,7 @@
 // solhint-disable func-name-mixedcase
 pragma solidity >=0.8.4;
 
-import { IERC20 } from "./IERC20.sol";
+import {IERC20} from "./IERC20.sol";
 
 /// @title IERC20Permit
 /// @author Paul Razvan Berg

@@ -9,14 +9,14 @@ import {CygnusBorrowControl} from "./CygnusBorrowControl.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {ICygnusFarmingPool} from "./interfaces/ICygnusFarmingPool.sol";
+import {ICygnusDyingStar} from "./interfaces/ICygnusDyingStar.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
  *  @author CygnusDAO
  *  @notice Contract that accrues interest and tracks borrows for this shuttle. It accrues interest on any borrow,
- *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store reserves and
- *          borrows. It is also used by CygnusCollateral contracts to get the borrow balance of each user to
+ *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store borrows and
+ *          interes trates. It is also used by CygnusCollateral contracts to get the borrow balance of each user to
  *          calculate current debt ratios, liquidity or shortfall.
  */
 contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
@@ -50,25 +50,14 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     mapping(address => BorrowSnapshot) internal borrowBalances;
 
-    /**
-     *  @notice Internal accounting of minted reserves, We store this to not mint reserves on strategy's reinvestments
-     */
-    uint256 internal mintedReserves;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
 
     // 2 memory slots on every accrual
 
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    uint128 public override totalReserves;
-
-    /**
-     *  @inheritdoc ICygnusBorrowModel
-     */
-    uint128 public override totalBorrows;
+    uint256 public override totalBorrows;
 
     /**
      *  @inheritdoc ICygnusBorrowModel
@@ -105,7 +94,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Accrues interests to all borrows and reserves
+     *  @custom:modifier accrue Accrue interest rate to totalBorrows
      */
     modifier accrue() {
         accrueInterest();
@@ -122,11 +111,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @notice We keep this internal as our borrowRate state variable gets stored during accruals
      *  @param cash Total current balance of assets this contract holds
      *  @param borrows Total amount of borrowed funds
-     *  @param reserves Total amount the protocol keeps as reserves
      */
-    function getBorrowRate(uint256 cash, uint256 borrows, uint256 reserves) internal view returns (uint256) {
-        // Utilization rate (borrows * scale) / ((cash + borrows) - reserves)
-        uint256 util = borrows.divWad((cash + borrows) - reserves);
+    function getBorrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
+        // Don't take into account reserves as we mint CygUSD in CygnusBorrow.sol
+        // Utilization rate (borrows * scale) / ((cash + borrows))
+        uint256 util = borrows.divWad((cash + borrows));
 
         // If utilization <= kink return normal rate
         if (util <= kinkUtilizationRate) {
@@ -168,13 +157,13 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function utilizationRate() external view override returns (uint256) {
         // Gas savings
-        uint256 _totalBorrows = uint256(totalBorrows);
+        uint256 _totalBorrows = totalBorrows;
 
         // Util is 0 if there are no borrows
         if (_totalBorrows == 0) return 0;
 
         // Return the current pool utilization rate
-        return _totalBorrows.divWad((totalBalance + _totalBorrows) - totalReserves);
+        return _totalBorrows.divWad((totalBalance + _totalBorrows));
     }
 
     /**
@@ -188,7 +177,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         if (rateToPool == 0) return 0;
 
         // Utilization rate
-        uint256 util = uint256(totalBorrows).divWad((totalBalance + totalBorrows) - totalReserves);
+        uint256 util = totalBorrows.divWad((totalBalance + totalBorrows));
 
         // Return pool supply rate
         return util.mulWad(rateToPool);
@@ -216,7 +205,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // Pass to farming pool
-        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
+        ICygnusDyingStar(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
     }
 
     /**
@@ -262,10 +251,10 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             borrowSnapshot.interestIndex = borrowIndexStored;
 
             // Protocol's Total borrows
-            totalBorrowsStored = uint256(totalBorrows) + increaseBorrowAmount;
+            totalBorrowsStored = totalBorrows + increaseBorrowAmount;
 
             // Update total borrows to storage
-            totalBorrows = uint128(totalBorrowsStored);
+            totalBorrows = totalBorrowsStored;
         }
         // Decrease the borrower's account borrows and store it in the snapshot
         else {
@@ -304,7 +293,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             }
 
             // Update total protocol borrows
-            totalBorrows = uint128(totalBorrowsStored);
+            totalBorrows = totalBorrowsStored;
         }
         // Track borrows
         trackBorrowInternal(borrower, accountBorrows, borrowIndexStored);
@@ -338,9 +327,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Total borrows stored
         uint256 totalBorrowsStored = totalBorrows;
 
-        // Protocol Reserves
-        uint256 reservesStored = totalReserves;
-
         // Total balance of underlying held by this contract
         uint256 cashStored = totalBalance;
 
@@ -355,38 +341,30 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // 1. Get per-second BorrowRate
-        uint256 borrowRateStored = getBorrowRate(cashStored, totalBorrowsStored, reservesStored);
+        uint256 borrowRateStored = getBorrowRate(cashStored, totalBorrowsStored);
 
-        // 2. Multiply BorrowAPR by the time elapsed
+        // 2. BorrowRate by the time elapsed
         uint256 interestFactor = borrowRateStored * timeElapsed;
 
-        // 3. Calculate the interest accumulated in this time elapsed
+        // 3. Calculate the interest accumulated in time elapsed
         uint256 interestAccumulated = interestFactor.mulWad(totalBorrowsStored);
 
         // 4. Add the interest accumulated to total borrows
         totalBorrowsStored += interestAccumulated;
 
-        // 5. Add interest to total reserves (reserveFactor * interestAccumulated / scale) + reservesStored
-        reservesStored += reserveFactor.mulWad(interestAccumulated);
-
-        // 6. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
+        // 5. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mulWad(borrowIndexStored);
 
         // ────── Store values: 2 memory slots with lastAccrualTime ──────
 
         // Store total borrows
-        totalBorrows = uint128(totalBorrowsStored);
-
-        // Total reserves
-        totalReserves = uint128(reservesStored);
+        totalBorrows = totalBorrowsStored;
 
         // Borrow rate
         borrowRate = uint112(borrowRateStored);
 
         // New borrow index
         borrowIndex = uint112(borrowIndexStored);
-
-        // ──────────────────────────────────────────────────────────────────────
 
         /// @custom:event AccrueInterest
         emit AccrueInterest(cashStored, interestAccumulated, borrowIndexStored, totalBorrowsStored, borrowRateStored);

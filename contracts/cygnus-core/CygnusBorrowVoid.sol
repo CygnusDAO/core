@@ -192,7 +192,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         }
 
         /// @custom:error DstTokenNotValid Avoid swapping to anything but underlying
-        if (address(desc.dstToken) != underlying) {  
+        if (address(desc.dstToken) != underlying) {
             revert CygnusBorrowVoid__DstTokenNotValid({dstToken: address(desc.dstToken), token: underlying});
         }
 

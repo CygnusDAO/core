@@ -23,13 +23,7 @@ interface IDenebOrbiter {
      */
     function shuttleParameters()
         external
-        returns (
-            address factory,
-            address underlying,
-            address borrowable,
-            address oracle,
-            uint256 shuttleId
-        );
+        returns (address factory, address underlying, address borrowable, address oracle, uint256 shuttleId);
 
     /**
      *  @return COLLATERAL_INIT_CODE_HASH The init code hash of the collateral contract for this deployer

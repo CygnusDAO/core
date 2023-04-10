@@ -2,8 +2,8 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import { ICygnusBorrowVoid } from "./ICygnusBorrowVoid.sol";
-import { ICygnusTerminal } from "./ICygnusTerminal.sol";
+import {ICygnusBorrowVoid} from "./ICygnusBorrowVoid.sol";
+import {ICygnusTerminal} from "./ICygnusTerminal.sol";
 
 /**
  *  @title ICygnusBorrow Interface for the main Borrow contract which handles borrows/liquidations
