@@ -106,7 +106,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // totalBalance * scale / total supply
         uint256 _exchangeRate = (totalBalance + totalBorrows).divWad(_totalSupply);
 
-        // Check if there are new reserves to mint and thus new exchange rate, else just returns this _exchangeRate
+        // Check if new exchange rate and thus reserve to mint, else just return this exchange rate
         return mintReservesInternal(_exchangeRate, _totalSupply);
     }
 
@@ -151,11 +151,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // If repaying get the repay amount
         uint256 repayAmount = contractBalanceOf(underlying);
 
-        // We check both for non-zero, ideally we should add borrowAmount to the repayAmount and substract from the
-        // total balance, but can cause arithmetic underflow depending on current rewards earned
-        if (borrowAmount > 0 && repayAmount > 0) {
-            /// @custom:error BorrowAndRepayOverload Avoid borrowing and repaying on the same TX
-            revert CygnusBorrow__BorrowAndRepayOverload({borrowAmount: borrowAmount, repayAmount: repayAmount});
+        // We check both for non-zero, repayAmount rounding up since we withdrew if borrowaAmount is non-zero
+        if (borrowAmount > 0 && repayAmount > 1) {
+            /// @custom:error BorrowAndRepayOverload Avoid borrow and repay if both are non-zero
+            revert CygnusBorrow__BorrowRepayOverload({borrowAmount: borrowAmount, repayAmount: repayAmount});
         }
 
         // Update internal record for `borrower` at Cygnus Borrow Tracker
@@ -236,4 +235,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             totalBorrowsStored
         );
     }
+
+    // function sync() external override nonReentrant accrue update;
 }

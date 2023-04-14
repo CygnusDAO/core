@@ -15,9 +15,10 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {IDexPair} from "./interfaces/IDexPair.sol";
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
+import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
 
 // Strategy
-import {IDexRouter02} from "./interfaces/CollateralVoid/IDexRouter.sol";
+import {IDexRouter} from "./interfaces/CollateralVoid/IDexRouter.sol";
 import {IRewarder, IMiniChef} from "./interfaces/CollateralVoid/IMiniChef.sol";
 
 // Overrides
@@ -62,17 +63,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice The token that is given as rewards by the dex' rewarder contract
      */
-    address private constant REWARDS_TOKEN = 0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a;
+    address private constant REWARDS_TOKEN = 0xd4d42F0b6DEF4CE0383636770eF773390d85c61A;
 
     /**
      *  @notice The address of this dex' router
      */
-    IDexRouter02 private constant DEX_ROUTER = IDexRouter02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+    IDexRouter private constant DEX_ROUTER = IDexRouter(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
     /**
      *  @notice Address of the Rewarder contract
      */
-    IMiniChef private constant REWARDER = IMiniChef(0x0769fd68dFb93167989C6f7254cd0D766Fb2841F);
+    IMiniChef private constant REWARDER = IMiniChef(0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3);
 
     /*  ─────────── Immutables for all 2 token pools */
 
@@ -96,12 +97,13 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override REINVEST_REWARD = 0.04e18;
+    IAggregationRouterV5 public constant override AGGREGATION_ROUTER_V5 =
+        IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public constant override DAO_REWARD = 0.02e18;
+    uint256 public constant override DAO_REWARD = 0.05e18;
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
@@ -170,6 +172,42 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
+     *  @notice Swap tokens function used by Reinvest to turn reward token into more LP Tokens
+     *  @param swapData The 1inch swap data to swap from `rewardsToken` to `underlying`
+     *  @param updatedAmount The updated amount in case it's different by some mini tokens
+     *  @return amountOut The amount of `underlying` received
+     */
+    function swapTokensPrivate(bytes memory swapData, uint256 updatedAmount) private returns (uint256 amountOut) {
+        // Get aggregation executor, swap params and the encoded calls for the executor from 1inch API call
+        (address caller, IAggregationRouterV5.SwapDescription memory desc /* permit */, , bytes memory data) = abi
+            .decode(swapData, (address, IAggregationRouterV5.SwapDescription, bytes, bytes));
+
+        // Update swap amount to current balance of src token (if needed)
+        if (desc.amount != updatedAmount) desc.amount = updatedAmount;
+
+        /// @custom:error SrcTokenNotValid Avoid swapping anything but rewards token
+        if (address(desc.srcToken) != REWARDS_TOKEN) {
+            revert CygnusCollateralVoid__SrcTokenNotValid({srcToken: address(desc.srcToken), token: REWARDS_TOKEN});
+        }
+
+        /// @custom:error DstTokenNotValid Avoid swapping to anything but underlying
+        if (address(desc.dstToken) != token0 && address(desc.dstToken) != token1) {
+            revert CygnusCollateralVoid__DstTokenNotValid({dstToken: address(desc.dstToken), token: underlying});
+        }
+
+        /// @custom:error DstReceiverNotValid Avoid swapping to another address
+        if (desc.dstReceiver != address(this)) {
+            revert CygnusCollateralVoid__DstReceiverNotValid({dstReceiver: desc.dstReceiver, receiver: address(this)});
+        }
+
+        // Allow 1inch router to access our `srcToken` (REWARDS_TOKEN)
+        approveTokenPrivate(address(desc.srcToken), address(AGGREGATION_ROUTER_V5), desc.amount);
+
+        // Swap `srcToken` to `dstToken` with no permit
+        (amountOut, ) = AGGREGATION_ROUTER_V5.swap(IAggregationExecutor(caller), desc, new bytes(0), data);
+    }
+
+    /**
      * @notice Sets `amount` of ERC20 `token` for `to` to manage on behalf of the current contract
      *  @param token The address of the token we are approving
      *  @param amount The amount to approve
@@ -190,7 +228,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @param tokenOut Address of the token we are receiving
      *  @param amount Amount of TokenIn we are swapping
      */
-    function swapTokensPrivate(address tokenIn, address tokenOut, uint256 amount) private {
+    function swapExactTokensForTokens(address tokenIn, address tokenOut, uint256 amount) private {
         // Create the path to swap from tokenIn to tokenOut
         address[] memory path = new address[](2);
 
@@ -225,7 +263,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
             // Harvest all tokens and swap to Sushi
             for (uint i = 0; i < rewardTokens.length; i++) {
-                if (rewardAmounts[i] > 0) swapTokensPrivate(rewardTokens[i], REWARDS_TOKEN, rewardAmounts[i]);
+                if (rewardAmounts[i] > 0) swapExactTokensForTokens(rewardTokens[i], REWARDS_TOKEN, rewardAmounts[i]);
             }
         }
         // Bonus token rewards not active, Harvest sushi
@@ -332,6 +370,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // Allow rewarder to access our underlying
         approveTokenPrivate(underlying, address(REWARDER), type(uint256).max);
 
+        // Allow 1inch router to access our `srcToken` (REWARDS_TOKEN)
+        approveTokenPrivate(address(REWARDS_TOKEN), address(AGGREGATION_ROUTER_V5), type(uint256).max);
+
         /// @custom:event ChargeVoid
         emit ChargeVoid(underlying, shuttleId, _msgSender());
     }
@@ -349,7 +390,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant only-eoa
      */
-    function reinvestRewards_y7b() external override nonReentrant onlyEOA update {
+    function reinvestRewards_y7b(bytes memory swapData) external override nonReentrant onlyEOA update {
         // ─────────────────────── 1. Withdraw all rewards
         // Harvest rewards accrued of `rewardToken`
         uint256 currentRewards = getRewardsPrivate();
@@ -359,20 +400,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             return;
         }
 
-        // ─────────────────────── 2. Send reward to the reinvestor and vault
-        // Calculate reward for user (REINVEST_REWARD %)
-        uint256 eoaReward = currentRewards.mulWad(REINVEST_REWARD);
-        // Transfer the reward to the reinvestor
-        REWARDS_TOKEN.safeTransfer(_msgSender(), eoaReward);
-
+        // ─────────────────────── 2. Send reward to the vault
         // Calculate reward for DAO (DAO_REWARD %)
         uint256 daoReward = currentRewards.mulWad(DAO_REWARD);
+
         // Get the current DAO reserves contract
         address daoReserves = IHangar18(hangar18).daoReserves();
+
         // Transfer the reward to the DAO vault
         REWARDS_TOKEN.safeTransfer(daoReserves, daoReward);
 
-        // ─────────────────────── 3. Convert all rewardsToken to tokenA and assign
+        // ─────────────────────── 3. Convert all rewardsToken to tokenA
         // Placeholders to sort tokens
         address tokenA;
         address tokenB;
@@ -382,20 +420,16 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             // Check which token is rewardsToken
             (tokenA, tokenB) = token0 == REWARDS_TOKEN ? (token0, token1) : (token1, token0);
         } else {
-            // Swap token reward token to native token
-            swapTokensPrivate(REWARDS_TOKEN, nativeToken, currentRewards - eoaReward - daoReward);
-
             // Check if token0 or token1 is native token
             if (token0 == nativeToken || token1 == nativeToken) {
                 // Check which token is nativeToken
                 (tokenA, tokenB) = token0 == nativeToken ? (token0, token1) : (token1, token0);
             } else {
-                // Swap native token to token0
-                swapTokensPrivate(nativeToken, token0, contractBalanceOf(nativeToken));
-
                 // Assign tokenA and tokenB to token0 and token1 respectively
                 (tokenA, tokenB) = (token0, token1);
             }
+            // Perform first swap with 1inch data
+            swapTokensPrivate(swapData, currentRewards - daoReward);
         }
 
         // ─────────────────────── 4. Convert Token A to LP Token underlying
@@ -412,7 +446,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         uint256 swapAmount = CygnusDexLib.optimalDepositA(totalAmountA, reservesA, 997);
 
         // Swap optimal amount to tokenA to tokenB for liquidity deposit
-        swapTokensPrivate(tokenA, tokenB, swapAmount);
+        swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
         // Add liquidity and get LP Token
         uint256 liquidity = addLiquidityPrivate(tokenA, tokenB, totalAmountA - swapAmount, contractBalanceOf(tokenB));
@@ -425,6 +459,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         lastReinvest = block.timestamp;
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(_msgSender(), currentRewards, eoaReward, daoReward, liquidity);
+        emit RechargeVoid(_msgSender(), currentRewards, daoReward, liquidity);
     }
 }

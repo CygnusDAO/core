@@ -138,6 +138,8 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      *  @custom:modifier update Updates the total balance var in terms of its underlying
      */
     modifier update() {
+        // Yield bearing tokens
+        updateInternal();
         _;
         updateInternal();
     }
@@ -172,11 +174,23 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @notice Checks the `token` balance of this contract
      *  @param token The token to view balance of
-     *  @return This contract's `token` balance
+     *  @return amount This contract's `token` balance
      */
-    function contractBalanceOf(address token) internal view returns (uint256) {
-        // Solady's `balanceOf`
-        return token.balanceOf(address(this));
+    function contractBalanceOf(address token) internal view returns (uint256 amount) {
+        // Modified from Solady https://github.com/Vectorized/solady/blob/main/src/utils/SafeTransferLib.sol#L345
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, 0x70a08231) // Store the function selector of `balanceOf(address)`.
+            mstore(0x20, address()) // Store our contract address.
+            amount := mul(
+                mload(0x20),
+                and(
+                    // The arguments of `and` are evaluated from right to left.
+                    gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                    staticcall(gas(), token, 0x1c, 0x24, 0x20, 0x20)
+                )
+            )
+        }
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -241,8 +255,10 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
 
         // Check for deposit fee
         uint256 balanceBefore = previewTotalBalance();
+
         // Deposit in strategy
         afterDepositInternal(assets);
+
         // Balance after
         uint256 balanceAfter = previewTotalBalance();
 

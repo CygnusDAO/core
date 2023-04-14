@@ -331,6 +331,11 @@ interface IHangar18 {
      *  @return daoReserves The address that handles Cygnus reserves from all pools
      */
     function daoReserves() external view returns (address);
+    
+    /**
+     *  @return daoReserves The address that handles Cygnus reserves from all pools
+     */
+    function cygnusX1Vault() external view returns (address);
 
     /**
      *  @return pendingDaoReserves The address of the requested contract to be the new dao reserves

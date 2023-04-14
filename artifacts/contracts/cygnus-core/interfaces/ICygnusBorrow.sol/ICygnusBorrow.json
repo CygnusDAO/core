@@ -92,22 +92,6 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "borrowAmount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "repayAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "CygnusBorrow__BorrowAndRepayOverload",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "invalidBorrowAmount",
           "type": "uint256"
         },
@@ -118,6 +102,22 @@
         }
       ],
       "name": "CygnusBorrow__BorrowExceedsTotalBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "borrowAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "repayAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "CygnusBorrow__BorrowRepayOverload",
       "type": "error"
     },
     {
@@ -764,19 +764,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "REINVEST_REWARD",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
       "type": "function"
     },
     {

@@ -39,14 +39,14 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
-     */
-    using FixedPointMathLib for uint256;
-
-    /**
      *  @custom:library SafeTransferLib Low level handling of Erc20 tokens
      */
     using SafeTransferLib for address;
+
+    /**
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
+     */
+    using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
@@ -177,6 +177,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // Total balance of CygLP tokens in this contract
         uint256 cygLPTokens = balances[address(this)];
+
 
         // Calculate user's redeem (amount * scale / exch)
         uint256 shares = assets.divWad(exchangeRate());

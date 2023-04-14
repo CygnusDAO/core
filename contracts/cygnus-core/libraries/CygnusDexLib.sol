@@ -12,12 +12,11 @@ library CygnusDexLib {
      *  @return optimal swap amount of tokenA to tokenB to then hold the same proportion of assets as in pool reserves
      */
     function optimalDepositA(uint256 amountA, uint256 reservesA, uint256 swapFee) internal pure returns (uint256) {
-        uint256 _a = 10000 - swapFee;
         // Calculate with dex swap fee
-        uint256 a = (10000 + _a) * reservesA;
-        uint256 b = amountA * 10000 * reservesA * 4 * _a;
+        uint256 a = (1000 + swapFee) * reservesA;
+        uint256 b = amountA * 1000 * reservesA * 4 * swapFee;
         uint256 c = FixedPointMathLib.sqrt(a * a + b);
-        uint256 d = 2 * _a;
+        uint256 d = 2 * swapFee;
         return (c - a) / d;
     }
 

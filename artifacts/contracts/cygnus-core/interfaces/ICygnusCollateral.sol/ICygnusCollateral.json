@@ -60,6 +60,38 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "dstReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__DstReceiverNotValid",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "dstToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__DstTokenNotValid",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "sender",
           "type": "address"
         },
@@ -70,6 +102,22 @@
         }
       ],
       "name": "CygnusCollateralVoid__OnlyEOAAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "srcToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "CygnusCollateralVoid__SrcTokenNotValid",
       "type": "error"
     },
     {
@@ -500,12 +548,6 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "reinvestReward",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
           "name": "daoReward",
           "type": "uint256"
         },
@@ -596,6 +638,19 @@
     },
     {
       "inputs": [],
+      "name": "AGGREGATION_ROUTER_V5",
+      "outputs": [
+        {
+          "internalType": "contract IAggregationRouterV5",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "DAO_REWARD",
       "outputs": [
         {
@@ -631,19 +686,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "REINVEST_REWARD",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
       "type": "function"
     },
     {
@@ -936,7 +978,7 @@
         },
         {
           "internalType": "uint256",
-          "name": "poolId",
+          "name": "id",
           "type": "uint256"
         }
       ],
@@ -1011,7 +1053,7 @@
           "type": "uint256"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1145,7 +1187,13 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "swapData",
+          "type": "bytes"
+        }
+      ],
       "name": "reinvestRewards_y7b",
       "outputs": [],
       "stateMutability": "nonpayable",

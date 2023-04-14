@@ -25,12 +25,17 @@ import {IOrbiter} from "./interfaces/IOrbiter.sol";
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrowable", "", 0) {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            2. STORAGE
+            1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
     /**
-     *  @custom:library PRBMathUD60x18 for uint256 fixed point math, also imports the main library `PRBMath`.
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
      */
     using FixedPointMathLib for uint256;
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+            2. STORAGE
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
@@ -82,10 +87,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
     // ───────────────────────────── Current pool rates
 
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override reserveFactor = 0.10e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -115,6 +116,11 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
+    uint256 public override reserveFactor = 0.05e18;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
     uint256 public override exchangeRateStored = 1e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -126,7 +132,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      */
     constructor() {
         // Underlying, Collateral
-        (, address asset, address twinStar, , ) = IOrbiter(_msgSender()).shuttleParameters();
+        (, address asset, address twinStar, ,) = IOrbiter(_msgSender()).shuttleParameters();
 
         // Name of this CygUSD with token symbol (ie `CygUSD: USDC`)
         symbol = string(abi.encodePacked("CygUSD: ", IERC20(asset).symbol()));

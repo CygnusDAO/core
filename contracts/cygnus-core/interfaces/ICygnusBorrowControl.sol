@@ -70,11 +70,6 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     // ───────────────────────────── Current pool rates
 
     /**
-     *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
-     */
-    function reserveFactor() external view returns (uint256);
-
-    /**
      *  @return baseRatePerSecond The interest rate for this pool when utilization is 0 divided by seconds in a year
      */
     function baseRatePerSecond() external view returns (uint256);
@@ -98,6 +93,11 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @return kinkMultiplier The multiplier that is applied to the interest rate once util > kink
      */
     function kinkMultiplier() external view returns (uint256);
+
+    /**
+     *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
+     */
+    function reserveFactor() external view returns (uint256);
 
     /**
      *  @return exchangeRateStored The exchange rate used to mint reserves

@@ -334,22 +334,4 @@ library SafeTransferLib {
             mstore(0x3a, 0)
         }
     }
-
-    /// @dev Returns the amount of ERC20 `token` owned by `account`.
-    /// Returns zero if the `token` does not exist.
-    function balanceOf(address token, address account) internal view returns (uint256 amount) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            mstore(0x00, 0x70a08231) // Store the function selector of `balanceOf(address)`.
-            mstore(0x20, account) // Store the `account` argument.
-            amount := mul(
-                mload(0x20),
-                and(
-                    // The arguments of `and` are evaluated from right to left.
-                    gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                    staticcall(gas(), token, 0x1c, 0x24, 0x20, 0x20)
-                )
-            )
-        }
-    }
 }

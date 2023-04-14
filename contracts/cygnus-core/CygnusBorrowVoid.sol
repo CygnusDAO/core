@@ -12,10 +12,12 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
+import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
+
+// Strategy
 import {IStargatePool} from "./interfaces/BorrowableVoid/IStargatePool.sol";
 import {IStargateRouter} from "./interfaces/BorrowableVoid/IStargateRouter.sol";
 import {IStargateLPStaking} from "./interfaces/BorrowableVoid/IStargateLPStaking.sol";
-import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -58,22 +60,22 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @notice Rewards Token
      */
-    address private constant REWARDS_TOKEN = 0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590;
+    address private constant REWARDS_TOKEN = 0x6694340fc020c5E6B96567843da2df01b2CE1eb6;
 
     /**
      *  @notice Stargate pool for the underlying 0x1205f31718499dBf1fCa446663B532Ef87481fe1
      */
-    IStargatePool private constant STG_POOL = IStargatePool(0x1205f31718499dBf1fCa446663B532Ef87481fe1);
+    IStargatePool private constant STG_POOL = IStargatePool(0x892785f33CdeE22A30AEF750F285E18c18040c3e);
 
     /**
      *  @notice Stargate Router
      */
-    IStargateRouter private constant STG_ROUTER = IStargateRouter(0x45A01E4e04F14f7A4a6702c74187c5F6222033cd);
+    IStargateRouter private constant STG_ROUTER = IStargateRouter(0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614);
 
     /**
      *  @notice Stargate LP Staking rewards
      */
-    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0x8731d54E9D02c286767d56ac03e8037C07e01e98);
+    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176);
 
     /**
      *  @notice 1Inch aggregation router v5
@@ -84,17 +86,12 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Reinvest rewards 2%
+     *  @inheritdoc ICygnusBorrowVoid
      */
-    uint256 public constant override REINVEST_REWARD = 0.04e18;
+    uint256 public constant override DAO_REWARD = 0.05e18;
 
     /**
-     *  @notice DAO rewards 2%
-     */
-    uint256 public constant override DAO_REWARD = 0.02e18;
-
-    /**
-     *  @notice Timestamp of the last reinvest
+     *  @inheritdoc ICygnusBorrowVoid
      */
     uint256 public override lastReinvest;
 
@@ -192,7 +189,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         }
 
         /// @custom:error DstTokenNotValid Avoid swapping to anything but underlying
-        if (address(desc.dstToken) != underlying) {
+        if (address(desc.dstToken) != underlying) {  
             revert CygnusBorrowVoid__DstTokenNotValid({dstToken: address(desc.dstToken), token: underlying});
         }
 
@@ -326,11 +323,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         }
 
         // ─────────────────────── 2. Send reward to the reinvestor and vault
-        // Calculate reward for user (REINVEST_REWARD %)
-        uint256 eoaReward = currentRewards.mulWad(REINVEST_REWARD);
-        // Transfer the reward to the reinvestor
-        REWARDS_TOKEN.safeTransfer(_msgSender(), eoaReward);
-
         // Calculate reward for DAO (DAO_REWARD %)
         uint256 daoReward = currentRewards.mulWad(DAO_REWARD);
         // Get the current DAO reserves contract
@@ -340,7 +332,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         // ─────────────────────── 3. Convert all rewardsToken to underlying
         // Swap to underlying and return balanceOf
-        uint256 underlyingReceived = swapTokensPrivate(swapData, currentRewards - eoaReward - daoReward);
+        uint256 underlyingReceived = swapTokensPrivate(swapData, currentRewards - daoReward);
 
         // ─────────────────────── 4. Add liquidity and receive LP
         // Deposit USDC into Stargate pool to receive LP
@@ -354,6 +346,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         lastReinvest = block.timestamp;
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(_msgSender(), currentRewards, eoaReward, daoReward, underlyingReceived);
+        emit RechargeVoid(_msgSender(), currentRewards, 0, daoReward, underlyingReceived);
     }
 }

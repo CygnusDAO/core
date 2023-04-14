@@ -641,6 +641,19 @@
     },
     {
       "inputs": [],
+      "name": "cygnusX1Vault",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "daoReserves",
       "outputs": [
         {

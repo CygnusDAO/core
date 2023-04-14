@@ -11,9 +11,6 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
-import {IDexPair} from "./interfaces/IDexPair.sol";
-import {IHangar18} from "./interfaces/IHangar18.sol";
-import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
 
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
@@ -32,7 +29,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library PRBMathUD60x18 Fixed point 18 decimal math library, imports main library `PRBMath`
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
     using FixedPointMathLib for uint256;
 

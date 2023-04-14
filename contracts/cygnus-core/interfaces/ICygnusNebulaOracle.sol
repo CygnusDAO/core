@@ -56,16 +56,15 @@ interface ICygnusNebulaOracle {
      *  @param initialized Whether or not the LP Token is initialized
      *  @param oracleId The ID for this oracle
      *  @param lpTokenPair The address of the LP Token
-     *  @param priceFeedA The address of the Chainlink's aggregator contract for this LP Token's token0
-     *  @param priceFeedB The address of the Chainlink's aggregator contract for this LP Token's token1
      *  @custom:event InitializeCygnusNebula Logs when an LP Token pair's price starts being tracked
      */
     event InitializeCygnusNebula(
         bool initialized,
         uint88 oracleId,
         address lpTokenPair,
-        AggregatorV3Interface priceFeedA,
-        AggregatorV3Interface priceFeedB
+        IERC20[] poolTokens,
+        uint256[] tokenDecimals,
+        AggregatorV3Interface[] priceFeeds
     );
 
     /**
@@ -89,19 +88,23 @@ interface ICygnusNebulaOracle {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Returns the struct record of each oracle used by Cygnus
-     *  @param lpTokenPair The address of the LP Token
-     *  @return initialized Whether an LP Token is being tracked or not
-     *  @return oracleId The ID of the LP Token tracked by the oracle
-     *  @return underlying The address of the LP Token
-     *  @return poolTokens Array of all the pool tokens
-     *  @return priceFeeds The address of hte price feeds
+     *  @notice The struct record of each oracle used by Cygnus
+     *  @custom:member initialized Whether an LP Token is being tracked or not
+     *  @custom:member oracleId The ID of the LP Token tracked by the oracle
+     *  @custom:member name User friendly name of the underlying
+     *  @custom:member underlying The address of the LP Token
+     *  @custom:member poolId The bytes32 of the poolId from the balancer vault
+     *  @custom:member poolTokens Array of all the pool tokens
+     *  @custom:member tokenDecimals Array of all the pool token decimals
+     *  @custom:member priceFeeds Array of all the Chainlink price feeds for the pool tokens
      */
     struct CygnusNebula {
         bool initialized;
         uint88 oracleId;
+        string name;
         address underlying;
         IERC20[] poolTokens;
+        uint256[] tokenDecimals;
         AggregatorV3Interface[] priceFeeds;
     }
 
@@ -110,8 +113,9 @@ interface ICygnusNebulaOracle {
     /**
      *  @notice Returns the struct record of each oracle used by Cygnus
      *  @param lpTokenPair The address of the LP Token
+     *  @return cygnusNebula Struct of the oracle for the LP Token
      */
-    function getNebula(address lpTokenPair) external view returns (CygnusNebula memory);
+    function getNebula(address lpTokenPair) external view returns (CygnusNebula memory cygnusNebula);
 
     /**
      *  @notice Gets the address of the LP Token that (if) is being tracked by this oracle

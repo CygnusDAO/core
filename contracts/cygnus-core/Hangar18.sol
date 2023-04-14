@@ -29,7 +29,7 @@ import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 
 // Interfaces
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
-import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
+import {IAggregationRouterV5} from "./interfaces/IAggregationRouterV5.sol";
 
 // Orbiters
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
@@ -81,6 +81,11 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
+    ICygnusNebulaOracle[] public override allNebulas;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
     mapping(uint256 => Orbiter) public override getOrbiters;
 
     /**
@@ -111,7 +116,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    ICygnusNebulaOracle[] public override allNebulas;
+    address public override cygnusX1Vault;
 
     /**
      *  @inheritdoc IHangar18
@@ -244,6 +249,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @dev Prepares shuttle for deployment and stores the orbiter used for this Shuttle
      *  @param lpTokenPair Address of the LP Token for this shuttle
      *  @param orbiterId The orbiter ID used to deploy this shuttle
+     *  @return shuttle Struct of the lending pool being deployed
      */
     function boardShuttle(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
         // Get the ID for this LP token's shuttle
@@ -435,10 +441,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
             ICygnusNebulaOracle oracle = oracles[i];
 
             // Check if deployers use same oracle
-            if (oracle == nebulaOracle) {
-                // Exit loop
-                break;
-            }
+            if (oracle == nebulaOracle) break;
 
             // Push oracle to array
             allNebulas.push(nebulaOracle);
@@ -562,5 +565,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
 
         /// @custom:event DaoReserves
         emit NewDaoReserves(oldDaoReserves, daoReserves);
+    }
+
+    function setNewX1Vault(address _newX1Vault) external cygnusAdmin { 
+
     }
 }

@@ -9,7 +9,7 @@ import {CygnusBorrowControl} from "./CygnusBorrowControl.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {ICygnusDyingStar} from "./interfaces/ICygnusDyingStar.sol";
+import {ICygnusFarmingPool} from "./interfaces/ICygnusFarmingPool.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
@@ -25,7 +25,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library PRBMathUD60x18 Library for uint256 fixed point math, also imports the main library `PRBMath`
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
      */
     using FixedPointMathLib for uint256;
 
@@ -205,7 +205,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // Pass to farming pool
-        ICygnusDyingStar(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
+        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
     }
 
     /**

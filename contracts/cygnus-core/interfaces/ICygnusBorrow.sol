@@ -26,7 +26,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
     /**
      *  @custom:error BorrowAndRepayOverload Reverts if borrowAmount and repayAmount are both non-zero
      */
-    error CygnusBorrow__BorrowAndRepayOverload(uint256 borrowAmount, uint256 repayAmount);
+    error CygnusBorrow__BorrowRepayOverload(uint256 borrowAmount, uint256 repayAmount);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -83,6 +83,11 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
+     *  @notice Overrides the exchange rate of `CygnusTerminal` for borrow contracts to mint reserves
+     */
+    function exchangeRate() external override(ICygnusTerminal) returns (uint256);
+
+    /**
      *  @notice This low level function should only be called from `CygnusAltair` contract only
      *  @param borrower The address of the borrower being liquidated
      *  @param liquidator The address of the liquidator
@@ -98,9 +103,4 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *  @param data Calltype data passed to Router contract.
      */
     function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external;
-
-    /**
-     *  @notice Overrides the exchange rate of `CygnusTerminal` for borrow contracts to mint reserves
-     */
-    function exchangeRate() external override(ICygnusTerminal) returns (uint256);
 }

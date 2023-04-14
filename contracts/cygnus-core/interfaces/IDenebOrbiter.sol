@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.4;
 
-// Oracle
-import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
-
 /**
  *  @title ICygnusDeneb The interface for a contract that is capable of deploying Cygnus collateral pools
  *  @notice A contract that constructs a Cygnus collateral pool must implement this to pass arguments to the pool
@@ -23,7 +20,13 @@ interface IDenebOrbiter {
      */
     function shuttleParameters()
         external
-        returns (address factory, address underlying, address borrowable, address oracle, uint256 shuttleId);
+        returns (
+            address factory,
+            address underlying,
+            address borrowable,
+            address oracle,
+            uint256 shuttleId
+        );
 
     /**
      *  @return COLLATERAL_INIT_CODE_HASH The init code hash of the collateral contract for this deployer

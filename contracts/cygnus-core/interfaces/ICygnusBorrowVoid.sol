@@ -73,11 +73,6 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @return REINVEST_REWARD The % of rewards paid to the user who reinvested this shuttle's rewards to buy more LP
-     */
-    function REINVEST_REWARD() external pure returns (uint256);
-
-    /**
      *  @return DAO_REWARD The % of rewards paid to the DAO from the harvest
      */
     function DAO_REWARD() external pure returns (uint256);

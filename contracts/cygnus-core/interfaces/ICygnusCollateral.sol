@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 // Dependencies
-import {ICygnusCollateralVoid} from "./ICygnusCollateralVoid.sol";
+import { ICygnusCollateralVoid } from "./ICygnusCollateralVoid.sol";
 
 /**
  *  @title ICygnusCollateral Interface for the main collateral contract which handles collateral seizes
