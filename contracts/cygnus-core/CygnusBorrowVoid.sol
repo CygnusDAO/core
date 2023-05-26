@@ -207,21 +207,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant
      */
-    function chargeVoid() external override nonReentrant {
-        // Allow Stargate router to use our USDC to deposits
-        approveTokenPrivate(underlying, address(STG_ROUTER), type(uint256).max);
-
-        // Allow Stargate Rewarder to use our S*Underlying to deposit
-        approveTokenPrivate(address(STG_POOL), address(REWARDER), type(uint256).max);
-
-        /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, shuttleId, msg.sender);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant
-     */
     // prettier-ignore
     function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         // Harvest rewards and return tokens and amounts
@@ -241,6 +226,21 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(msg.sender, liquidity, lastReinvest = block.timestamp);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security non-reentrant
+     */
+    function chargeVoid() external override nonReentrant {
+        // Allow Stargate router to use our USDC to deposits
+        approveTokenPrivate(underlying, address(STG_ROUTER), type(uint256).max);
+
+        // Allow Stargate Rewarder to use our S*Underlying to deposit
+        approveTokenPrivate(address(STG_POOL), address(REWARDER), type(uint256).max);
+
+        /// @custom:event ChargeVoid
+        emit ChargeVoid(underlying, shuttleId, msg.sender);
     }
 
     /**
