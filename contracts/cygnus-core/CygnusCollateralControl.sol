@@ -29,7 +29,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers.
      */
     using FixedPointMathLib for uint256;
 

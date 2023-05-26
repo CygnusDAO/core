@@ -55,16 +55,14 @@ import {ERC20Permit} from "./ERC20Permit.sol";
 import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
+import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
-import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
-
-// Permit2
 import {IAllowanceTransfer} from "./interfaces/IAllowanceTransfer.sol";
 
 /**
@@ -121,7 +119,6 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit, ReentrancyGuard {
     uint256 public immutable override shuttleId;
 
     /**
-     *  @notice The contract's totalBalance is stored as a uint160 which is the max asset allowance the Permit2 router allows.
      *  @inheritdoc ICygnusTerminal
      */
     uint160 public override totalBalance;
