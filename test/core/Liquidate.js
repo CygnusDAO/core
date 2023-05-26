@@ -283,7 +283,6 @@ describe("Cygnus Collateral tests", function () {
             // Get lender usd balance after liquidation
             const liquidatorUsdBalanceAfter = await usdc.balanceOf(lender._address);
 
-          
             // Assert that the borrower has more USDC
             expect(liquidatorUsdBalanceAfter).to.be.gt(liquidatorUsdBalance);
         });

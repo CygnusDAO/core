@@ -21,11 +21,11 @@ module.exports = async function Users() {
     };
 
     // Lender
-    const lenderAddress = "0x2487cb1a359c942312259bbc64a01cee32e9f539";
+    const lenderAddress = "0xf89d7b9c864f589bbf53a82105107622b35eaa40";
     const lender2Address = "0xd165164cbab65004da73c596712687c16b981274";
 
     // Borrower
-    const borrowerAddress = "0xcaf4b694d626e55a073be1c6ac12f0a9acadfcb2";
+    const borrowerAddress = "0x08c16b130fc0bd2b04a143796467c04eb3effa0a";
     const borrower2Address = "0xa05ee11735d861afa66bf06004cb61f7370b1d2e";
 
     const lender = await makeUser(lenderAddress);

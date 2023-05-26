@@ -80,10 +80,10 @@ const cygnusBorrow = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(1e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(1e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
 
     // Lender //
 

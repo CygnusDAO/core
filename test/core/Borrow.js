@@ -173,10 +173,10 @@ describe("Cygnus Integration Redeem Tests", function () {
         const signature = await owner._signTypedData(permitData.domain, permitData.types, permitData.values);
 
         // 3. Transfer LP tokens to owner
-        await lpToken.connect(borrower).transfer(owner.address, BigInt(1e18));
+        await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
 
         // 4. Owner deposits using borrower address
-        await collateral.connect(owner).deposit(BigInt(1e18), borrower._address, permit, signature);
+        await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
     };
 
     /**

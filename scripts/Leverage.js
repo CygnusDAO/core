@@ -82,10 +82,10 @@ const cygnusLeverage = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(0.00002e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(0.00002e18), borrower._address, permit, signature);
 
     // Lender //
 
@@ -98,7 +98,7 @@ const cygnusLeverage = async () => {
     const permitB = {
         details: {
             token: usdc.address,
-            amount: BigInt(10000e6),
+            amount: BigInt(100000e6),
             expiration: MaxAllowanceExpiration,
             nonce: 0,
         },
@@ -112,10 +112,10 @@ const cygnusLeverage = async () => {
     // Signature
     const signatureB = await owner._signTypedData(permitDataB.domain, permitDataB.types, permitDataB.values);
     // Transfer USD to owner
-    await usdc.connect(lender).transfer(owner.address, BigInt(10000e6));
+    await usdc.connect(lender).transfer(owner.address, BigInt(100000e6));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await borrowable.connect(owner).deposit(BigInt(10000e6), lender._address, permitB, signatureB);
+    await borrowable.connect(owner).deposit(BigInt(100000e6), lender._address, permitB, signatureB);
 
     // Balance of vault tokens
 
@@ -131,7 +131,7 @@ const cygnusLeverage = async () => {
 
     //// Leverage amount is max liquidity * xLeverage
     const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
-    const leverageAmount = liquidity * 11;
+    const leverageAmount = liquidity * 8;
     console.log("Leverage Amount                                | %s USD", leverageAmount / 1e6);
 
     // 1. Approve master borrow at the factory
@@ -189,6 +189,7 @@ const cygnusLeverage = async () => {
 
     const deleverageLPAmount = _borrowBal.mul(ONE).div(_lpPrice);
     const deleverageCygLPAmount = _borrowBal.mul(ONE).div(_lpPrice).mul(er).div(ONE);
+
     console.log("Deleverage LP Amount                           | %s LP Tokens", deleverageLPAmount / 1e18);
     console.log("Deleverage CygLP Amount                        | %s CygLP", deleverageCygLPAmount / 1e18);
 

@@ -47,23 +47,24 @@ module.exports = async function Make() {
     // Set the chain ID
     const chainId = 10; // For 1inch
 
-    // Hypervisor: ETH/USDC
-    const lpTokenAddress = "0xB5C335Cfaf1769eE02597C6aC2db883F793A020D";
+    // Set the LP Token address
+    // ETH/USDC - 0.05%
+    const lpTokenAddress = "0x7086622e6db990385b102d79cb1218947fb549a9";
 
     // Set the USDC address on this chain
-    const usdcAddress = "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8";
+    const usdcAddress = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607";
 
     // Set the native chain token address (ie WETH)
-    const nativeAddress = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
+    const nativeAddress = "0x4200000000000000000000000000000000000006";
 
     // Set the Chainlink aggregator addresses for USDC
-    const usdcAggregator = "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3";
+    const usdcAggregator = "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3";
 
     // Set the chainlink aggregator addresses for the LP token's assets (token0/token1)
-    const aggregators = ["0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6"];
+    const aggregators = ["0x13e3Ee699D1909E989722E753853AE30b17e08c5", "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3"];
 
     // Set a friendly name for the orbiter
-    const orbiterName = "Zyberswap: Rewards";
+  const orbiterName = "Sushi: Constant Product AMM";
 
     // You can create your own below or just leave as it is
 
