@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowModel} from "./interfaces/ICygnusBorrowModel.sol";
@@ -7,17 +7,18 @@ import {CygnusBorrowControl} from "./CygnusBorrowControl.sol";
 
 // Libraries
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
-import {ICygnusFarmingPool} from "./interfaces/ICygnusFarmingPool.sol";
+import {ICygnusComplexRewarder} from "./interfaces/ICygnusComplexRewarder.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
  *  @author CygnusDAO
  *  @notice Contract that accrues interest and tracks borrows for this shuttle. It accrues interest on any borrow,
- *          liquidation or repay. The Accrue function uses 2 memory slots on each call to store borrows and
- *          interes trates. It is also used by CygnusCollateral contracts to get the borrow balance of each user to
- *          calculate current debt ratios, liquidity or shortfall.
+ *          liquidation or repay. The Accrue function uses 1 memory slot per accrual. This contract is also also
+ *          used by CygnusCollateral contracts to get the latest borrow balance of a borrower to calculate current
+ *          debt ratio, liquidity or shortfall.
  */
 contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -41,8 +42,8 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @custom:member interestIndex Borrow index as of the most recent balance-changing action
      */
     struct BorrowSnapshot {
-        uint112 principal;
-        uint112 interestIndex;
+        uint128 principal;
+        uint128 interestIndex;
     }
 
     /**
@@ -52,22 +53,22 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // 2 memory slots on every accrual
+    // Use one memory slot per accrual
 
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    uint256 public override totalBorrows;
+    uint96 public override totalBorrows;
 
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    uint112 public override borrowIndex;
+    uint80 public override borrowIndex;
 
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    uint112 public override borrowRate;
+    uint48 public override borrowRate;
 
     /**
      *  @inheritdoc ICygnusBorrowModel
@@ -86,7 +87,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         borrowIndex = 1e18;
 
         // Set last accrual timestamp to deployment time
-        lastAccrualTimestamp = getBlockTimestamp();
+        lastAccrualTimestamp = uint32(block.timestamp);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -97,6 +98,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @custom:modifier accrue Accrue interest rate to totalBorrows
      */
     modifier accrue() {
+        // Accrue interest
         accrueInterest();
         _;
     }
@@ -114,8 +116,8 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function getBorrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
         // Don't take into account reserves as we mint CygUSD in CygnusBorrow.sol
-        // Utilization rate (borrows * scale) / ((cash + borrows))
-        uint256 util = borrows.divWad((cash + borrows));
+        // Utilization rate borrows / (cash + borrows)
+        uint256 util = borrows.divWad(cash + borrows);
 
         // If utilization <= kink return normal rate
         if (util <= kinkUtilizationRate) {
@@ -139,15 +141,14 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @inheritdoc ICygnusBorrowModel
      */
     function getBorrowBalance(address borrower) public view override returns (uint256) {
-        // memory struct for this borrower
+        // Load user struct to memory
         BorrowSnapshot memory borrowSnapshot = borrowBalances[borrower];
 
-        // If interestIndex = 0 then borrowBalance is 0, return 0 instead of fail division
+        // If interestIndex = 0 then borrowBalance is 0
         if (borrowSnapshot.interestIndex == 0) return 0;
 
-        // Calculate new borrow balance with the interest index
-        return
-            uint256(borrowSnapshot.principal).fullMulDiv(uint256(borrowIndex), uint256(borrowSnapshot.interestIndex));
+        // Calculate borrow balance with latest borrow index
+        return uint256(borrowSnapshot.principal).fullMulDiv(borrowIndex, borrowSnapshot.interestIndex);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -159,11 +160,8 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Gas savings
         uint256 _totalBorrows = totalBorrows;
 
-        // Util is 0 if there are no borrows
-        if (_totalBorrows == 0) return 0;
-
         // Return the current pool utilization rate
-        return _totalBorrows.divWad((totalBalance + _totalBorrows));
+        return _totalBorrows == 0 ? 0 : _totalBorrows.divWad((totalBalance + _totalBorrows));
     }
 
     /**
@@ -173,11 +171,14 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Current burrow rate taking into account the reserve factor
         uint256 rateToPool = uint256(borrowRate).mulWad(1e18 - reserveFactor);
 
-        // Return 0 when borrow rate is 0
-        if (rateToPool == 0) return 0;
+        // Balance
+        uint256 balance = totalBalance + totalBorrows;
+
+        // Avoid divide by 0
+        if (balance == 0) return 0;
 
         // Utilization rate
-        uint256 util = totalBorrows.divWad((totalBalance + totalBorrows));
+        uint256 util = uint256(totalBorrows).divWad(balance);
 
         // Return pool supply rate
         return util.mulWad(rateToPool);
@@ -195,94 +196,84 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param accountBorrows Record of this borrower's total borrows up to this point
      *  @param borrowIndexStored Borrow index stored up to this point
      */
-    function trackBorrowInternal(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) internal {
+    function trackBorrowerInternal(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) internal {
         // Rewarder address (if any)
-        address _cygnusBorrowRewarder = cygnusBorrowRewarder;
+        address rewarder = cygnusBorrowRewarder;
 
         // If not initialized return
-        if (_cygnusBorrowRewarder == address(0)) {
-            return;
-        }
+        if (rewarder == address(0)) return;
 
-        // Pass to farming pool
-        ICygnusFarmingPool(_cygnusBorrowRewarder).trackBorrow(shuttleId, borrower, accountBorrows, borrowIndexStored);
+        // Pass borrow to this chain's CYG rewarder
+        ICygnusComplexRewarder(rewarder).trackBorrower(shuttleId, borrower, accountBorrows, borrowIndexStored);
     }
 
     /**
-     *  @notice Record keeping function for all borrows, repays and liquidations
-     *  @param borrower Address of the borrower
-     *  @param borrowAmount The amount of the underlying to update
-     *  @param repayAmount The amount to repay
-     *  @return accountBorrowsPrior Record of account's total borrows before this event
-     *  @return accountBorrows Record of account's total borrows (accountBorrowsPrior + borrowAmount)
-     *  @return totalBorrowsStored Record of the protocol's cummulative total borrows after this event
+     * @notice Updates the borrow balance of a borrower and the total borrows of the protocol.
+     * @dev This is an internal function that should only be called from within the contract.
+     * @param borrower The address of the borrower whose borrow balance is being updated.
+     * @param borrowAmount The amount of tokens being borrowed by the borrower.
+     * @param repayAmount The amount of tokens being repaid by the borrower.
+     * @return accountBorrows The borrower's updated borrow balance
      */
     function updateBorrowInternal(
         address borrower,
         uint256 borrowAmount,
         uint256 repayAmount
-    ) internal returns (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 totalBorrowsStored) {
-        // Internal view function to get borrower's balance, if borrower's interestIndex = 0 it returns 0
-        accountBorrowsPrior = getBorrowBalance(borrower);
+    ) internal returns (uint256 accountBorrows) {
+        // Get the borrower's current borrow balance
+        uint256 borrowBalance = getBorrowBalance(borrower);
 
-        // if borrow amount == repayAmount, accountBorrowsPrior == accountBorrows
-        if (borrowAmount == repayAmount) {
-            return (accountBorrowsPrior, accountBorrowsPrior, totalBorrows);
-        }
+        // If the borrow amount is equal to the repay amount, return the current borrow balance
+        if (borrowAmount == repayAmount) return borrowBalance;
 
-        // The current borrow index
-        uint112 borrowIndexStored = borrowIndex;
+        // Get the current borrow index
+        uint256 borrowIndexStored = borrowIndex;
 
-        // Increase the borrower's account borrows and store it in snapshot
+        // Get the borrower's current borrow balance and borrow index
+        BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
+
+        // Increase the borrower's borrow balance if the borrow amount is greater than the repay amount
         if (borrowAmount > repayAmount) {
-            // The borrowBalance and borrowIndex of the borrower
-            BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
-
-            // Calculate the actual amount to increase
+            // Calculate the actual amount to increase the borrow balance by
             uint256 increaseBorrowAmount = borrowAmount - repayAmount;
 
-            // User's borrow balance + new borrow amount
-            accountBorrows = accountBorrowsPrior + increaseBorrowAmount;
+            // Calculate the borrower's updated borrow balance
+            accountBorrows = borrowBalance + increaseBorrowAmount;
 
             // Update the snapshot record of the borrower's principal
-            borrowSnapshot.principal = uint112(accountBorrows);
+            borrowSnapshot.principal = uint128(accountBorrows);
 
             // Update the snapshot record of the present borrow index
-            borrowSnapshot.interestIndex = borrowIndexStored;
+            borrowSnapshot.interestIndex = uint128(borrowIndexStored);
 
-            // Protocol's Total borrows
-            totalBorrowsStored = totalBorrows + increaseBorrowAmount;
+            // Total borrows of the protocol
+            uint256 totalBorrowsStored = totalBorrows + increaseBorrowAmount;
 
             // Update total borrows to storage
-            totalBorrows = totalBorrowsStored;
+            totalBorrows = uint96(totalBorrowsStored);
         }
-        // Decrease the borrower's account borrows and store it in the snapshot
+        // Decrease the borrower's borrow balance if the repay amount is greater than the borrow amount
         else {
-            // Get borrowBalance and borrowIndex of borrower
-            BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
-
-            // Calculate the actual amount to decrease
+            // Calculate the actual amount to decrease the borrow balance by
             uint256 decreaseBorrowAmount = repayAmount - borrowAmount;
 
             // Never underflows
-            // If the decrease amount is >= user's prior borrows then user borrows is 0, else return the difference
             unchecked {
-                accountBorrows = accountBorrowsPrior > decreaseBorrowAmount
-                    ? accountBorrowsPrior - decreaseBorrowAmount
-                    : 0;
+                // Calculate the borrower's updated borrow balance
+                accountBorrows = borrowBalance > decreaseBorrowAmount ? borrowBalance - decreaseBorrowAmount : 0;
             }
 
             // Update the snapshot record of the borrower's principal
-            borrowSnapshot.principal = uint112(accountBorrows);
+            borrowSnapshot.principal = uint128(accountBorrows);
 
             // Update the snapshot record of the borrower's interest index, if no borrows then interest index is 0
-            borrowSnapshot.interestIndex = accountBorrows == 0 ? 0 : borrowIndexStored;
+            borrowSnapshot.interestIndex = accountBorrows == 0 ? 0 : uint128(borrowIndexStored);
 
-            // Actual decrease amount checked
-            uint256 actualDecreaseAmount = accountBorrowsPrior - accountBorrows;
+            // Calculate the actual decrease amount
+            uint256 actualDecreaseAmount = borrowBalance - accountBorrows;
 
             // Total protocol borrows and gas savings
-            totalBorrowsStored = totalBorrows;
+            uint256 totalBorrowsStored = totalBorrows;
 
             // Never underflows
             // Condition check to update protocols total borrows
@@ -293,10 +284,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             }
 
             // Update total protocol borrows
-            totalBorrows = totalBorrowsStored;
+            totalBorrows = uint96(totalBorrowsStored);
         }
-        // Track borrows
-        trackBorrowInternal(borrower, accountBorrows, borrowIndexStored);
+
+        // Track borrower
+        trackBorrowerInternal(borrower, accountBorrows, borrowIndexStored);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -306,18 +298,10 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function accrueInterest() public override {
         // Get the present timestamp
-        uint32 currentTimestamp = getBlockTimestamp();
+        uint32 currentTimestamp = uint32(block.timestamp);
 
         // Get the last accrual timestamp
         uint32 accrualTimestampStored = lastAccrualTimestamp;
-
-        // If present timestamp is the same as the last accrual timestamp, return and do nothing
-        if (accrualTimestampStored == currentTimestamp) {
-            return;
-        }
-
-        // Store current timestamp as last accrual and start accrue
-        lastAccrualTimestamp = currentTimestamp;
 
         // Time elapsed between present timestamp and last accrued period
         uint32 timeElapsed = currentTimestamp - accrualTimestampStored;
@@ -333,12 +317,10 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Current borrow index
         uint256 borrowIndexStored = borrowIndex;
 
-        // ──────────────────────────────────────────────────────────────────────
+        // Escape if no time has past since last accrue
+        if (currentTimestamp == accrualTimestampStored || totalBorrowsStored == 0) return;
 
-        // Return if no borrows
-        if (totalBorrowsStored == 0) {
-            return;
-        }
+        // ──────────────────────────────────────────────────────────────────────
 
         // 1. Get per-second BorrowRate
         uint256 borrowRateStored = getBorrowRate(cashStored, totalBorrowsStored);
@@ -355,19 +337,22 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // 5. Update the borrow index ( new_index = index + (interestfactor * index / 1e18) )
         borrowIndexStored += interestFactor.mulWad(borrowIndexStored);
 
-        // ────── Store values: 2 memory slots with lastAccrualTime ──────
+        // ──────────────────── Store values: 1 memory slot ─────────────────────
 
         // Store total borrows
-        totalBorrows = totalBorrowsStored;
-
-        // Borrow rate
-        borrowRate = uint112(borrowRateStored);
+        totalBorrows = SafeCastLib.toUint96(totalBorrowsStored);
 
         // New borrow index
-        borrowIndex = uint112(borrowIndexStored);
+        borrowIndex = SafeCastLib.toUint80(borrowIndexStored);
+
+        // Borrow rate
+        borrowRate = SafeCastLib.toUint48(borrowRateStored);
+
+        // This accruals' timestamp
+        lastAccrualTimestamp = currentTimestamp;
 
         /// @custom:event AccrueInterest
-        emit AccrueInterest(cashStored, interestAccumulated, borrowIndexStored, totalBorrowsStored, borrowRateStored);
+        emit AccrueInterest(cashStored, totalBorrowsStored, interestAccumulated);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -375,8 +360,8 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    function trackBorrow(address borrower) external override {
-        // Pass to farming pool
-        trackBorrowInternal(borrower, getBorrowBalance(borrower), borrowIndex);
+    function trackBorrower(address borrower) external override {
+        // Get into internal and pass to rewarder
+        trackBorrowerInternal(borrower, getBorrowBalance(borrower), borrowIndex);
     }
 }

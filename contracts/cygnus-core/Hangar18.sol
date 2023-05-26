@@ -17,10 +17,9 @@
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
-import {Context} from "./utils/Context.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
@@ -29,16 +28,16 @@ import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 
 // Interfaces
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
-import {IAggregationRouterV5} from "./interfaces/IAggregationRouterV5.sol";
+import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
 
 // Orbiters
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
 /**
- *  @title  CygnusFactory
+ *  @title  Hangar18
  *  @author CygnusDAO
- *  @notice Factory contract for CygnusDAO which deploys all borrow/collateral contracts in this chain. There
+ *  @notice Factory-like contract for CygnusDAO which deploys all borrow/collateral contracts in this chain. There
  *          is only 1 factory contract per chain along with multiple pairs of `orbiters`.
  *
  *          Orbiters are the collateral and borrow deployers contracts which are not not part of the
@@ -61,12 +60,18 @@ import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
  *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol) or to add
  *                DAO liquidation fees if any (in CygnusCollateral.sol)
  */
-contract Hangar18 is IHangar18, Context, ReentrancyGuard {
+contract Hangar18 is IHangar18, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    IAggregationRouterV5 public constant override AGGREGATION_ROUTER_V5 =
+        IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
 
     /**
      *  @inheritdoc IHangar18
@@ -81,17 +86,22 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    ICygnusNebulaOracle[] public override allNebulas;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
     mapping(uint256 => Orbiter) public override getOrbiters;
 
     /**
      *  @inheritdoc IHangar18
      */
     mapping(address => mapping(uint256 => Shuttle)) public override getShuttles;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    mapping(address => mapping(address => bool)) public override masterBorrowApproval;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    ICygnusNebulaOracle[] public override allNebulas;
 
     /**
      *  @inheritdoc IHangar18
@@ -116,11 +126,6 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    address public override cygnusX1Vault;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
     address public immutable override usd;
 
     /**
@@ -131,8 +136,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    IAggregationRouterV5 public constant override AGGREGATION_ROUTER_V5 =
-        IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
+    address public override cygnusX1Vault;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -187,15 +191,15 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @notice Only Cygnus admins can deploy pools in Cygnus V1
      */
     function isCygnusAdmin() private view {
-        /// @custom:error CygnusAdminOnly Avoid unless caller is Cygnus admin
-        if (_msgSender() != admin) {
-            revert CygnusFactory__CygnusAdminOnly({sender: _msgSender(), admin: admin});
+        /// @custom:error CygnusAdminOnly
+        if (msg.sender != admin) {
+            revert Hangar18__CygnusAdminOnly({sender: msg.sender, admin: admin});
         }
     }
 
     /**
-     *  @notice Checks if the same pair of collateral and borrowable deployers we are setting already exist
-     *  @param uniqueHash The keccak256 hash of the borrowableInitCodeHash and collateralInitCodeHash
+     *  @notice Checks if the same pair of collateral & borrowable deployers and oracle we are setting already exist
+     *  @param uniqueHash The keccak256 hash of the borrowableInitCodeHash, collateralInitCodeHash and oracle address
      *  @param orbitersLength How many orbiter pairs we have deployed
      */
     function checkOrbitersInternal(bytes32 uniqueHash, uint256 orbitersLength) private view {
@@ -206,8 +210,8 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         for (uint256 i = 0; i < orbitersLength; i++) {
             // Check unique hash
             if (uniqueHash == orbiter[i].uniqueHash) {
-                /// @custom:error OrbiterAlreadySet Avoid setting the same orbiters twice
-                revert CygnusFactory__OrbiterAlreadySet({orbiter: orbiter[i]});
+                /// @custom:error OrbiterAlreadySet
+                revert Hangar18__OrbiterAlreadySet({orbiter: orbiter[i]});
             }
         }
     }
@@ -255,9 +259,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Get the ID for this LP token's shuttle
         bool deployed = getShuttles[lpTokenPair][orbiterId].launched;
 
-        /// @custom:error ShuttleAlreadyDeployed Avoid initializing two identical shuttles
+        /// @custom:error ShuttleAlreadyDeployed
         if (deployed == true) {
-            revert CygnusFactory__ShuttleAlreadyDeployed({lpTokenPair: lpTokenPair, orbiterId: orbiterId});
+            revert Hangar18__ShuttleAlreadyDeployed({lpTokenPair: lpTokenPair, orbiterId: orbiterId});
         }
 
         // Create shuttle
@@ -271,7 +275,39 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
             );
     }
 
+    /**
+     *  @notice Checks if the oracle has been added to our list
+     *  @param nebulaOracle The address of the oracle
+     */
+    function checkOracleInternal(ICygnusNebulaOracle nebulaOracle) internal {
+        // All oracles we have
+        ICygnusNebulaOracle[] memory oracles = allNebulas;
+
+        // Loop through the array to see if we have added the oracle
+        for (uint256 i = 0; i < oracles.length; i++) {
+            // Escape
+            if (oracles[i] == nebulaOracle) return;
+        }
+
+        // If not added add to array of oracles
+        allNebulas.push(nebulaOracle);
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function setMasterBorrowApproval(address spender) external override {
+        // Check current status (default false)
+        bool status = masterBorrowApproval[msg.sender][spender];
+
+        // Switch status
+        masterBorrowApproval[msg.sender][spender] = !status;
+
+        /// @custom:event NewMasterBorrowApproval
+        emit NewMasterBorrowApproval(msg.sender, spender, !status);
+    }
 
     /**
      *  Phase1: Orbiter check
@@ -295,23 +331,20 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         uint256 orbiterId
     ) external override nonReentrant cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
-
         // Load orbiter to memory
         Orbiter memory orbiter = getOrbiters[orbiterId];
 
-        /// @custom:error OrbitersAreInactive Avoid deploying if orbiters are inactive or are not set
+        /// @custom:error OrbitersAreInactive
         if (!orbiter.status) {
-            revert CygnusFactory__OrbitersAreInactive({orbiter: orbiter});
+            revert Hangar18__OrbitersAreInactive({orbiter: orbiter});
         }
 
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
-
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
         // Load shuttle to storage
         Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiter.orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
-
         // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
         address create2Collateral = CygnusPoolAddress.getCollateralContract(
             lpTokenPair,
@@ -336,29 +369,22 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
             shuttle.shuttleId
         );
 
-        /// @custom:error CollateralAddressMismatch Avoid deploying shuttle if calculated is different than deployed
+        /// @custom:error CollateralAddressMismatch
         if (collateral != create2Collateral) {
-            revert CygnusFactory__CollateralAddressMismatch({
-                calculatedCollateral: create2Collateral,
-                deployedCollateral: collateral
-            });
+            revert Hangar18__CollateralAddressMismatch({create2Collateral: create2Collateral, collateral: collateral});
         }
 
         //  ─────────────────────────────── Phase 4 ───────────────────────────────
-
         // Oracle should never NOT be initialized for this pair. If not initialized, deployment of collateral auto fails
-        ICygnusNebulaOracle.CygnusNebula memory nebula = orbiter.nebulaOracle.getNebula(lpTokenPair);
+        bool oracleInitialized = orbiter.nebulaOracle.getNebula(lpTokenPair).initialized;
 
-        /// @custom:error LPTokenPairNotSupported Avoid deploying if the oracle for the LP token is not initalized
-        if (!nebula.initialized) {
-            revert CygnusFactory__LPTokenPairNotSupported({lpTokenPair: lpTokenPair});
+        /// @custom:error LPTokenPairNotSupported
+        if (!oracleInitialized) {
+            revert Hangar18__LPTokenPairNotSupported({lpTokenPair: lpTokenPair});
         }
 
         //  ─────────────────────────────── Phase 5 ───────────────────────────────
-
         // Save addresses to storage and mark as launched. This LP Token with orbiter ID cannot be redeployed
-
-        // This specific lending pool is initialized can't be deployed again
         shuttle.launched = true;
 
         // Add cygnus borrow contract to record
@@ -383,7 +409,7 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         IAlbireoOrbiter albireoOrbiter,
         IDenebOrbiter denebOrbiter,
         ICygnusNebulaOracle nebulaOracle
-    ) external override cygnusAdmin {
+    ) external override nonReentrant cygnusAdmin {
         // Total orbiters
         uint256 totalOrbiters = allOrbiters.length;
 
@@ -432,23 +458,19 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Push struct to array
         allOrbiters.push(orbiter);
 
-        // Gas savings
-        ICygnusNebulaOracle[] memory oracles = allNebulas;
-
-        // Add oracle
-        for (uint256 i = 0; i < oracles.length; i++) {
-            // Get oracle array
-            ICygnusNebulaOracle oracle = oracles[i];
-
-            // Check if deployers use same oracle
-            if (oracle == nebulaOracle) break;
-
-            // Push oracle to array
-            allNebulas.push(nebulaOracle);
-        }
+        // Add oracle to array
+        checkOracleInternal(nebulaOracle);
 
         /// @custom:event InitializeOrbiters
-        emit InitializeOrbiters(true, totalOrbiters, albireoOrbiter, denebOrbiter, uniqueHash, orbiterName);
+        emit InitializeOrbiters(
+            true,
+            totalOrbiters,
+            albireoOrbiter,
+            denebOrbiter,
+            nebulaOracle,
+            uniqueHash,
+            orbiterName
+        );
     }
 
     /**
@@ -460,9 +482,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         // Get the orbiter by the ID
         IHangar18.Orbiter storage orbiter = allOrbiters[orbiterId];
 
-        /// @custom:error OrbiterNotSet Avoid switching non-existent orbiters
+        /// @custom:error OrbiterNotSet
         if (orbiter.uniqueHash == bytes32(0)) {
-            revert CygnusFactory__OrbitersNotSet({orbiterId: orbiterId});
+            revert Hangar18__OrbitersNotSet({orbiterId: orbiterId});
         }
 
         // Switch orbiter status. If currently active then future deployments with this orbiter will revert
@@ -483,9 +505,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @custom:security only-admin 👽
      */
     function setPendingAdmin(address newPendingAdmin) external override cygnusAdmin {
-        /// @custom:error CygnusAdminAlreadySet Avoid setting the pending admin as the current admin
+        /// @custom:error AdminAlreadySet
         if (newPendingAdmin == admin) {
-            revert CygnusFactory__AdminAlreadySet({newPendingAdmin: newPendingAdmin, admin: admin});
+            revert Hangar18__AdminAlreadySet({newPendingAdmin: newPendingAdmin, admin: admin});
         }
 
         // Address of the pending admin until this point
@@ -503,9 +525,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @custom:security only-admin 👽
      */
     function setNewCygnusAdmin() external override cygnusAdmin {
-        /// @custom:error PendingAdminCantBeZero Avoid setting cygnus admin as address(0)
+        /// @custom:error PendingAdminCantBeZero
         if (pendingAdmin == address(0)) {
-            revert CygnusFactory__PendingAdminCantBeZero();
+            revert Hangar18__PendingAdminCantBeZero();
         }
 
         // Address of the Admin until this point
@@ -526,9 +548,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @custom:security only-admin 👽
      */
     function setPendingDaoReserves(address newPendingDaoReserves) external override cygnusAdmin {
-        /// @custom:error DaoReservesAlreadySet Avoid setting the pending dao reserves as the current dao reserves
+        /// @custom:error DaoReservesAlreadySet
         if (newPendingDaoReserves == daoReserves) {
-            revert CygnusFactory__DaoReservesAlreadySet({
+            revert Hangar18__DaoReservesAlreadySet({
                 newPendingDaoReserves: newPendingDaoReserves,
                 daoReserves: daoReserves
             });
@@ -549,9 +571,9 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
      *  @custom:security only-admin 👽
      */
     function setNewDaoReserves() external override cygnusAdmin {
-        /// @custom:error DaoReservesCantBeZero Avoid setting the dao reserves as the zero address
+        /// @custom:error DaoReservesCantBeZero
         if (pendingDaoReserves == address(0)) {
-            revert CygnusFactory__DaoReservesCantBeZero();
+            revert Hangar18__DaoReservesCantBeZero();
         }
 
         // Address of the reserves admin up until now
@@ -567,7 +589,23 @@ contract Hangar18 is IHangar18, Context, ReentrancyGuard {
         emit NewDaoReserves(oldDaoReserves, daoReserves);
     }
 
-    function setNewX1Vault(address _newX1Vault) external cygnusAdmin { 
+    /**
+     *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
+     */
+    function setCygnusX1Vault(address newX1Vault) external override cygnusAdmin {
+        /// @custom:error X1VaultCantBeZero
+        if (newX1Vault == address(0)) {
+            revert Hangar18__X1VaultCantBeZero();
+        }
 
+        // Old vault
+        address oldVault = cygnusX1Vault;
+
+        // Assign new vault
+        cygnusX1Vault = newX1Vault;
+
+        /// @custom:event NewX1Vault
+        emit NewX1Vault(oldVault, newX1Vault);
     }
 }

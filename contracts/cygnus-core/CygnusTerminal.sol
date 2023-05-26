@@ -47,20 +47,25 @@
           are handled with the new `custom errors` feature among other small things...                           */
 
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
 import {ERC20Permit} from "./ERC20Permit.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
+
+// Permit2
+import {IAllowanceTransfer} from "./interfaces/IAllowanceTransfer.sol";
 
 /**
  *  @title  CygnusTerminal
@@ -68,7 +73,7 @@ import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
  *          to get the vault token (CygUSD for stablecoin deposits and CygLP for Liquidity deposits).
  */
-contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
+contract CygnusTerminal is ICygnusTerminal, ERC20Permit, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -79,7 +84,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     using SafeTransferLib for address;
 
     /**
-     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers.
      */
     using FixedPointMathLib for uint256;
 
@@ -92,12 +97,13 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    IHangar18 public immutable override hangar18;
+    IAllowanceTransfer public constant override PERMIT2 =
+        IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    address public immutable override underlying;
+    IHangar18 public immutable override hangar18;
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -107,12 +113,18 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    uint256 public immutable override shuttleId;
+    address public immutable override underlying;
 
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    uint256 public override totalBalance;
+    uint256 public immutable override shuttleId;
+
+    /**
+     *  @notice The contract's totalBalance is stored as a uint160 which is the max asset allowance the Permit2 router allows.
+     *  @inheritdoc ICygnusTerminal
+     */
+    uint160 public override totalBalance;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -120,27 +132,24 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
 
     /**
      *  @notice Constructs tokens for both Collateral and Borrow arms
-     *  @param _name ERC20 name of the Borrow/Collateral token
-     *  @param _symbol ERC20 symbol of the Borrow/Collateral token
-     *  @param _decimals Decimals of the Borrow/Collateral token
      */
-    constructor(string memory _name, string memory _symbol, uint8 _decimals) ERC20Permit(_name, _symbol, _decimals) {
-        // Get immutables from deployer contracts
-        // Factory, asset, twin contract, oracle, lending pool ID
-        (hangar18, underlying, , cygnusNebulaOracle, shuttleId) = IOrbiter(_msgSender()).shuttleParameters();
+    constructor() {
+        // Get immutables from deployer contract who is msg.sender of deployments
+        // Factory, asset, borrow/collateral, oracle, lending pool ID
+        (hangar18, underlying, , cygnusNebulaOracle, shuttleId) = IOrbiter(msg.sender).shuttleParameters();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            6. MODIFIERS
+            4. MODIFIERS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
+     *  @notice We mark as virtual in case need we need to also update before interaction (ie yield bearing tokens)
      *  @custom:modifier update Updates the total balance var in terms of its underlying
      */
-    modifier update() {
-        // Yield bearing tokens
-        updateInternal();
+    modifier update() virtual {
         _;
+        // Update after deposit
         updateInternal();
     }
 
@@ -166,9 +175,7 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         address admin = hangar18.admin();
 
         /// @custom:error MsgSenderNotAdmin Avoid unless caller is Cygnus Admin
-        if (_msgSender() != admin) {
-            revert CygnusTerminal__MsgSenderNotAdmin({sender: _msgSender(), admin: admin});
-        }
+        if (msg.sender != admin) revert CygnusTerminal__MsgSenderNotAdmin();
     }
 
     /**
@@ -176,21 +183,9 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      *  @param token The token to view balance of
      *  @return amount This contract's `token` balance
      */
-    function contractBalanceOf(address token) internal view returns (uint256 amount) {
-        // Modified from Solady https://github.com/Vectorized/solady/blob/main/src/utils/SafeTransferLib.sol#L345
-        /// @solidity memory-safe-assembly
-        assembly {
-            mstore(0x00, 0x70a08231) // Store the function selector of `balanceOf(address)`.
-            mstore(0x20, address()) // Store our contract address.
-            amount := mul(
-                mload(0x20),
-                and(
-                    // The arguments of `and` are evaluated from right to left.
-                    gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                    staticcall(gas(), token, 0x1c, 0x24, 0x20, 0x20)
-                )
-            )
-        }
+    function contractBalanceOf(address token) internal view returns (uint256) {
+        // Our balance of `token`
+        return token.balanceOf(address(this));
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -202,8 +197,9 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply;
 
-        // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? 1e18 : totalBalance.divWad(_totalSupply);
+        // Compute the exchange rate as the total balance of the underlying asset divided by the total supply of
+        // the vault token. If there is no supply for this token, return the initial exchange rate of 1:1.
+        return _totalSupply == 0 ? 1e18 : uint256(totalBalance).divWad(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -215,15 +211,21 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
     /**
      *  @notice Updates this contract's total balance in terms of its underlying
      */
-    function updateInternal() internal virtual {
+    function updateInternal() internal {
         // Get current balanceOf this contract
-        uint256 balance = contractBalanceOf(underlying);
-
-        // Assign to totalBalance
-        totalBalance = balance;
+        uint256 balance = previewTotalBalance();
 
         /// @custom:event Sync
-        emit Sync(totalBalance);
+        emit Sync(totalBalance = SafeCastLib.toUint160(balance));
+    }
+
+    /**
+     *  @notice Preview the total balance of the underlying we own from the strategy (if any)
+     *  @return balance This contract's balance of the underlying asset
+     */
+    function previewTotalBalance() internal virtual returns (uint256 balance) {
+        // Get current balanceOf this contract
+        balance = contractBalanceOf(underlying);
     }
 
     /**
@@ -238,23 +240,40 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      */
     function beforeWithdrawInternal(uint256 assets) internal virtual {}
 
-    /**
-     *  @notice Preview the total balance of the underlying we own from the strategy (if any)
-     */
-    function previewTotalBalance() internal virtual returns (uint256) {}
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function deposit(uint256 assets, address recipient) external override nonReentrant update returns (uint256 shares) {
-        // Transfer underlying from sender to this contract
-        underlying.safeTransferFrom(_msgSender(), address(this), assets);
-
+    function deposit(
+        uint256 assets,
+        address recipient,
+        IAllowanceTransfer.PermitSingle calldata _permit,
+        bytes calldata signature
+    ) external override nonReentrant update returns (uint256 shares) {
         // Check for deposit fee
         uint256 balanceBefore = previewTotalBalance();
+
+        // Check for permit (users can just approve permit2 and skip this by passing an empty
+        // `_permit` and an empty `signature`)
+        if (signature.length > 0) {
+            // Set allowance using permit
+            PERMIT2.permit(
+                // The owner of the tokens being approved.
+                // We only allow the owner of the tokens to be the depositor, but
+                // recipient can be set to another address
+                msg.sender,
+                // Data signed over by the owner specifying the terms of approval
+                _permit,
+                // The owner's signature over the permit data that was the result
+                // of signing the EIP712 hash of `_permit`
+                signature
+            );
+        }
+
+        // Transfer underlying to vault
+        PERMIT2.transferFrom(msg.sender, address(this), SafeCastLib.toUint160(assets), underlying);
 
         // Deposit in strategy
         afterDepositInternal(assets);
@@ -266,24 +285,22 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         shares = (balanceAfter - balanceBefore).divWad(exchangeRate());
 
         /// @custom:error CantMintZeroShares Avoid minting no shares
-        if (shares <= 0) {
-            revert CygnusTerminal__CantMintZeroShares();
-        }
+        if (shares == 0) revert CygnusTerminal__CantMintZeroShares();
 
         // Avoid first depositor front-running & update shares - only for the first pool depositor
         if (totalSupply == 0) {
-            // Lock initial tokens
-            mintInternal(address(0xdEaD), 1000);
-
             // Update shares for first depositor
             shares -= 1000;
+
+            // Lock initial tokens
+            _mint(address(0xdEaD), 1000);
         }
 
         // Mint shares and emit Transfer event
-        mintInternal(recipient, shares);
+        _mint(recipient, shares);
 
         /// @custom:event Deposit
-        emit Deposit(_msgSender(), recipient, assets, shares);
+        emit Deposit(msg.sender, recipient, assets, shares);
     }
 
     /**
@@ -296,33 +313,31 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
         address owner
     ) external override nonReentrant update returns (uint256 assets) {
         // Withdraw flow
-        if (_msgSender() != owner) {
+        if (msg.sender != owner) {
             // Check msg.sender's allowance
-            uint256 allowed = allowances[owner][_msgSender()]; // Saves gas for limited approvals.
+            uint256 allowed = _allowances[owner][msg.sender]; // Saves gas for limited approvals.
 
             // Reverts on underflow
-            if (allowed != type(uint256).max) allowances[owner][_msgSender()] = allowed - shares;
+            if (allowed != type(uint256).max) _allowances[owner][msg.sender] = allowed - shares;
         }
 
         // Check current exchange rate
         assets = shares.mulWad(exchangeRate());
 
         /// @custom:error CantRedeemZeroAssets Avoid redeeming no assets
-        if (assets <= 0) {
-            revert CygnusTerminal__CantRedeemZeroAssets();
-        }
+        if (assets <= 0) revert CygnusTerminal__CantRedeemZeroAssets();
 
         // Withdraw assets from the strategy (if any)
         beforeWithdrawInternal(assets);
 
         // Burn shares
-        burnInternal(owner, shares);
+        _burn(owner, shares);
 
         // Transfer assets to recipient
         underlying.safeTransfer(recipient, assets);
 
         /// @custom:event Withdraw
-        emit Withdraw(_msgSender(), recipient, owner, assets, shares);
+        emit Withdraw(msg.sender, recipient, owner, assets, shares);
     }
 
     /**
@@ -331,14 +346,12 @@ contract CygnusTerminal is ICygnusTerminal, ERC20Permit {
      */
     function sweepToken(address token) external override nonReentrant cygnusAdmin {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
-        if (token == underlying) {
-            revert CygnusTerminal__CantSweepUnderlying({token: token, underlying: underlying});
-        }
+        if (token == underlying) revert CygnusTerminal__CantSweepUnderlying();
 
         // Balance this contract has of the erc20 token we are recovering
         uint256 balance = contractBalanceOf(token);
 
         // Transfer token
-        token.safeTransfer(_msgSender(), balance);
+        token.safeTransfer(msg.sender, balance);
     }
 }

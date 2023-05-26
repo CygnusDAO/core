@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.17;
 
 import {AggregatorV3Interface} from "./AggregatorV3Interface.sol";
-import {IDexPair} from "./IDexPair.sol";
 import {IERC20} from "./IERC20.sol";
 
 /**
@@ -41,12 +40,12 @@ interface ICygnusNebulaOracle {
     /**
      *  @custom:error NebulaRecordNotInitialized Reverts when getting a record if not initialized
      */
-    error CygnusNebulaOracle__NebulaRecordNotInitialized(IDexPair lpTokenPair);
+    error CygnusNebulaOracle__NebulaRecordNotInitialized(address lpTokenPair);
 
     /**
      *  @custom:error NebulaRecordAlreadyInitialized Reverts when re-initializing a record
      */
-    error CygnusNebulaOracle__NebulaRecordAlreadyInitialized(IDexPair lpTokenPair);
+    error CygnusNebulaOracle__NebulaRecordAlreadyInitialized(address lpTokenPair);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

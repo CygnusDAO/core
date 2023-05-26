@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
-// solhint-disable var-name-mixedcase
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 import {ERC20} from "./ERC20.sol";
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 
 /// @title ERC20Permit
 /// @author Paul Razvan Berg
-contract ERC20Permit is IERC20Permit, ERC20 {
+contract ERC20Permit is
+    IERC20Permit, // 1 inherited component
+    ERC20 // 1 inherited component
+{
     /// PUBLIC STORAGE ///
 
     /// @inheritdoc IERC20Permit
@@ -21,11 +23,11 @@ contract ERC20Permit is IERC20Permit, ERC20 {
     mapping(address => uint256) public override nonces;
 
     /// @inheritdoc IERC20Permit
-    string public constant override version = "1.0.0";
+    string public constant override version = "1";
 
     /// CONSTRUCTOR ///
 
-    constructor(string memory _name, string memory _symbol, uint8 _decimals) ERC20(_name, _symbol, _decimals) {
+    constructor() {
         uint256 chainId = block.chainid;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -52,17 +54,17 @@ contract ERC20Permit is IERC20Permit, ERC20 {
     ) public override {
         // Checks: `owner` is not the zero address.
         if (owner == address(0)) {
-            revert ERC20Permit__OwnerZeroAddress();
+            revert ERC20Permit_OwnerZeroAddress();
         }
 
         // Checks: `spender` is not the zero address.
         if (spender == address(0)) {
-            revert ERC20Permit__SpenderZeroAddress();
+            revert ERC20Permit_SpenderZeroAddress();
         }
 
         // Checks: the deadline is in the future (or at least at present).
         if (deadline < block.timestamp) {
-            revert ERC20Permit__PermitExpired(block.timestamp, deadline);
+            revert ERC20Permit_PermitExpired(block.timestamp, deadline);
         }
 
         // It's safe to use unchecked here because the nonce cannot realistically overflow, ever.
@@ -77,16 +79,16 @@ contract ERC20Permit is IERC20Permit, ERC20 {
 
         // Checks: `recoveredOwner` is not the zero address.
         if (recoveredOwner == address(0)) {
-            revert ERC20Permit__RecoveredOwnerZeroAddress();
+            revert ERC20Permit_RecoveredOwnerZeroAddress();
         }
 
         // Checks: `recoveredOwner` is not the same as `owner`.
         if (recoveredOwner != owner) {
-            revert ERC20Permit__InvalidSignature(owner, v, r, s);
+            revert ERC20Permit_InvalidSignature(owner, v, r, s);
         }
 
         // Effects: update the allowance.
-        allowances[owner][spender] = value;
+        _allowances[owner][spender] = value;
 
         // Emit an event.
         emit Approval(owner, spender, value);

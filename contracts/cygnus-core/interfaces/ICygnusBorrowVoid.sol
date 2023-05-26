@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: Unlicense
 
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowModel} from "./ICygnusBorrowModel.sol";
+
 // Stargate
-import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
-import {IStargatePool} from "./BorrowableVoid/IStargatePool.sol";
-import {IStargateRouter} from "./BorrowableVoid/IStargateRouter.sol";
-import {IStargateLPStaking} from "./BorrowableVoid/IStargateLPStaking.sol";
+import {ICygnusHarvester} from "./ICygnusHarvester.sol";
 
 /**
  *  @title ICygnusBorrowVoid
@@ -19,116 +17,128 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:error OnlyAccountsAllowed Reverts when the transaction origin and sender are different
+     *  @dev Reverts if msg.sender is not the harvester
+     *
+     *  @custom:error OnlyHarvesterAllowed
      */
-    error CygnusBorrowVoid__OnlyEOAAllowed(address sender, address origin);
+    error CygnusBorrowVoid__OnlyHarvesterAllowed();
 
     /**
-     *  @custom:error DstReceiverNotValid Reverts if the receiver of the swap is not this contract
+     *  @dev Strategy specific error
+     *  @dev Reverts if there was a mint or redeem error on the cToken
+     *
+     *  @custom:error CTokenError
      */
-    error CygnusBorrowVoid__DstReceiverNotValid(address dstReceiver, address receiver);
-
-    /**
-     *  @custom:error SwapNotAllowed Reverts if the token received is not underlying
-     */
-    error CygnusBorrowVoid__DstTokenNotValid(address dstToken, address token);
-
-    /**
-     *  @custom:error SrcTokenNotValid Reverts if the src token we are swapping is not the rewards token
-     */
-    error CygnusBorrowVoid__SrcTokenNotValid(address srcToken, address token);
+    error CygnusBorrowVoid__CTokenError();
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Emitted when admin implements strategy or re-approves contracts
+     *  @dev Logs when the strategy is first initialized or re-approves contracts
+     *
      *  @param underlying The address of the underlying stablecoin
      *  @param shuttleId The unique ID of the lending pool
      *  @param sender The address of the msg.sender (admin)
-     *  @custom:event ChargeVoid Logs when the strategy is first initialized or re-approves contracts
+     *
+     *  @custom:event ChargeVoid
      */
     event ChargeVoid(address underlying, uint256 shuttleId, address sender);
 
     /**
-     *  @notice Emitted when user reinvests rewards
+     *  @dev Logs when user reinvests rewards
+     *
      *  @param reinvestor The address of the caller who reinvested reward and received bounty
-     *  @param rewardBalance The amount of `rewardsToken` reinvested
-     *  @param reinvestReward The reward received by the reinvestor
-     *  @param daoReward The reward received by the DAO
-     *  @param underlyingReceived The amount of underlying stablecoin reinvested
-     *  @custom:event RechargeVoid Logs when rewards from the STG rewarder to buy more underlying
+     *  @param liquidity The amount of underlying USD received and reinvested
+     *  @param timestamp The timestamp of the reinvest
+     *
+     *  @custom:event RechargeVoid
      */
-    event RechargeVoid(
-        address indexed reinvestor,
-        uint256 rewardBalance,
-        uint256 reinvestReward,
-        uint256 daoReward,
-        uint256 underlyingReceived
-    );
+    event RechargeVoid(address indexed reinvestor, uint256 liquidity, uint256 timestamp);
+
+    /**
+     *  @dev Logs when admin sets a new harvester to reinvest rewards
+     *
+     *  @param oldHarvester The address of the old harvester
+     *  @param newHarvester The address of the new harvester
+     *
+     *  @custom:event NewHarvester
+     */
+    event NewHarvester(ICygnusHarvester oldHarvester, ICygnusHarvester newHarvester);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /**
-     *  @return DAO_REWARD The % of rewards paid to the DAO from the harvest
-     */
-    function DAO_REWARD() external pure returns (uint256);
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return lastReinvest The block timestamp of the last reinvest for this pool
+     *  @return harvester The address of the harvester contract
      */
-    function lastReinvest() external returns (uint256);
+    function harvester() external view returns (ICygnusHarvester);
 
     /**
-     *  @notice Returns the borrowable strategy
-     *  @return stgPid The Pool ID for the S*Underlying token
-     *  @return stgRouterPoolId The Pool ID for the Stargate Router for underlying deposits (stablecoin)
-     *  @return stgPool The address of Stargate's pool for the underlying
-     *  @return stgRouter The address of Stargate's router on this chain
-     *  @return stgRewarder The address of the rewarder (STG/OP/etc.)
-     *  @return rewardsToken The address of the rewards token
-     *  @return aggregationRouterV5 The address of the router used to perform the swaps form rewards into underlying
+     *  @return lastReinvest Timestamp of the last reinvest performed by the harvester contract
      */
-    function getCygnusVoid()
-        external
-        view
-        returns (
-            uint256 stgPid,
-            uint256 stgRouterPoolId,
-            IStargatePool stgPool,
-            IStargateRouter stgRouter,
-            IStargateLPStaking stgRewarder,
-            address rewardsToken,
-            IAggregationRouterV5 aggregationRouterV5
-        );
+    function lastReinvest() external view returns (uint256);
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @return rewarder The address of the rewarder contract
+     */
+    function rewarder() external view returns (address);
+
+    /**
+     *  @return rewardToken The address of the main reward token
+     */
+    function rewardToken() external view returns (address);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /**
-     *  @notice Initializes the pool id for the strategy (Masterchef/Goose pool ID)
-     *  @param _pid The Pool ID of this LP Token pair in Masterchef's contract
-     *  @custom:security non-reentrant only-admin 👽
-     */
-    function chargeVoid(uint256 _pid) external;
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Get the pending rewards manually
-     *  @return pendingReward The amount of rewards in `rewardsToken` pending to harvest
-     *  @custom:security non-reentrant only-eoa
+     *  @notice Can be called by anyone
+     *  @notice Charges approvals needed for deposits and withdrawals along with setting rewarders (if any)
+     *
+     *  @custom:security non-reentrant
      */
-    function getRewards() external returns (uint256 pendingReward);
+    function chargeVoid() external;
 
     /**
+     *  @notice Only EOA can call
+     *  @notice Get the pending rewards manually - helpful to get rewards through static calls
+     *
+     *  @return tokens The addresses of the reward tokens earned by harvesting rewards
+     *  @return amounts The amounts of each token received
+     *
+     *  @custom:security non-reentrant
+     */
+    function getRewards() external returns (address[] memory tokens, uint256[] memory amounts);
+
+    /**
+     *  @notice Only EOA can call
      *  @notice Reinvests all rewards from the rewarder to buy more USD to then deposit back into the rewarder
      *          This makes totalBalance increase in this contract, increasing the exchangeRate between
-     *          CygUSD and underlying and thus lowering utilization rate and borrow arte
-     *  @param swapData 1inch calldata for swapping rewards to underlying
-     *  @custom:security non-reentrant only-eoa
+     *          CygUSD and underlying and thus lowering utilization rate and borrow rate
+     *
+     *  @custom:security non-reentrant
      */
-    function reinvestRewards_y7b(bytes memory swapData) external;
+    function reinvestRewards_y7b(uint256 liquidity) external;
+
+    // Admin
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Sets the harvester address to harvest and reinvest rewards into more underlying
+     *
+     *  @param _harvester The address of the new harvester contract
+     *
+     *  @custom:security non-reentrant only-admin
+     */
+    function setHarvester(ICygnusHarvester _harvester) external;
 }

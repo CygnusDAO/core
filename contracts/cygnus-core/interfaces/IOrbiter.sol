@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 import {IHangar18} from "./IHangar18.sol";
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";

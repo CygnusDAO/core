@@ -17,12 +17,10 @@
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
-import {Context} from "./utils/Context.sol";
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
-import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Contracts
 import {CygnusCollateral} from "./CygnusCollateral.sol";
@@ -35,7 +33,7 @@ import {CygnusCollateral} from "./CygnusCollateral.sol";
  *          We pass structs to avoid having to set constructors in the core contracts, being able to calculate
  *          addresses of lending pools with CREATE2
  */
-contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
+contract DenebOrbiter is IDenebOrbiter {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -83,10 +81,10 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         address borrowable,
         address oracle,
         uint256 shuttleId
-    ) external override nonReentrant returns (address collateral) {
+    ) external override returns (address collateral) {
         // Assign important addresses to pass to collateral contracts
         shuttleParameters = CollateralParameters({
-            factory: _msgSender(),
+            factory: msg.sender,
             underlying: underlying,
             borrowable: borrowable,
             oracle: oracle,
@@ -94,7 +92,7 @@ contract DenebOrbiter is IDenebOrbiter, Context, ReentrancyGuard {
         });
 
         // Create Collateral contract
-        collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, _msgSender()))}());
+        collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, msg.sender))}());
 
         // Delete and refund some gas
         delete shuttleParameters;

@@ -4,40 +4,8 @@
   "sourceName": "contracts/cygnus-core/interfaces/ICygnusCollateralVoid.sol",
   "abi": [
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "min",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "max",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
+      "inputs": [],
       "name": "CygnusCollateralControl__ParameterNotInRange",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "invalidBorrowable",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "validBorrowable",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralModel__BorrowableInvalid",
       "type": "error"
     },
     {
@@ -57,67 +25,13 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "dstReceiver",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "receiver",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__DstReceiverNotValid",
+      "inputs": [],
+      "name": "CygnusCollateralModel__PriceCantBeZero",
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "dstToken",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__DstTokenNotValid",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "origin",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__OnlyEOAAllowed",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "srcToken",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "CygnusCollateralVoid__SrcTokenNotValid",
+      "inputs": [],
+      "name": "CygnusCollateralVoid__OnlyHarvesterAllowed",
       "type": "error"
     },
     {
@@ -131,34 +45,12 @@
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "underlying",
-          "type": "address"
-        }
-      ],
+      "inputs": [],
       "name": "CygnusTerminal__CantSweepUnderlying",
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "admin",
-          "type": "address"
-        }
-      ],
+      "inputs": [],
       "name": "CygnusTerminal__MsgSenderNotAdmin",
       "type": "error"
     },
@@ -185,12 +77,12 @@
           "type": "bytes32"
         }
       ],
-      "name": "ERC20Permit__InvalidSignature",
+      "name": "ERC20Permit_InvalidSignature",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20Permit__OwnerZeroAddress",
+      "name": "ERC20Permit_OwnerZeroAddress",
       "type": "error"
     },
     {
@@ -206,64 +98,32 @@
           "type": "uint256"
         }
       ],
-      "name": "ERC20Permit__PermitExpired",
+      "name": "ERC20Permit_PermitExpired",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20Permit__RecoveredOwnerZeroAddress",
+      "name": "ERC20Permit_RecoveredOwnerZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20Permit__SpenderZeroAddress",
+      "name": "ERC20Permit_SpenderZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__ApproveOwnerZeroAddress",
+      "name": "ERC20_ApproveOwnerZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__ApproveSpenderZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "accountBalance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "burnAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20__BurnUnderflow",
+      "name": "ERC20_ApproveSpenderZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__BurnZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "allowance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20__InsufficientAllowance",
+      "name": "ERC20_BurnHolderZeroAddress",
       "type": "error"
     },
     {
@@ -275,26 +135,52 @@
         },
         {
           "internalType": "uint256",
-          "name": "amount",
+          "name": "transferAmount",
           "type": "uint256"
         }
       ],
-      "name": "ERC20__InsufficientBalance",
+      "name": "ERC20_FromInsufficientBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "allowance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "transferAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC20_InsufficientAllowance",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__MintZeroAddress",
+      "name": "ERC20_MintBeneficiaryZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__TransferRecipientZeroAddress",
+      "name": "ERC20_TransferFromZeroAddress",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ERC20__TransferSenderZeroAddress",
+      "name": "ERC20_TransferToZeroAddress",
       "type": "error"
     },
     {
@@ -315,7 +201,7 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "amount",
+          "name": "value",
           "type": "uint256"
         }
       ],
@@ -402,6 +288,25 @@
       "inputs": [
         {
           "indexed": false,
+          "internalType": "contract ICygnusHarvester",
+          "name": "oldHarvester",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract ICygnusHarvester",
+          "name": "newHarvester",
+          "type": "address"
+        }
+      ],
+      "name": "NewHarvester",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
           "internalType": "uint256",
           "name": "oldLiquidationFee",
           "type": "uint256"
@@ -447,19 +352,13 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "rewardBalance",
+          "name": "liquidity",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "daoReward",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "underlyingReceived",
+          "name": "timestamp",
           "type": "uint256"
         }
       ],
@@ -471,9 +370,9 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "uint160",
           "name": "totalBalance",
-          "type": "uint256"
+          "type": "uint160"
         }
       ],
       "name": "Sync",
@@ -543,38 +442,25 @@
     },
     {
       "inputs": [],
-      "name": "AGGREGATION_ROUTER_V5",
-      "outputs": [
-        {
-          "internalType": "contract IAggregationRouterV5",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DAO_REWARD",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "DOMAIN_SEPARATOR",
       "outputs": [
         {
           "internalType": "bytes32",
           "name": "",
           "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "PERMIT2",
+      "outputs": [
+        {
+          "internalType": "contract IAllowanceTransfer",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -626,7 +512,7 @@
         },
         {
           "internalType": "uint256",
-          "name": "amount",
+          "name": "value",
           "type": "uint256"
         }
       ],
@@ -681,11 +567,6 @@
           "type": "address"
         },
         {
-          "internalType": "address",
-          "name": "borrowableToken",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
           "name": "borrowAmount",
           "type": "uint256"
@@ -727,13 +608,7 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        }
-      ],
+      "inputs": [],
       "name": "chargeVoid",
       "outputs": [],
       "stateMutability": "nonpayable",
@@ -781,6 +656,30 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "decreaseAllowance",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
           "name": "assets",
           "type": "uint256"
@@ -789,6 +688,55 @@
           "internalType": "address",
           "name": "recipient",
           "type": "address"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "token",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint160",
+                  "name": "amount",
+                  "type": "uint160"
+                },
+                {
+                  "internalType": "uint48",
+                  "name": "expiration",
+                  "type": "uint48"
+                },
+                {
+                  "internalType": "uint48",
+                  "name": "nonce",
+                  "type": "uint48"
+                }
+              ],
+              "internalType": "struct IAllowanceTransfer.PermitDetails",
+              "name": "details",
+              "type": "tuple"
+            },
+            {
+              "internalType": "address",
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sigDeadline",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IAllowanceTransfer.PermitSingle",
+          "name": "_permit",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_signature",
+          "type": "bytes"
         }
       ],
       "name": "deposit",
@@ -840,34 +788,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getCygnusVoid",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "rewarder",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "dexRouter",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -879,7 +799,7 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "borrowersDebtRatio",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -892,7 +812,7 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "lpTokenPrice",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -904,9 +824,14 @@
       "name": "getRewards",
       "outputs": [
         {
-          "internalType": "uint256",
-          "name": "pendingReward",
-          "type": "uint256"
+          "internalType": "address[]",
+          "name": "tokens",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "amounts",
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "nonpayable",
@@ -923,6 +848,43 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "harvester",
+      "outputs": [
+        {
+          "internalType": "contract ICygnusHarvester",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "increaseAllowance",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -1071,14 +1033,40 @@
     {
       "inputs": [
         {
-          "internalType": "bytes",
-          "name": "swapData",
-          "type": "bytes"
+          "internalType": "uint256",
+          "name": "liquidity",
+          "type": "uint256"
         }
       ],
       "name": "reinvestRewards_y7b",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rewardToken",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rewarder",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1090,6 +1078,19 @@
         }
       ],
       "name": "setDebtRatio",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract ICygnusHarvester",
+          "name": "_harvester",
+          "type": "address"
+        }
+      ],
+      "name": "setHarvester",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1164,9 +1165,9 @@
       "name": "totalBalance",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint160",
           "name": "",
-          "type": "uint256"
+          "type": "uint160"
         }
       ],
       "stateMutability": "view",
@@ -1189,7 +1190,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "recipient",
+          "name": "to",
           "type": "address"
         },
         {
@@ -1213,12 +1214,12 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "sender",
+          "name": "from",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "recipient",
+          "name": "to",
           "type": "address"
         },
         {

@@ -1,68 +1,72 @@
-// SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.17;
 
 /// @title IERC20
 /// @author Paul Razvan Berg
-/// @notice Implementation for the ERC20 standard.
+/// @notice Implementation for the ERC-20 standard.
 ///
 /// We have followed general OpenZeppelin guidelines: functions revert instead of returning
 /// `false` on failure. This behavior is nonetheless conventional and does not conflict with
-/// the with the expectations of ERC20 applications.
+/// the with the expectations of ERC-20 applications.
 ///
 /// Additionally, an {Approval} event is emitted on calls to {transferFrom}. This allows
 /// applications to reconstruct the allowance for all accounts just by listening to said
-/// events. Other implementations of the Erc may not emit these events, as it isn't
+/// events. Other implementations of the ERC may not emit these events, as it isn't
 /// required by the specification.
-
-/// Removed increaseAllowance and decreaseAllowance
-
+///
+/// Finally, the non-standard {decreaseAllowance} and {increaseAllowance} functions have been
+/// added to mitigate the well-known issues around setting allowances.
+///
 /// @dev Forked from OpenZeppelin
 /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/token/ERC20/ERC20.sol
 interface IERC20 {
-    /// CUSTOM ERRORS ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                       ERRORS
+    //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Emitted when the owner is the zero address.
-    error ERC20__ApproveOwnerZeroAddress();
+    /// @notice Thrown when attempting to approve with the zero address as the owner.
+    error ERC20_ApproveOwnerZeroAddress();
 
-    /// @notice Emitted when the spender is the zero address.
-    error ERC20__ApproveSpenderZeroAddress();
+    /// @notice Thrown when attempting to approve the zero address as the spender.
+    error ERC20_ApproveSpenderZeroAddress();
 
-    /// @notice Emitted when burning more tokens than are in the account.
-    error ERC20__BurnUnderflow(uint256 accountBalance, uint256 burnAmount);
+    /// @notice Thrown when attempting to burn tokens from the zero address.
+    error ERC20_BurnHolderZeroAddress();
 
-    /// @notice Emitted when the holder is the zero address.
-    error ERC20__BurnZeroAddress();
+    /// @notice Thrown when attempting to transfer more tokens than there are in the from account.
+    error ERC20_FromInsufficientBalance(uint256 senderBalance, uint256 transferAmount);
 
-    /// @notice Emitted when the owner did not give the spender sufficient allowance.
-    error ERC20__InsufficientAllowance(uint256 allowance, uint256 amount);
+    /// @notice Thrown when spender attempts to transfer more tokens than the owner had given them allowance for.
+    error ERC20_InsufficientAllowance(address owner, address spender, uint256 allowance, uint256 transferAmount);
 
-    /// @notice Emitted when tranferring more tokens than there are in the account.
-    error ERC20__InsufficientBalance(uint256 senderBalance, uint256 amount);
+    /// @notice Thrown when attempting to mint tokens to the zero address.
+    error ERC20_MintBeneficiaryZeroAddress();
 
-    /// @notice Emitted when the beneficiary is the zero address.
-    error ERC20__MintZeroAddress();
+    /// @notice Thrown when attempting to transfer tokens from the zero address.
+    error ERC20_TransferFromZeroAddress();
 
-    /// @notice Emitted when the sender is the zero address.
-    error ERC20__TransferSenderZeroAddress();
+    /// @notice Thrown when the attempting to transfer tokens to the zero address.
+    error ERC20_TransferToZeroAddress();
 
-    /// @notice Emitted when the recipient is the zero address.
-    error ERC20__TransferRecipientZeroAddress();
+    /*//////////////////////////////////////////////////////////////////////////
+                                       EVENTS
+    //////////////////////////////////////////////////////////////////////////*/
 
-    /// EVENTS ///
-
-    /// @notice Emitted when an approval happens.
+    /// @notice Emitted when an approval occurs.
     /// @param owner The address of the owner of the tokens.
     /// @param spender The address of the spender.
-    /// @param amount The maximum amount that can be spent.
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
+    /// @param value The maximum value that can be spent.
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    /// @notice Emitted when a transfer happens.
+    /// @notice Emitted when a transfer occurs.
     /// @param from The account sending the tokens.
     /// @param to The account receiving the tokens.
     /// @param amount The amount of tokens transferred.
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    /// CONSTANT FUNCTIONS ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                 CONSTANT FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Returns the remaining number of tokens that `spender` will be allowed to spend
     /// on behalf of `owner` through {transferFrom}. This is zero by default.
@@ -85,9 +89,11 @@ interface IERC20 {
     /// @notice Returns the amount of tokens in existence.
     function totalSupply() external view returns (uint256);
 
-    /// NON-CONSTANT FUNCTIONS ///
+    /*//////////////////////////////////////////////////////////////////////////
+                               NON-CONSTANT FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Sets `amount` as the allowance of `spender` over the caller's tokens.
+    /// @notice Sets `value` as the allowance of `spender` over the caller's tokens.
     ///
     /// @dev Emits an {Approval} event.
     ///
@@ -101,32 +107,56 @@ interface IERC20 {
     /// - `spender` cannot be the zero address.
     ///
     /// @return a boolean value indicating whether the operation succeeded.
-    function approve(address spender, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 value) external returns (bool);
 
-    /// @notice Moves `amount` tokens from the caller's account to `recipient`.
+    /// @notice Atomically decreases the allowance granted to `spender` by the caller.
+    ///
+    /// @dev Emits an {Approval} event indicating the updated allowance.
+    ///
+    /// This is an alternative to {approve} that can be used as a mitigation for problems described
+    /// in {IERC20-approve}.
+    ///
+    /// Requirements:
+    ///
+    /// - `spender` cannot be the zero address.
+    /// - `spender` must have allowance for the caller of at least `value`.
+    function decreaseAllowance(address spender, uint256 value) external returns (bool);
+
+    /// @notice Atomically increases the allowance granted to `spender` by the caller.
+    ///
+    /// @dev Emits an {Approval} event indicating the updated allowance.
+    ///
+    /// This is an alternative to {approve} that can be used as a mitigation for the problems described above.
+    ///
+    /// Requirements:
+    ///
+    /// - `spender` must not be the zero address.
+    function increaseAllowance(address spender, uint256 value) external returns (bool);
+
+    /// @notice Moves `amount` tokens from the caller's account to `to`.
     ///
     /// @dev Emits a {Transfer} event.
     ///
     /// Requirements:
     ///
-    /// - `recipient` cannot be the zero address.
+    /// - `to` must not be the zero address.
     /// - The caller must have a balance of at least `amount`.
     ///
     /// @return a boolean value indicating whether the operation succeeded.
-    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
 
-    /// @notice Moves `amount` tokens from `sender` to `recipient` using the allowance mechanism. `amount`
+    /// @notice Moves `amount` tokens from `from` to `to` using the allowance mechanism. `amount`
     /// `is then deducted from the caller's allowance.
     ///
     /// @dev Emits a {Transfer} event and an {Approval} event indicating the updated allowance. This is
-    /// not required by the Erc. See the note at the beginning of {ERC20}.
+    /// not required by the ERC. See the note at the beginning of {ERC-20}.
     ///
     /// Requirements:
     ///
-    /// - `sender` and `recipient` cannot be the zero address.
-    /// - `sender` must have a balance of at least `amount`.
-    /// - The caller must have approed `sender` to spent at least `amount` tokens.
+    /// - `from` and `to` must not be the zero address.
+    /// - `from` must have a balance of at least `amount`.
+    /// - The caller must have approved `from` to spent at least `amount` tokens.
     ///
     /// @return a boolean value indicating whether the operation succeeded.
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }

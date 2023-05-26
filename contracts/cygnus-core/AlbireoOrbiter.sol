@@ -17,12 +17,10 @@
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
-import {Context} from "./utils/Context.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
-import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Contracts
 import {CygnusBorrow} from "./CygnusBorrow.sol";
@@ -35,7 +33,7 @@ import {CygnusBorrow} from "./CygnusBorrow.sol";
  *          to set constructors in the core contracts, being able to calculate addresses of lending pools with
  *          CREATE2
  */
-contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
+contract AlbireoOrbiter is IAlbireoOrbiter {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -64,6 +62,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
      */
     BorrowParameters public override shuttleParameters;
 
+    
     /**
      *  @inheritdoc IAlbireoOrbiter
      */
@@ -83,10 +82,10 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
         address collateral,
         address oracle,
         uint256 shuttleId
-    ) external override nonReentrant returns (address borrowable) {
+    ) external override returns (address borrowable) {
         // Assign important addresses to pass to borrow contracts
         shuttleParameters = BorrowParameters({
-            factory: _msgSender(),
+            factory: msg.sender,
             underlying: underlying,
             collateral: collateral,
             oracle: oracle,
@@ -94,7 +93,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter, Context, ReentrancyGuard {
         });
 
         // Create Borrow contract
-        borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, _msgSender()))}());
+        borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, msg.sender))}());
 
         // Delete and refund some gas
         delete shuttleParameters;

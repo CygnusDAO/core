@@ -16,23 +16,23 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__AdminAlreadySet",
+      "name": "Hangar18__AdminAlreadySet",
       "type": "error"
     },
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "calculatedCollateral",
+          "name": "create2Collateral",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "deployedCollateral",
+          "name": "collateral",
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__CollateralAddressMismatch",
+      "name": "Hangar18__CollateralAddressMismatch",
       "type": "error"
     },
     {
@@ -48,7 +48,7 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__CygnusAdminOnly",
+      "name": "Hangar18__CygnusAdminOnly",
       "type": "error"
     },
     {
@@ -64,12 +64,12 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__CygnusNebulaAlreadySet",
+      "name": "Hangar18__CygnusNebulaAlreadySet",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "CygnusFactory__CygnusNebulaCantBeZero",
+      "name": "Hangar18__CygnusNebulaCantBeZero",
       "type": "error"
     },
     {
@@ -85,12 +85,12 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__DaoReservesAlreadySet",
+      "name": "Hangar18__DaoReservesAlreadySet",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "CygnusFactory__DaoReservesCantBeZero",
+      "name": "Hangar18__DaoReservesCantBeZero",
       "type": "error"
     },
     {
@@ -101,7 +101,7 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__LPTokenPairNotSupported",
+      "name": "Hangar18__LPTokenPairNotSupported",
       "type": "error"
     },
     {
@@ -159,7 +159,7 @@
           "type": "tuple"
         }
       ],
-      "name": "CygnusFactory__OrbiterAlreadySet",
+      "name": "Hangar18__OrbiterAlreadySet",
       "type": "error"
     },
     {
@@ -217,7 +217,7 @@
           "type": "tuple"
         }
       ],
-      "name": "CygnusFactory__OrbitersAreInactive",
+      "name": "Hangar18__OrbitersAreInactive",
       "type": "error"
     },
     {
@@ -228,7 +228,7 @@
           "type": "uint256"
         }
       ],
-      "name": "CygnusFactory__OrbitersNotSet",
+      "name": "Hangar18__OrbitersNotSet",
       "type": "error"
     },
     {
@@ -244,12 +244,12 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__PendingAdminAlreadySet",
+      "name": "Hangar18__PendingAdminAlreadySet",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "CygnusFactory__PendingAdminCantBeZero",
+      "name": "Hangar18__PendingAdminCantBeZero",
       "type": "error"
     },
     {
@@ -265,7 +265,7 @@
           "type": "address"
         }
       ],
-      "name": "CygnusFactory__PendingDaoReservesAlreadySet",
+      "name": "Hangar18__PendingDaoReservesAlreadySet",
       "type": "error"
     },
     {
@@ -281,7 +281,12 @@
           "type": "uint256"
         }
       ],
-      "name": "CygnusFactory__ShuttleAlreadyDeployed",
+      "name": "Hangar18__ShuttleAlreadyDeployed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "Hangar18__X1VaultCantBeZero",
       "type": "error"
     },
     {
@@ -309,6 +314,12 @@
           "indexed": false,
           "internalType": "contract IDenebOrbiter",
           "name": "denebOrbiter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "contract ICygnusNebulaOracle",
+          "name": "nebulaOracle",
           "type": "address"
         },
         {
@@ -390,6 +401,31 @@
         {
           "indexed": false,
           "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        }
+      ],
+      "name": "NewMasterBorrowApproval",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
           "name": "pendingAdmin",
           "type": "address"
         },
@@ -457,6 +493,25 @@
         }
       ],
       "name": "NewShuttle",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldVault",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newVault",
+          "type": "address"
+        }
+      ],
+      "name": "NewX1Vault",
       "type": "event"
     },
     {
@@ -826,6 +881,30 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        }
+      ],
+      "name": "masterBorrowApproval",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "nativeToken",
       "outputs": [
@@ -888,6 +967,32 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newX1Vault",
+          "type": "address"
+        }
+      ],
+      "name": "setCygnusX1Vault",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        }
+      ],
+      "name": "setMasterBorrowApproval",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

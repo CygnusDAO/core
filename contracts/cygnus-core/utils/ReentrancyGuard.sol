@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
 /// @title ReentrancyGuard
@@ -15,26 +15,34 @@ pragma solidity >=0.8.4;
 /// @dev Forked from OpenZeppelin
 /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/utils/ReentrancyGuard.sol
 abstract contract ReentrancyGuard {
-    /// CUSTOM ERRORS ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                       ERRORS
+    //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Emitted when there is a reentrancy call.
+    /// @notice Thrown when there is a reentrancy call.
     error ReentrantCall();
 
-    /// PRIVATE STORAGE ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                  PRIVATE STORAGE
+    //////////////////////////////////////////////////////////////////////////*/
 
     bool private notEntered;
 
-    /// CONSTRUCTOR ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                     CONSTRUCTOR
+    //////////////////////////////////////////////////////////////////////////*/
 
     /// Storing an initial non-zero value makes deployment a bit more expensive but in exchange the
     /// refund on every call to nonReentrant will be lower in amount. Since refunds are capped to a
-    /// percetange of the total transaction's gas, it is best to keep them low in cases like this one,
+    /// percentage of the total transaction's gas, it is best to keep them low in cases like this one,
     /// to increase the likelihood of the full refund coming into effect.
     constructor() {
         notEntered = true;
     }
 
-    /// MODIFIERS ///
+    /*//////////////////////////////////////////////////////////////////////////
+                                      MODIFIERS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Prevents a contract from calling itself, directly or indirectly.
     /// @dev Calling a `nonReentrant` function from another `nonReentrant` function

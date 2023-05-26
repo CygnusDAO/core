@@ -28,7 +28,7 @@
     {
       "inputs": [
         {
-          "internalType": "contract IDexPair",
+          "internalType": "address",
           "name": "lpTokenPair",
           "type": "address"
         }
@@ -39,7 +39,7 @@
     {
       "inputs": [
         {
-          "internalType": "contract IDexPair",
+          "internalType": "address",
           "name": "lpTokenPair",
           "type": "address"
         }

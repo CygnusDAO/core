@@ -35,6 +35,34 @@
         },
         {
           "internalType": "uint256",
+          "name": "cygLPAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "actualRepayAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "altairLiquidate_f2x",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
           "name": "redeemAmount",
           "type": "uint256"
         },

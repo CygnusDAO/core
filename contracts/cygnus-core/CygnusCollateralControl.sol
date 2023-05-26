@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusCollateralControl} from "./interfaces/ICygnusCollateralControl.sol";
@@ -23,7 +23,7 @@ import {IOrbiter} from "./interfaces/IOrbiter.sol";
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
  *          borrow stablecoins from the borrowable.
  */
-contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cygnus: Collateral", "", 0) {
+contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -59,7 +59,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @notice Maximum liquidation incentive for liquidators that can be set
      */
-    uint256 private constant LIQUIDATION_INCENTIVE_MAX = 1.10e18;
+    uint256 private constant LIQUIDATION_INCENTIVE_MAX = 1.15e18;
 
     /**
      *  @notice Maximum fee the protocol is keeps from each liquidation
@@ -85,7 +85,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override liquidationIncentive = 1.025e18;
+    uint256 public override liquidationIncentive = 1.035e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -100,17 +100,20 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @notice Constructs the Collateral arm of the pool and assigns the Borrow contract.
      */
     constructor() {
-        // Underlying, Borrowable
-        (, address asset, address twinStar, , ) = IOrbiter(_msgSender()).shuttleParameters();
+        // Get underlying and borrowable from deployer contract to get borrowable contract
+        (, address asset, address _borrowable, , ) = IOrbiter(msg.sender).shuttleParameters();
 
-        // Name of this CygLP with token symbol (ie `CygLP: USDC/WETH`)
+        // Name of the ERC20 collateral token
+        name = "Cygnus: Collateral";
+
+        // Underlying asset's token symbol (ie `CygLP: USDC/WETH`)
         symbol = string(abi.encodePacked("CygLP: ", IERC20(asset).symbol()));
 
         // Same decimals as the underlying
         decimals = IERC20(asset).decimals();
 
         // Assign the borrowable arm of the lending pool
-        borrowable = twinStar;
+        borrowable = _borrowable;
 
         // Assurance
         totalSupply = 0;
@@ -120,7 +123,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice Checks if new parameter is within range when updating collateral settings
@@ -128,11 +131,9 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
      *  @param max The maximum value allowed for this parameter
      *  @param value The value for the parameter that is being updated
      */
-    function validRange(uint256 min, uint256 max, uint256 value) internal pure {
+    function validRange(uint256 min, uint256 max, uint256 value) private pure {
         /// @custom:error ParameterNotInRange Avoid outside range
-        if (value < min || value > max) {
-            revert CygnusCollateralControl__ParameterNotInRange({min: min, max: max, value: value});
-        }
+        if (value < min || value > max) revert CygnusCollateralControl__ParameterNotInRange();
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -140,12 +141,12 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
     /**
      *  @notice CygnusTerminl override converting the function to view only
      */
-    function exchangeRate() public view virtual override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
+    function exchangeRate() public view override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply;
 
         // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? 1e18 : totalBalance.divWad(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : uint256(totalBalance).divWad(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -156,9 +157,9 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
     /**
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security only-admin 👽
      */
-    function setDebtRatio(uint256 newDebtRatio) external override nonReentrant cygnusAdmin {
+    function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin {
         // Checks if new value is within ranges allowed. If false, reverts with custom error
         validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
@@ -174,9 +175,9 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
     /**
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security only-admin 👽
      */
-    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override nonReentrant cygnusAdmin {
+    function setLiquidationIncentive(uint256 newLiquidationIncentive) external override cygnusAdmin {
         // Checks if parameter is within bounds
         validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
@@ -192,9 +193,9 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal("Cy
 
     /**
      *  @inheritdoc ICygnusCollateralControl
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security only-admin 👽
      */
-    function setLiquidationFee(uint256 newLiquidationFee) external override nonReentrant cygnusAdmin {
+    function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin {
         // Checks if parameter is within bounds, 0 is allowed since collateral contract checks for 0 fee
         validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 

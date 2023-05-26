@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 /**
  *  @title ICygnusDeneb The interface for a contract that is capable of deploying Cygnus collateral pools
@@ -12,6 +12,7 @@ interface IDenebOrbiter {
 
     /**
      *  @notice Passing the struct parameters to the collateral contract avoids setting constructor
+     *
      *  @return factory The address of the Cygnus factory
      *  @return underlying The address of the underlying LP Token
      *  @return borrowable The address of the Cygnus borrow contract for this collateral
@@ -35,10 +36,12 @@ interface IDenebOrbiter {
 
     /**
      *  @notice Function to deploy the collateral contract of a lending pool
+     *
      *  @param underlying The address of the underlying LP Token
      *  @param borrowable The address of the Cygnus borrow contract for this collateral
      *  @param oracle The address of the oracle for this lending pool
      *  @param shuttleId The ID of the lending pool
+     *
      *  @return collateral The address of the new deployed Cygnus collateral contract
      */
     function deployDeneb(

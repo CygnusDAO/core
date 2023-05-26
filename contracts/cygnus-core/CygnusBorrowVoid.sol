@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowVoid} from "./interfaces/ICygnusBorrowVoid.sol";
@@ -12,7 +12,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
-import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
+import {ICygnusHarvester} from "./interfaces/ICygnusHarvester.sol";
 
 // Strategy
 import {IStargatePool} from "./interfaces/BorrowableVoid/IStargatePool.sol";
@@ -31,6 +31,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
     /**
      *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
@@ -50,7 +51,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @notice Stargate Rewarder Pool Id
      */
-    uint256 private stgPoolId = type(uint256).max;
+    uint256 private constant STG_POOL_ID = 0;
 
     /**
      *  @notice Stargate Router Pool Id to add liquidity after reinvesting rewards
@@ -58,37 +59,26 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     uint256 private constant STG_ROUTER_POOL_ID = 1;
 
     /**
-     *  @notice Rewards Token
-     */
-    address private constant REWARDS_TOKEN = 0x6694340fc020c5E6B96567843da2df01b2CE1eb6;
-
-    /**
      *  @notice Stargate pool for the underlying 0x1205f31718499dBf1fCa446663B532Ef87481fe1
      */
-    IStargatePool private constant STG_POOL = IStargatePool(0x892785f33CdeE22A30AEF750F285E18c18040c3e);
+    IStargatePool private constant STG_POOL = IStargatePool(0xDecC0c09c3B5f6e92EF4184125D5648a66E35298);
 
     /**
      *  @notice Stargate Router
      */
-    IStargateRouter private constant STG_ROUTER = IStargateRouter(0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614);
+    IStargateRouter private constant STG_ROUTER = IStargateRouter(0xB0D502E938ed5f4df2E681fE6E419ff29631d62b);
 
     /**
      *  @notice Stargate LP Staking rewards
      */
-    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176);
+    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0x4DeA9e918c6289a52cd469cAC652727B7b412Cd2);
 
-    /**
-     *  @notice 1Inch aggregation router v5
-     */
-    IAggregationRouterV5 private constant AGGREGATION_ROUTER_V5 =
-        IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
-
-    /*  ─────────────────────────────────────────────── Public ───────────────────────────────────────────────  */
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    uint256 public constant override DAO_REWARD = 0.05e18;
+    ICygnusHarvester public override harvester;
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
@@ -105,47 +95,25 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     constructor() {}
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            4. MODIFIERS
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @custom:modifier onlyEOA Modifier which reverts transaction if msg.sender is considered a contract
-     */
-    modifier onlyEOA() {
-        checkEOA();
-        _;
-    }
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
-
-    /**
-     *  @notice Reverts if caller is not considered an EOA
-     */
-    function checkEOA() private view {
-        /// @custom:error OnlyEOAAllowed Avoid if not called by an externally owned account
-        // solhint-disable-next-line
-        if (_msgSender() != tx.origin) {
-            // solhint-disable-next-line
-            revert CygnusBorrowVoid__OnlyEOAAllowed({sender: _msgSender(), origin: tx.origin});
-        }
-    }
 
     /*  ────────────────────────────────────────────── External ────────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    function getCygnusVoid()
-        external
-        view
-        override
-        returns (uint256, uint256, IStargatePool, IStargateRouter, IStargateLPStaking, address, IAggregationRouterV5)
-    {
-        return (stgPoolId, STG_ROUTER_POOL_ID, STG_POOL, STG_ROUTER, REWARDER, REWARDS_TOKEN, AGGREGATION_ROUTER_V5);
+    function rewarder() external pure override returns (address) {
+        // Return the contract that rewards us with `rewardsToken`
+        return address(REWARDER);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     */
+    function rewardToken() external view override returns (address) {
+        // Return the address of the reward tokn
+        return REWARDER.eToken();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -155,65 +123,38 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
-     * @notice Sets `amount` of ERC20 `token` for `to` to manage on behalf of the current contract
+     *  @notice Sets `amount` of ERC20 `token` for `to` to manage on behalf of the current contract
      *  @param token The address of the token we are approving
      *  @param amount The amount to approve
      */
     function approveTokenPrivate(address token, address to, uint256 amount) private {
         // Check allowance for `router` for deposit
-        if (IERC20(token).allowance(address(this), to) >= amount) {
-            return;
-        }
+        if (IERC20(token).allowance(address(this), to) >= amount) return;
 
         // Is less than amount, safe approve max
         token.safeApprove(to, type(uint256).max);
     }
 
     /**
-     *  @notice Swap tokens function used by Reinvest to turn reward token into more LP Tokens
-     *  @param swapData The 1inch swap data to swap from `rewardsToken` to `underlying`
-     *  @param updatedAmount The updated amount in case it's different by some mini tokens
-     *  @return amountOut The amount of `underlying` received
+     *  @notice Harvest rewards and return tokens and amounts received
+     *  @return tokens Array of reward tokens
+     *  @return amounts Array of received amounts of each token
      */
-    function swapTokensPrivate(bytes memory swapData, uint256 updatedAmount) private returns (uint256 amountOut) {
-        // Get aggregation executor, swap params and the encoded calls for the executor from 1inch API call
-        (address caller, IAggregationRouterV5.SwapDescription memory desc /* permit */, , bytes memory data) = abi
-            .decode(swapData, (address, IAggregationRouterV5.SwapDescription, bytes, bytes));
-
-        // Update swap amount to current balance of src token (if needed)
-        if (desc.amount != updatedAmount) desc.amount = updatedAmount;
-
-        /// @custom:error SrcTokenNotValid Avoid swapping anything but rewards token
-        if (address(desc.srcToken) != REWARDS_TOKEN) {
-            revert CygnusBorrowVoid__SrcTokenNotValid({srcToken: address(desc.srcToken), token: REWARDS_TOKEN});
-        }
-
-        /// @custom:error DstTokenNotValid Avoid swapping to anything but underlying
-        if (address(desc.dstToken) != underlying) {  
-            revert CygnusBorrowVoid__DstTokenNotValid({dstToken: address(desc.dstToken), token: underlying});
-        }
-
-        /// @custom:error DstReceiverNotValid Avoid swapping to another address
-        if (desc.dstReceiver != address(this)) {
-            revert CygnusBorrowVoid__DstReceiverNotValid({dstReceiver: desc.dstReceiver, receiver: address(this)});
-        }
-
-        // Allow 1inch router to access our `srcToken` (REWARDS_TOKEN)
-        approveTokenPrivate(address(desc.srcToken), address(AGGREGATION_ROUTER_V5), desc.amount);
-
-        // Swap `srcToken` to `dstToken` with no permit
-        (amountOut, ) = AGGREGATION_ROUTER_V5.swap(IAggregationExecutor(caller), desc, new bytes(0), data);
-    }
-
-    /**
-     *  @notice Gets the rewards from the stgRewarder contract
-     */
-    function getRewardsPrivate() private returns (uint256) {
+    function getRewardsPrivate() private returns (address[] memory tokens, uint256[] memory amounts) {
         // Get rewards by depositing 0, Goose clone
-        REWARDER.deposit(stgPoolId, 0);
+        REWARDER.deposit(STG_POOL_ID, 0);
 
-        // Return balance
-        return contractBalanceOf(REWARDS_TOKEN);
+        // Single reward token array
+        tokens = new address[](1);
+
+        // Single reward amount
+        amounts = new uint256[](1);
+
+        // Get reward token
+        tokens[0] = REWARDER.eToken();
+
+        // Get reward amount
+        amounts[0] = contractBalanceOf(tokens[0]);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -225,26 +166,10 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     function previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // S*USD LP Balance from the rewarder
-        (uint256 stgRewarderBalance, ) = REWARDER.userInfo(stgPoolId, address(this));
+        (uint256 stgRewarderBalance, ) = REWARDER.userInfo(STG_POOL_ID, address(this));
 
         // Convert S*USD LP balance to underlying
         balance = stgRewarderBalance.fullMulDiv(STG_POOL.totalLiquidity(), STG_POOL.totalSupply());
-    }
-
-    /**
-     *  @notice Syncs total balance of this contract with USD deposits from the rewarder
-     *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
-     */
-    function updateInternal() internal override(CygnusTerminal) {
-        // Convert S*USD LP balance to underlying (doing a full round up)
-        uint256 amountUSD = previewTotalBalance();
-
-        // Assign to total balance
-        totalBalance = amountUSD;
-
-        /// @custom:event Sync
-        emit Sync(totalBalance);
     }
 
     /**
@@ -257,7 +182,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         STG_ROUTER.addLiquidity(STG_ROUTER_POOL_ID, assets, address(this));
 
         // Stake S*Underlying
-        REWARDER.deposit(stgPoolId, contractBalanceOf(address(STG_POOL)));
+        REWARDER.deposit(STG_POOL_ID, contractBalanceOf(address(STG_POOL)));
     }
 
     /**
@@ -270,7 +195,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         uint256 amountLP = assets.fullMulDivUp(STG_POOL.totalSupply(), STG_POOL.totalLiquidity());
 
         // Withdraw S*Underlying from Rewarder (round up)
-        REWARDER.withdraw(stgPoolId, amountLP);
+        REWARDER.withdraw(STG_POOL_ID, amountLP);
 
         // Redeem S*Underlying for underlying
         STG_ROUTER.instantRedeemLocal(uint16(STG_ROUTER_POOL_ID), contractBalanceOf(address(STG_POOL)), address(this));
@@ -280,15 +205,9 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security non-reentrant
      */
-    function chargeVoid(uint256 _stgPoolId) external override nonReentrant cygnusAdmin {
-        // Avoid initializing pool twice
-        if (stgPoolId == type(uint256).max) {
-            // Assign pool id for rewarder underlying
-            stgPoolId = _stgPoolId;
-        }
-
+    function chargeVoid() external override nonReentrant {
         // Allow Stargate router to use our USDC to deposits
         approveTokenPrivate(underlying, address(STG_ROUTER), type(uint256).max);
 
@@ -296,56 +215,57 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         approveTokenPrivate(address(STG_POOL), address(REWARDER), type(uint256).max);
 
         /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, shuttleId, _msgSender());
+        emit ChargeVoid(underlying, shuttleId, msg.sender);
     }
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
-    function getRewards() external override nonReentrant onlyEOA returns (uint256) {
-        // Reverts if not EOA
+    // prettier-ignore
+    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
+        // Harvest rewards and return tokens and amounts
         return getRewardsPrivate();
     }
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
-    function reinvestRewards_y7b(bytes calldata swapData) external override nonReentrant onlyEOA update accrue {
-        // ─────────────────────── 1. Withdraw all rewards
-        // Harvest rewards accrued of `rewardToken`
-        uint256 currentRewards = getRewardsPrivate();
+    function reinvestRewards_y7b(uint256 liquidity) external override nonReentrant update accrue {
+        /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
+        if (msg.sender != address(harvester)) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
-        // If none accumulated return and do nothing
-        if (currentRewards == 0) {
-            return;
-        }
-
-        // ─────────────────────── 2. Send reward to the reinvestor and vault
-        // Calculate reward for DAO (DAO_REWARD %)
-        uint256 daoReward = currentRewards.mulWad(DAO_REWARD);
-        // Get the current DAO reserves contract
-        address daoReserves = IHangar18(hangar18).daoReserves();
-        // Transfer the reward to the DAO vault
-        REWARDS_TOKEN.safeTransfer(daoReserves, daoReward);
-
-        // ─────────────────────── 3. Convert all rewardsToken to underlying
-        // Swap to underlying and return balanceOf
-        uint256 underlyingReceived = swapTokensPrivate(swapData, currentRewards - daoReward);
-
-        // ─────────────────────── 4. Add liquidity and receive LP
-        // Deposit USDC into Stargate pool to receive LP
-        STG_ROUTER.addLiquidity(STG_ROUTER_POOL_ID, underlyingReceived, address(this));
-
-        // ─────────────────────── 5. Stake the LP
-        // Stake the LP
-        REWARDER.deposit(stgPoolId, contractBalanceOf(address(STG_POOL)));
-
-        // Store last harvest timestamp
-        lastReinvest = block.timestamp;
+        // After deposit hook
+        afterDepositInternal(liquidity);
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(_msgSender(), currentRewards, 0, daoReward, underlyingReceived);
+        emit RechargeVoid(msg.sender, liquidity, lastReinvest = block.timestamp);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security only-admin 👽
+     */
+    function setHarvester(ICygnusHarvester _harvester) external override cygnusAdmin {
+        // Old harvester
+        ICygnusHarvester oldHarvester = harvester;
+
+        // Assign harvester.
+        harvester = _harvester;
+
+        // Get reward tokens for the harvester.
+        // We harvest once to get the tokens and set approvals in case reward tokens/harvester change.
+        // NOTE: This is safe because reward token is never underlying
+        (address[] memory tokens, ) = getRewardsPrivate();
+
+        // Loop through each token
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // Approve harvester in token `i`
+            if (tokens[i] != underlying) approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);
+        }
+
+        /// @custom:event NewHarvester
+        emit NewHarvester(oldHarvester, _harvester);
     }
 }

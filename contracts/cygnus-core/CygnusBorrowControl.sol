@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowControl} from "./interfaces/ICygnusBorrowControl.sol";
@@ -23,7 +23,7 @@ import {IOrbiter} from "./interfaces/IOrbiter.sol";
  *          The constructor stores the collateral address this pool is linked with, and only this address can
  *          be used as collateral to borrow this contract`s underlying.
  */
-contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Borrowable", "", 0) {
+contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -87,7 +87,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
     // ───────────────────────────── Current pool rates
 
-
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
@@ -116,7 +115,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override reserveFactor = 0.05e18;
+    uint256 public override reserveFactor = 0.15e18;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -128,20 +127,23 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @notice Constructs the Collateral arm of the pool and assigns the Collateral contract.
+     *  @notice Constructs the Borrowable arm of the pool and assigns the Collateral contract.
      */
     constructor() {
-        // Underlying, Collateral
-        (, address asset, address twinStar, ,) = IOrbiter(_msgSender()).shuttleParameters();
+        // Get underlying and collateral from deployer contract to get collateral contract
+        (, address asset, address _collateral, , ) = IOrbiter(msg.sender).shuttleParameters();
 
-        // Name of this CygUSD with token symbol (ie `CygUSD: USDC`)
+        // Name of the ERC20 borrowable token
+        name = "Cygnus: Borrowable";
+
+        // Underlying asset's token symbol (ie `CygUSD: USDC`)
         symbol = string(abi.encodePacked("CygUSD: ", IERC20(asset).symbol()));
 
         // Same decimals as the underlying
         decimals = IERC20(asset).decimals();
 
         // Assign the collateral arm of the lending pool
-        collateral = twinStar;
+        collateral = _collateral;
 
         // Assurance
         totalSupply = 0;
@@ -151,7 +153,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice Checks if new parameter is within range when updating borrowable settings
@@ -159,18 +161,9 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
      *  @param max The maximum value allowed for the parameter that is being updated
      *  @param value The value of the parameter that is being updated
      */
-    function validRange(uint256 min, uint256 max, uint256 value) internal pure {
+    function validRange(uint256 min, uint256 max, uint256 value) private pure {
         /// @custom:error Avoid outside range
-        if (value < min || value > max) {
-            revert CygnusBorrowControl__ParameterNotInRange({min: min, max: max, value: value});
-        }
-    }
-
-    /**
-     *  @return The uint32 block timestamp
-     */
-    function getBlockTimestamp() internal view returns (uint32) {
-        return uint32(block.timestamp);
+        if (value < min || value > max) revert CygnusBorrowControl__ParameterNotInRange();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -227,40 +220,23 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
     /**
      *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security only-admin 👽
      */
     function setInterestRateModel(
         uint256 baseRatePerYear_,
         uint256 multiplierPerYear_,
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
-    ) external override nonReentrant cygnusAdmin {
+    ) external override cygnusAdmin {
         // Update interest rate model with per second rates
         interestRateModelInternal(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
 
     /**
      *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant only-admin 👽
+     *  @custom:security only-admin 👽
      */
-    function setCygnusBorrowRewarder(address newBorrowRewarder) external override nonReentrant cygnusAdmin {
-        // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
-        // case it's inactive
-        // Old borrow tracker
-        address oldBorrowRewarder = cygnusBorrowRewarder;
-
-        // Checks admin before, assign borrow tracker
-        cygnusBorrowRewarder = newBorrowRewarder;
-
-        /// @custom:event NewCygnusBorrowRewarder
-        emit NewCygnusBorrowRewarder(oldBorrowRewarder, newBorrowRewarder);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security non-reentrant only-admin 👽
-     */
-    function setReserveFactor(uint256 newReserveFactor) external override nonReentrant cygnusAdmin {
+    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
         // Check if parameter is within range allowed
         validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
 
@@ -272,5 +248,22 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal("Cygnus: Bo
 
         /// @custom:event NewReserveFactor
         emit NewReserveFactor(oldReserveFactor, newReserveFactor);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     *  @custom:security only-admin 👽
+     */
+    function setCygnusBorrowRewarder(address newBorrowRewarder) external override cygnusAdmin {
+        // Need the option of setting the borrow tracker as address(0) as child contract checks for 0 address in
+        // case it's inactive
+        // Old borrow tracker
+        address oldBorrowRewarder = cygnusBorrowRewarder;
+
+        // Checks admin before, assign borrow tracker
+        cygnusBorrowRewarder = newBorrowRewarder;
+
+        /// @custom:event NewCygnusBorrowRewarder
+        emit NewCygnusBorrowRewarder(oldBorrowRewarder, newBorrowRewarder);
     }
 }

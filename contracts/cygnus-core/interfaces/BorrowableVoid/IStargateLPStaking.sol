@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.4;
+pragma solidity >=0.8.17;
 
 interface IStargateLPStaking {
     struct UserInfo {
@@ -16,4 +16,10 @@ interface IStargateLPStaking {
     function emergencyWithdraw(uint256 _pid) external;
 
     function pendingStargate(uint256 _pid, address _user) external view returns (uint256);
+
+    function pendingEmissionToken(uint256 _pid, address _user) external view returns (uint256);
+
+    function lpBalances(address _user) external view returns (uint256);
+
+    function eToken() external view returns (address);
 }

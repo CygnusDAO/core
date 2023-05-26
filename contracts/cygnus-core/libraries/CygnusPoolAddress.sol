@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Unlicensed
+pragma solidity >=0.8.17;
 
 /**
  *  @title CygnusPoolAddress
  *  @dev Provides functions for deriving Cygnus collateral and borrow addresses deployed by Factory
  */
-pragma solidity >=0.8.4;
-
 library CygnusPoolAddress {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CONSTANT FUNCTIONS
