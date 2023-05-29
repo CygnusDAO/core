@@ -75,7 +75,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();
 
         // Safe internal burn
-        return super._transfer(from, to, amount);
+        super._transfer(from, to, amount);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -164,7 +164,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // Pass data to router
         if (data.length > 0) {
-            ICygnusAltairCall(redeemer).altairRedeem_u91A(msg.sender, assets, data);
+            ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
         }
 
         // CygLP tokens received by thsi contract

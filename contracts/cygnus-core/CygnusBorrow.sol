@@ -166,7 +166,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Check for data.length for leverage.
         // If it's a simple borrow tx then data should be empty
         if (data.length > 0) {
-            ICygnusAltairCall(receiver).altairBorrow_O9E(msg.sender, borrowAmount, data);
+            ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
         }
 
         // ────────── 3. Get the repay amount (if any)
@@ -232,7 +232,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         if (data.length > 0) {
             // If the `receiver` was the router used to flash liquidate then we call the router with the data passed,
             // allowing the collateral to be sold to the market
-            ICygnusAltairCall(receiver).altairLiquidate_f2x(msg.sender, cygLPAmount, actualRepayAmount, data);
+            ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, actualRepayAmount, data);
         }
 
         // ────────── 4. Get the repaid amount of USD and deposit in strategy
