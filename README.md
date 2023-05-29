@@ -1,5 +1,4 @@
-![image](https://user-images.githubusercontent.com/97303883/216618721-20c0aae8-deb0-48b8-9e67-06175e9b9814.png)
-
+![Banner](https://github.com/CygnusDAO/core/assets/97303883/d525b523-23c2-46a5-aef4-5cce7e114534)
 
 
 # **Cygnus Protocol**
