@@ -17,9 +17,15 @@ Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By 
 </p>
 
 <br />
-Cygnus uses its own oracle which returns the price of 1 LP token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. Anyone is free to use the Oracle for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
+Cygnus uses its own oracle which returns the price of 1 LP token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. This technique is used to price liquidity tokens of protocols such as:
 
-The main benefit of our oracle is that it is unaffected by impermanent loss. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, it means that user's liquidation levels are not affected by any impermanent loss they may have on their liquidity, simplifying the borrowing and lending experience for all users.
+* Balancer
+* UniswapV2
+* UniswapV3
+
+Anyone is free to use the Oracles for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
+
+The main benefit of our oracle is that it is unaffected by impermanent loss. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, then redeeming the LP at any time means that the user would always receive the equivalent of USDC expressed in the underlying LP assets. This greatly  simplifies the borrowing and lending experience for all users.
 
 
 # **Who is Cygnus for?**
