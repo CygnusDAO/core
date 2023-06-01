@@ -7,7 +7,7 @@ This repository contains the smart contracts source code and markets configurati
 
 # **What is Cygnus?**
 
-Cygnus is a 100% on-chain stablecoin lending and margin trading protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying USDC or as borrowers by supplying their liquidity tokens. Lenders are able to provide USDC in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow USDC against it or leverage their positions, increasing their earnings through higher trading fees or liquidity mining rewards. As borrowers are borrowing a static value asset (USDC) against their volatile liquidity, they are essentially going long on their underlying assets.
+Cygnus is a 100% on-chain stablecoin lending and leverage trading protocol. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying USDC or as borrowers by supplying their liquidity tokens. Lenders are able to provide USDC in individualized lending pools, earning passive income based on the lending pool's farm APY, while borrowers are able to supply their LP token and borrow USDC against it or leverage their positions, increasing their earnings through higher trading fees or liquidity mining rewards. As borrowers are borrowing a static value asset (USDC) against their volatile liquidity, they are essentially going long on their underlying assets.
 
 Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By depositing your LPs in Cygnus, rewards from the rewarder contract or any other liquidity mining program get reinvested automatically, decreasing their debt ratio on every reinvestment.
 <br />
