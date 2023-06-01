@@ -17,7 +17,7 @@ Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By 
 </p>
 
 <br />
-Cygnus uses its own oracle which returns the price of 1 LP token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. This technique is used to price liquidity tokens of protocols such as:
+Cygnus uses its own oracles which returns the price of 1 liquidity token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. This technique is used to price liquidity tokens of protocols such as:
 
 * Balancer
 * UniswapV2
@@ -25,15 +25,16 @@ Cygnus uses its own oracle which returns the price of 1 LP token in USDC using C
 
 Anyone is free to use the Oracles for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
 
-The main benefit of our oracle is that it is unaffected by impermanent loss. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, then redeeming the LP at any time means that the user would always receive the equivalent of USDC expressed in the underlying LP assets. This greatly  simplifies the borrowing and lending experience for all users.
+The main benefit of our oracle is that it is unaffected by impermanent loss, making it easier for liquidity providers to track their earnings (since it's all priced in USDC). Impermanent loss refers to a "situation in which the profit you gain from staking a token in a liquidity pool is less than what you would have earned just holding the asset" (https://www.ledger.com/academy/glossary/impermanent-loss). In other terms, impermanent loss affects individuals, not the price of the LP. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, then redeeming the LP at any time means that the user would **always** receive the equivalent of USDC in the underlying LP assets. This greatly  simplifies the borrowing and lending experience for all users.
 
 
 # **Who is Cygnus for?**
 
-1) **Liquidity Providers**. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow against their liquidity. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit ETH, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, as such we are unlocking liquidity and efficiency in DeFi. For example an LP decides to deposit their liquidity with Cygnus. The smart contracts then deposit the liquidity back in the DEX and any rewarder program the dex is offering. The user borrows 80% of their collateral in USDC to increase their position in the pool. If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep earning yield from trading fees/liquidity mining rewards with Cygnus.
+1) **Liquidity Providers**. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow against their liquidity. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit ETH, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, as such we are unlocking liquidity and efficiency in DeFi. For example an LP decides to deposit their liquidity with Cygnus. The smart contracts then deposit the liquidity back in the DEX and any rewarder program the dex is offering. The user leverages 2x to increase their position in the pool. If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep earning yield from trading fees/liquidity mining rewards with Cygnus.
 
 2) **Stablecoin holders.** 
-By lending stablecoins to borrowers in specific farms, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX. As borrowers can farm greater amounts and earn more through higher liquidity mining rewards or trading fees, lenders are compensated with a cut of the yield. This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
+
+By lending stablecoins to borrowers in specific farms, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX. The interest paid by borrowers to borrow this USDC is relative to the farm APY (which are usually higher). This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
 
 # **Protocol Features**
 
