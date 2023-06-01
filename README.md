@@ -25,9 +25,9 @@ Cygnus uses its own oracles which returns the price of 1 liquidity token in USDC
 
 Anyone is free to use the Oracles for their own project or do their own implementation, if any doubts please reach out to the team so we can guide you.
 
-The main benefit of our oracle is that it is unaffected by impermanent loss, making it easier for liquidity providers to track their earnings (since it's all priced in USDC).
+The main benefit of our oracle is that it is **unaffected by impermanent loss**, making it easier for liquidity providers to track their earnings (since it's all priced in USDC).
 
-Impermanent loss refers to a "situation in which the profit you gain from staking a token in a liquidity pool is less than what you would have earned just holding the asset" (https://www.ledger.com/academy/glossary/impermanent-loss). In other terms, impermanent loss affects individuals, not the price of the LP. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, then redeeming the LP at any time means that the user would **always** receive the equivalent of USDC in the underlying LP assets. This greatly  simplifies the borrowing and lending experience for all users.
+Impermanent loss refers to a "situation in which the profit you gain from staking a token in a liquidity pool is less than what you would have earned just holding the asset" (https://www.ledger.com/academy/glossary/impermanent-loss). In other terms, impermanent loss affects individuals, not the price of the LP. Since the oracle prices the liquidity amount in USDc using the fair reserves mechanism, then redeeming the LP at any time means that the user would **always** receive the equivalent of USDC in the underlying LP assets. This greatly simplifies the borrowing and lending experience for all users.
 
 # **Who is Cygnus for?**
 
