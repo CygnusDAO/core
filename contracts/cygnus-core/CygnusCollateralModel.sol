@@ -36,7 +36,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers.
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
     using FixedPointMathLib for uint256;
 
@@ -51,10 +51,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @param amountCollateral The collateral amount the borrower has deposited (CygLP * exchangeRate)
      *  @param borrowedAmount The total amount of stablecoins the user has borrowed (can be 0)
      */
-    function collateralNeededInternal(
-        uint256 amountCollateral,
-        uint256 borrowedAmount
-    ) internal view returns (uint256, uint256) {
+    function _collateralNeeded(uint256 amountCollateral, uint256 borrowedAmount) internal view returns (uint256, uint256) {
         // Collateral Deposited * LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
@@ -87,27 +84,24 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @return liquidity The user's current LP liquidity priced in USD
      *  @return shortfall The user's current LP shortfall priced in USD (if positive they can be liquidated)
      */
-    function accountLiquidityInternal(
-        address borrower,
-        uint256 borrowedAmount
-    ) internal view returns (uint256 liquidity, uint256 shortfall) {
+    function _accountLiquidity(address borrower, uint256 borrowedAmount) internal view returns (uint256, uint256) {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
-            // solhint-disable avoid-tx-origin
-            revert CygnusCollateralModel__BorrowerCantBeAddressZero({sender: borrower, origin: tx.origin});
+            revert CygnusCollateralModel__BorrowerCantBeAddressZero();
+        }
+        /// @custom:error BorrowerCantBeCollateral Avoid borrower collateral
+        else if (borrower == address(this)) {
+            revert CygnusCollateralModel__BorrowerCantBeCollateral();
         }
 
-        // Check if called externally or borrowable
-        if (borrowedAmount == type(uint256).max) {
-            // Get latest borrow balance
-            borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
-        }
+        // Check if called externally or borrowable. If called externally then borrowedAmount is always MaxUint256
+        if (borrowedAmount == type(uint256).max) borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
-        uint256 amountCollateral = _balances[borrower].mulWad(exchangeRate());
+        uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
 
         // Calculate user's liquidity or shortfall internally
-        return collateralNeededInternal(amountCollateral, borrowedAmount);
+        return _collateralNeeded(amountCollateral, borrowedAmount);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -133,7 +127,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function canRedeem(address borrower, uint256 redeemAmount) public view override returns (bool) {
         // Gas savings
-        uint256 cygLPBalance = _balances[borrower];
+        uint256 cygLPBalance = balanceOf(borrower);
 
         // Redeem amount can't be higher than account balance, return false
         if (redeemAmount > cygLPBalance) return false;
@@ -149,7 +143,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Get the LP price and calculate the needed collateral
         // prettier-ignore
-        ( /*liquidity*/, uint256 shortfall) = collateralNeededInternal(amountCollateral, borrowedAmount);
+        ( /*liquidity*/ , uint256 shortfall) = _collateralNeeded(amountCollateral, borrowedAmount);
 
         // If user has no shortfall after redeeming return true
         return shortfall == 0;
@@ -160,11 +154,9 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getAccountLiquidity(
-        address borrower
-    ) external view override returns (uint256 liquidity, uint256 shortfall) {
+    function getAccountLiquidity(address borrower) external view override returns (uint256 liquidity, uint256 shortfall) {
         // Calculate if `borrower` has liquidity or shortfall
-        return accountLiquidityInternal(borrower, type(uint256).max);
+        return _accountLiquidity(borrower, type(uint256).max);
     }
 
     /**
@@ -172,7 +164,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function getDebtRatio(address borrower) external view override returns (uint256) {
         // Get the borrower's deposited LP Tokens and adjust with current exchange Rate
-        uint256 amountCollateral = _balances[borrower].mulWad(exchangeRate());
+        uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
 
         // Multiply LP collateral by LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
@@ -192,7 +184,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
         // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, borrowAmount);
+        ( /* liquidity */ , uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
 
         // User has no shortfall and can borrow
         return shortfall == 0;

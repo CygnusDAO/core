@@ -24,9 +24,9 @@ interface IAlbireoOrbiter {
         returns (address factory, address underlying, address collateral, address oracle, uint256 shuttleId);
 
     /**
-     *  @return BORROW_INIT_CODE_HASH The init code hash of the borrow contract for this deployer
+     *  @return borrowableInitCodeHash The init code hash of the borrow contract for this deployer
      */
-    function BORROWABLE_INIT_CODE_HASH() external view returns (bytes32);
+    function borrowableInitCodeHash() external view returns (bytes32);
 
     /**
      *  @notice Function to deploy the borrow contract of a lending pool
@@ -36,10 +36,5 @@ interface IAlbireoOrbiter {
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @return borrowable The address of the new borrow contract
      */
-    function deployAlbireo(
-        address underlying,
-        address collateral,
-        address oracle,
-        uint256 shuttleId
-    ) external returns (address borrowable);
+    function deployAlbireo(address underlying, address collateral, address oracle, uint256 shuttleId) external returns (address borrowable);
 }

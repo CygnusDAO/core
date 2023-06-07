@@ -12,6 +12,9 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
+// Overrides
+import {ERC20} from "./ERC20.sol";
+
 /**
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
@@ -29,7 +32,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers.
+     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
      */
     using FixedPointMathLib for uint256;
 
@@ -101,22 +104,10 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     constructor() {
         // Get underlying and borrowable from deployer contract to get borrowable contract
-        (, address asset, address _borrowable, , ) = IOrbiter(msg.sender).shuttleParameters();
-
-        // Name of the ERC20 collateral token
-        name = "Cygnus: Collateral";
-
-        // Underlying asset's token symbol (ie `CygLP: USDC/WETH`)
-        symbol = string(abi.encodePacked("CygLP: ", IERC20(asset).symbol()));
-
-        // Same decimals as the underlying
-        decimals = IERC20(asset).decimals();
+        (, , address _borrowable, , ) = IOrbiter(msg.sender).shuttleParameters();
 
         // Assign the borrowable arm of the lending pool
         borrowable = _borrowable;
-
-        // Assurance
-        totalSupply = 0;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -131,19 +122,43 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @param max The maximum value allowed for this parameter
      *  @param value The value for the parameter that is being updated
      */
-    function validRange(uint256 min, uint256 max, uint256 value) private pure {
-        /// @custom:error ParameterNotInRange Avoid outside range
+    function _validRange(uint256 min, uint256 max, uint256 value) private pure {
+        /// @custom:error ParameterNotInRange Avoid setting important variables outside range
         if (value < min || value > max) revert CygnusCollateralControl__ParameterNotInRange();
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
+     *  @notice Overrides the name function from the ERC20
+     *  @inheritdoc ERC20
+     */
+    function name() public pure override(ERC20, IERC20) returns (string memory) {
+        return "Cygnus: Collateral";
+    }
+
+    /**
+     *  @notice Overrides the symbol function to represent the underlying LP (Most dexes use 2 tokens, ie 'CygLP: ETH/USDC')
+     *  @inheritdoc ERC20
+     */
+    function symbol() public view override(ERC20, IERC20) returns (string memory) {
+        return string(abi.encodePacked("CygLP: ", IERC20(underlying).symbol()));
+    }
+
+    /**
+     *  @notice Overrides the decimal function to use the same decimals as underlying
+     *  @inheritdoc ERC20
+     */
+    function decimals() public view override(ERC20, IERC20) returns (uint8) {
+        return IERC20(underlying).decimals();
+    }
+
+    /**
      *  @notice CygnusTerminl override converting the function to view only
      */
     function exchangeRate() public view override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
         // Gas savings if non-zero
-        uint256 _totalSupply = totalSupply;
+        uint256 _totalSupply = totalSupply();
 
         // If there is no supply for this token return initial rate
         return _totalSupply == 0 ? 1e18 : uint256(totalBalance).divWad(_totalSupply);
@@ -161,7 +176,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin {
         // Checks if new value is within ranges allowed. If false, reverts with custom error
-        validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
+        _validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
         // Valid, update
         uint256 oldDebtRatio = debtRatio;
@@ -179,7 +194,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function setLiquidationIncentive(uint256 newLiquidationIncentive) external override cygnusAdmin {
         // Checks if parameter is within bounds
-        validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
+        _validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
         // Valid, update
         uint256 oldLiquidationIncentive = liquidationIncentive;
@@ -197,7 +212,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin {
         // Checks if parameter is within bounds, 0 is allowed since collateral contract checks for 0 fee
-        validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
+        _validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 
         // Valid, update
         uint256 oldLiquidationFee = liquidationFee;

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.17;
 
+import '../CygnusBorrow.sol';
+
 /**
  *  @title CygnusPoolAddress
  *  @dev Provides functions for deriving Cygnus collateral and borrow addresses deployed by Factory
@@ -29,16 +31,7 @@ library CygnusPoolAddress {
     ) internal pure returns (address collateral) {
         collateral = address(
             uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            denebOrbiter,
-                            keccak256(abi.encode(lpTokenPair, factory)),
-                            initCodeHash
-                        )
-                    )
-                )
+                uint256(keccak256(abi.encodePacked(bytes1(0xff), denebOrbiter, keccak256(abi.encode(lpTokenPair, factory)), initCodeHash)))
             )
         );
     }
@@ -60,16 +53,7 @@ library CygnusPoolAddress {
     ) internal pure returns (address borrow) {
         borrow = address(
             uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            borrowDeployer,
-                            keccak256(abi.encode(collateral, factory)),
-                            initCodeHash
-                        )
-                    )
-                )
+                uint256(keccak256(abi.encodePacked(bytes1(0xff), borrowDeployer, keccak256(abi.encode(collateral, factory)), initCodeHash)))
             )
         );
     }

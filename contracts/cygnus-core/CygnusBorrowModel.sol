@@ -38,7 +38,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
     /**
      *  @custom:struct BorrowSnapshot Container for individual user's borrow balance information
-     *  @custom:member principal Total balance (with accrued interest) as of the most recent action
+     *  @custom:member principal The total borrowed amount without interest accrued
      *  @custom:member interestIndex Borrow index as of the most recent balance-changing action
      */
     struct BorrowSnapshot {
@@ -46,12 +46,12 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint128 interestIndex;
     }
 
-    /**
-     *  @notice Internal mapping of account addresses to outstanding borrow balances
-     */
-    mapping(address => BorrowSnapshot) internal borrowBalances;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusBorrowModel
+     */
+    mapping(address => BorrowSnapshot) public override borrowBalances;
 
     // Use one memory slot per accrual
 
@@ -142,7 +142,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function getBorrowBalance(address borrower) public view override returns (uint256) {
         // Load user struct to memory
-        BorrowSnapshot memory borrowSnapshot = borrowBalances[borrower];
+        BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
         // If interestIndex = 0 then borrowBalance is 0
         if (borrowSnapshot.interestIndex == 0) return 0;
@@ -188,7 +188,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice Track borrows for borrow rewards (if any)
@@ -196,7 +196,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param accountBorrows Record of this borrower's total borrows up to this point
      *  @param borrowIndexStored Borrow index stored up to this point
      */
-    function trackBorrowerInternal(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) internal {
+    function _trackBorrower(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) private {
         // Rewarder address (if any)
         address rewarder = cygnusBorrowRewarder;
 
@@ -204,8 +204,10 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         if (rewarder == address(0)) return;
 
         // Pass borrow to this chain's CYG rewarder
-        ICygnusComplexRewarder(rewarder).trackBorrower(shuttleId, borrower, accountBorrows, borrowIndexStored);
+        ICygnusComplexRewarder(rewarder).trackBorrower(borrower, accountBorrows, borrowIndexStored);
     }
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
      * @notice Updates the borrow balance of a borrower and the total borrows of the protocol.
@@ -215,11 +217,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      * @param repayAmount The amount of tokens being repaid by the borrower.
      * @return accountBorrows The borrower's updated borrow balance
      */
-    function updateBorrowInternal(
-        address borrower,
-        uint256 borrowAmount,
-        uint256 repayAmount
-    ) internal returns (uint256 accountBorrows) {
+    function _updateBorrow(address borrower, uint256 borrowAmount, uint256 repayAmount) internal returns (uint256 accountBorrows) {
         // Get the borrower's current borrow balance
         uint256 borrowBalance = getBorrowBalance(borrower);
 
@@ -234,40 +232,46 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Increase the borrower's borrow balance if the borrow amount is greater than the repay amount
         if (borrowAmount > repayAmount) {
-            // Calculate the actual amount to increase the borrow balance by
-            uint256 increaseBorrowAmount = borrowAmount - repayAmount;
+            // Amount to increase
+            uint256 increaseBorrowAmount;
+
+            // Never underflows
+            unchecked {
+                // Calculate the actual amount to increase the borrow balance by
+                increaseBorrowAmount = borrowAmount - repayAmount;
+            }
 
             // Calculate the borrower's updated borrow balance
             accountBorrows = borrowBalance + increaseBorrowAmount;
 
             // Update the snapshot record of the borrower's principal
-            borrowSnapshot.principal = uint128(accountBorrows);
+            borrowSnapshot.principal = SafeCastLib.toUint128(accountBorrows);
 
             // Update the snapshot record of the present borrow index
-            borrowSnapshot.interestIndex = uint128(borrowIndexStored);
+            borrowSnapshot.interestIndex = SafeCastLib.toUint128(borrowIndexStored);
 
             // Total borrows of the protocol
             uint256 totalBorrowsStored = totalBorrows + increaseBorrowAmount;
 
             // Update total borrows to storage
-            totalBorrows = uint96(totalBorrowsStored);
+            totalBorrows = SafeCastLib.toUint96(totalBorrowsStored);
         }
         // Decrease the borrower's borrow balance if the repay amount is greater than the borrow amount
         else {
-            // Calculate the actual amount to decrease the borrow balance by
-            uint256 decreaseBorrowAmount = repayAmount - borrowAmount;
-
             // Never underflows
             unchecked {
+                // Calculate the actual amount to decrease the borrow balance by
+                uint256 decreaseBorrowAmount = repayAmount - borrowAmount;
+
                 // Calculate the borrower's updated borrow balance
                 accountBorrows = borrowBalance > decreaseBorrowAmount ? borrowBalance - decreaseBorrowAmount : 0;
             }
 
             // Update the snapshot record of the borrower's principal
-            borrowSnapshot.principal = uint128(accountBorrows);
+            borrowSnapshot.principal = SafeCastLib.toUint128(accountBorrows);
 
             // Update the snapshot record of the borrower's interest index, if no borrows then interest index is 0
-            borrowSnapshot.interestIndex = accountBorrows == 0 ? 0 : uint128(borrowIndexStored);
+            borrowSnapshot.interestIndex = accountBorrows == 0 ? 0 : SafeCastLib.toUint128(borrowIndexStored);
 
             // Calculate the actual decrease amount
             uint256 actualDecreaseAmount = borrowBalance - accountBorrows;
@@ -276,19 +280,17 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             uint256 totalBorrowsStored = totalBorrows;
 
             // Never underflows
-            // Condition check to update protocols total borrows
             unchecked {
-                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount
-                    ? totalBorrowsStored - actualDecreaseAmount
-                    : 0;
+                // Condition check to update protocols total borrows
+                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount ? totalBorrowsStored - actualDecreaseAmount : 0;
             }
 
             // Update total protocol borrows
-            totalBorrows = uint96(totalBorrowsStored);
+            totalBorrows = SafeCastLib.toUint96(totalBorrowsStored);
         }
 
         // Track borrower
-        trackBorrowerInternal(borrower, accountBorrows, borrowIndexStored);
+        _trackBorrower(borrower, accountBorrows, borrowIndexStored);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -362,6 +364,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function trackBorrower(address borrower) external override {
         // Get into internal and pass to rewarder
-        trackBorrowerInternal(borrower, getBorrowBalance(borrower), borrowIndex);
+        _trackBorrower(borrower, getBorrowBalance(borrower), borrowIndex);
     }
 }

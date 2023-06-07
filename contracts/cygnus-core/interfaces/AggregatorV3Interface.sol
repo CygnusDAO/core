@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.0;
 
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -13,10 +13,7 @@ interface AggregatorV3Interface {
     // which could be misinterpreted as actual reported values.
     function getRoundData(
         uint80 _roundId
-    )
-        external
-        view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    ) external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 
     function latestRoundData()
         external

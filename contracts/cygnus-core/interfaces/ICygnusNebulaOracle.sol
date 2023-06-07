@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
-pragma solidity ^0.8.17;
+pragma solidity >=0.8.17;
 
 import {AggregatorV3Interface} from "./AggregatorV3Interface.sol";
 import {IERC20} from "./IERC20.sol";

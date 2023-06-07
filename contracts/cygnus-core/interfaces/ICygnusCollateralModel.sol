@@ -15,12 +15,16 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
     /**
      *  @dev Reverts when the borrower is the zero address
      *
-     *  @param sender The original sender of the transaction.
-     *  @param origin The contract address that initiated the transaction.
-     *
-     *  @custom:error PriceTokenBInvalid
+     *  @custom:error BorrowerCantBeAddressZero
      */
-    error CygnusCollateralModel__BorrowerCantBeAddressZero(address sender, address origin);
+    error CygnusCollateralModel__BorrowerCantBeAddressZero();
+
+    /**
+     *  @dev Reverts when the borrower is the collateral address
+     *
+     *  @custom:error BorrowerCantBeCollateral
+     */
+    error CygnusCollateralModel__BorrowerCantBeCollateral();
 
     /**
      *  @dev Reverts when the price returned from the oracle is 0

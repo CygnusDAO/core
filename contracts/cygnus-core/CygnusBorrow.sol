@@ -13,9 +13,10 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
+import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
 
 // Overrides
-import {ICygnusTerminal, CygnusTerminal} from "./CygnusTerminal.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
@@ -59,10 +60,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      */
     modifier update() override(CygnusTerminal) {
         // Update before deposit to prevent deposit spam for yield bearing tokens
-        updateInternal();
+        _update();
         _;
         // Update after deposit
-        updateInternal();
+        _update();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -76,7 +77,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
      *  @return Latest exchange rate
      */
-    function mintReservesInternal(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
+    function _mintReserves(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
         // Get current exchange rate stored for borrow contract
         uint256 exchangeRateLast = exchangeRateStored;
 
@@ -90,10 +91,10 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
             // if there are no new reserves to mint, just return exchangeRate
             if (newReserves > 0) {
-                // Get the current DAO reserves contract
+                // Get the current DAO reserves
                 address daoReserves = hangar18.daoReserves();
 
-                // Mint new resereves and upate the exchange rate
+                // Mint reserves to the DAO
                 _mint(daoReserves, newReserves);
             }
 
@@ -115,18 +116,16 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      */
     function exchangeRate() public override(ICygnusBorrow, ICygnusTerminal, CygnusTerminal) accrue returns (uint256) {
         // Save SLOAD if non zero
-        uint256 _totalSupply = totalSupply;
+        uint256 _totalSupply = totalSupply();
 
         // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
-        if (_totalSupply == 0) {
-            return exchangeRateStored;
-        }
+        if (_totalSupply == 0) return exchangeRateStored;
 
         // totalBalance * scale / total supply
         uint256 _exchangeRate = (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
 
         // Check if new exchange rate and thus reserve to mint, else just return this exchange rate
-        return mintReservesInternal(_exchangeRate, _totalSupply);
+        return _mintReserves(_exchangeRate, _totalSupply);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -142,21 +141,15 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 borrowAmount,
         bytes calldata data
     ) external override nonReentrant update accrue {
-        /// @custom:error BorrowExceedsTotalBalance Avoid borrowing more than pool's underlying balance
-        if (borrowAmount > totalBalance) revert CygnusBorrow__BorrowExceedsTotalBalance();
-
-        // Check master borrow approval at the factory to verify if msg.sender can borrow on behalf of `borrower`
-        bool allowed = hangar18.masterBorrowApproval(borrower, msg.sender);
-
-        /// @custom:error MasterApprovalDisabled Avoid if msg.sender is not allowed to borrow on behalf of `borrower`
-        if (!allowed) revert CygnusBorrow__MasterApprovalDisabled();
+        // Check if msg.sender can borrow on behalf of borrower
+        if (borrower != msg.sender) _borrowAllowance(borrower, msg.sender, borrowAmount);
 
         // ────────── 1. Optimistically send `borrowAmount` to `receiver`
         // Check for borrow amount, if a repay transaction this should be 0, else reverts at the end.
         // We optimistically transfer borrow amounts and check in step 5 if borrower has enough liquidity to borrow.
         if (borrowAmount > 0) {
             // Withdraw `borrowAmount` from strategy
-            beforeWithdrawInternal(borrowAmount);
+            _beforeWithdraw(borrowAmount);
 
             // Transfer
             underlying.safeTransfer(receiver, borrowAmount);
@@ -166,6 +159,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Check for data.length for leverage.
         // If it's a simple borrow tx then data should be empty
         if (data.length > 0) {
+            // Pass data to router
             ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
         }
 
@@ -179,7 +173,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         //            there is no rounding errors.
 
         // Update internal record for `borrower` with borrow and repay amount
-        uint256 accountBorrows = updateBorrowInternal(borrower, borrowAmount, repayAmount);
+        uint256 accountBorrows = _updateBorrow(borrower, borrowAmount, repayAmount);
 
         // ────────── 5. Do checks for borrow and repay transactions
         // Borrow transaction. Check that the borrower has sufficient collateral after borrowing `borrowAmount` by
@@ -198,7 +192,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             if (borrowAmount > 0) revert CygnusBorrow__BorrowRepayOverload();
 
             // Deposit USD in strategy
-            afterDepositInternal(repayAmount);
+            _afterDeposit(repayAmount);
         }
 
         /// @custom:event Borrow
@@ -235,7 +229,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, actualRepayAmount, data);
         }
 
-        // ────────── 4. Get the repaid amount of USD and deposit in strategy
+        // ────────── 4. Get the repaid amount of USD
         // Current balance of USD not deposited in strategy (if sell to market then router must have sent back USD).
         // The amount received back would have to be equal at least to `actualRepayAmount`, allowing liquidator
         // to keep the liquidation incentive
@@ -246,11 +240,11 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
         // ────────── 5. Update borrow internally with 0 borrow amount
         // Pass to CygnusBorrowModel
-        updateBorrowInternal(borrower, 0, amountUsd);
+        _updateBorrow(borrower, 0, amountUsd);
 
-        // ────────── 6. Deposit in strategy and final check
+        // ────────── 6. Deposit in strategy
         // Deposit underlying in strategy
-        afterDepositInternal(amountUsd);
+        _afterDeposit(amountUsd);
 
         /// @custom:event Liquidate
         emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, actualRepayAmount, amountUsd);
@@ -258,7 +252,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
     /**
      *  @inheritdoc ICygnusBorrow
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
     function sync() external override nonReentrant update accrue {
         // Check for new reserves

@@ -1,78 +1,54 @@
 // SPDX-License-Identifier: MIT
-// solhint-disable func-name-mixedcase
+// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/extensions/IERC20Permit.sol)
+
 pragma solidity >=0.8.17;
 
 import {IERC20} from "./IERC20.sol";
 
-/// @title IERC20Permit
-/// @author Paul Razvan Berg
-/// @notice Extension of ERC-20 that allows token holders to use their tokens without sending any
-/// transactions by setting the allowance with a signature using the `permit` method, and then spend
-/// them via `transferFrom`.
-/// @dev See https://eips.ethereum.org/EIPS/eip-2612.
+/**
+ * @dev Interface of the ERC20 Permit extension allowing approvals to be made via signatures, as defined in
+ * https://eips.ethereum.org/EIPS/eip-2612[EIP-2612].
+ *
+ * Adds the {permit} method, which can be used to change an account's ERC20 allowance (see {IERC20-allowance}) by
+ * presenting a message signed by the account. By not relying on {IERC20-approve}, the token holder account doesn't
+ * need to send a transaction, and thus is not required to hold Ether at all.
+ */
 interface IERC20Permit is IERC20 {
-    /*//////////////////////////////////////////////////////////////////////////
-                                       ERRORS
-    //////////////////////////////////////////////////////////////////////////*/
+    /**
+     * @dev Sets `value` as the allowance of `spender` over ``owner``'s tokens,
+     * given ``owner``'s signed approval.
+     *
+     * IMPORTANT: The same issues {IERC20-approve} has related to transaction
+     * ordering also apply here.
+     *
+     * Emits an {Approval} event.
+     *
+     * Requirements:
+     *
+     * - `spender` cannot be the zero address.
+     * - `deadline` must be a timestamp in the future.
+     * - `v`, `r` and `s` must be a valid `secp256k1` signature from `owner`
+     * over the EIP712-formatted function arguments.
+     * - the signature must use ``owner``'s current nonce (see {nonces}).
+     *
+     * For more information on the signature format, see the
+     * https://eips.ethereum.org/EIPS/eip-2612#specification[relevant EIP
+     * section].
+     */
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external;
 
-    /// @notice Thrown when the recovered owner does not match the actual owner.
-    error ERC20Permit_InvalidSignature(address owner, uint8 v, bytes32 r, bytes32 s);
+    /**
+     * @dev Returns the current nonce for `owner`. This value must be
+     * included whenever a signature is generated for {permit}.
+     *
+     * Every successful call to {permit} increases ``owner``'s nonce by one. This
+     * prevents a signature from being used multiple times.
+     */
+    function nonces(address owner) external view returns (uint256);
 
-    /// @notice Thrown when the owner is the zero address.
-    error ERC20Permit_OwnerZeroAddress();
-
-    /// @notice Thrown when the permit expired.
-    error ERC20Permit_PermitExpired(uint256 currentTime, uint256 deadline);
-
-    /// @notice Thrown when the recovered owner is the zero address.
-    error ERC20Permit_RecoveredOwnerZeroAddress();
-
-    /// @notice Thrown when attempting to permit the zero address as the spender.
-    error ERC20Permit_SpenderZeroAddress();
-
-    /*//////////////////////////////////////////////////////////////////////////
-                                 CONSTANT FUNCTIONS
-    //////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice The Eip712 domain's keccak256 hash.
+    /**
+     * @dev Returns the domain separator used in the encoding of the signature for {permit}, as defined by {EIP712}.
+     */
+    // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32);
-
-    /// @notice keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    function PERMIT_TYPEHASH() external view returns (bytes32);
-
-    /// @notice Provides replay protection.
-    function nonces(address account) external view returns (uint256);
-
-    /// @notice Eip712 version of this implementation.
-    function version() external view returns (string memory);
-
-    /*//////////////////////////////////////////////////////////////////////////
-                               NON-CONSTANT FUNCTIONS
-    //////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Sets `value` as the allowance of `spender` over `owner`'s tokens, assuming the latter's
-    /// signed approval.
-    ///
-    /// @dev Emits an {Approval} event.
-    ///
-    /// IMPORTANT: The same issues ERC-20 `approve` has related to transaction
-    /// ordering also apply here.
-    ///
-    /// Requirements:
-    ///
-    /// - `owner` cannot be the zero address.
-    /// - `spender` cannot be the zero address.
-    /// - `deadline` must be a timestamp in the future.
-    /// - `v`, `r` and `s` must be a valid `secp256k1` signature from `owner` over the Eip712-formatted
-    /// function arguments.
-    /// - The signature must use `owner`'s current nonce.
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
 }

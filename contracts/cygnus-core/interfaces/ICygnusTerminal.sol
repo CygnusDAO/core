@@ -9,6 +9,7 @@ import {IHangar18} from "./IHangar18.sol";
 import {IAllowanceTransfer} from "./IAllowanceTransfer.sol";
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
+
 /**
  *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts
  *  @notice The interface for the CygnusTerminal contract allows minting/redeeming Cygnus pool tokens
@@ -82,13 +83,20 @@ interface ICygnusTerminal is IERC20Permit {
      *
      *  @custom:event Redeem
      */
-    event Withdraw(
-        address indexed sender,
-        address indexed recipient,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
+    event Withdraw(address indexed sender, address indexed recipient, address indexed owner, uint256 assets, uint256 shares);
+
+    /**
+     *  @dev Logs when the admin sweeps a token that was incorrectly sent to this address
+     *  @notice It CANNOT sweep the underlying token (USD for borrowable and LPs for collateral pools), doing so
+     *          will revert the tx.
+     *
+     *  @param sender The msg.sender
+     *  @param token The token being swept
+     *  @param balance The balance of `token` swept from this contract
+     *
+     *  @custom:event SweepToken
+     */
+    event SweepToken(address indexed sender, address indexed token, uint256 balance);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
            3. CONSTANT FUNCTIONS

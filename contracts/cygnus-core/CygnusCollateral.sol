@@ -58,38 +58,22 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @notice ERC20 Overrides
      *  @notice Before burning we check whether the user has sufficient liquidity (no debt) to redeem `burnAmount`
      */
-    function _burn(address holder, uint256 amount) internal override(ERC20) {
+    function _beforeTokenTransfer(address from, address, uint256 amount) internal view override(ERC20) {
+        // Escape in case of flash redeem
+        if (from == address(this)) return;
+
         /// @custom:error InsufficientLiquidity Avoid burning supply if there's shortfall
-        if (!canRedeem(holder, amount)) revert CygnusCollateral__InsufficientLiquidity();
-
-        // Safe internal burn
-        super._burn(holder, amount);
-    }
-
-    /**
-     *  @notice ERC20 Overrides
-     *  @notice Before transfering we check whether the user has sufficient liquidity (no debt) to transfer `amount`
-     */
-    function _transfer(address from, address to, uint256 amount) internal override(ERC20) {
-        /// @custom:error InsufficientLiquidity Avoid transfering CygLP if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();
-
-        // Safe internal burn
-        super._transfer(from, to, amount);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @dev This function should only be called from this collateral's `borrowable` contracts only
+     *  @notice Not marked as non-reentrant since only the borrowable may call it through the non-reentrant `liquidate()`
      *  @inheritdoc ICygnusCollateral
-     *  @custom:security non-reentrant
      */
-    function seizeCygLP(
-        address liquidator,
-        address borrower,
-        uint256 repayAmount
-    ) external override nonReentrant returns (uint256 cygLPAmount) {
+    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         if (msg.sender != borrowable) {
             revert CygnusCollateral__MsgSenderNotBorrowable();
@@ -99,9 +83,9 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
             revert CygnusCollateral__CantLiquidateZero();
         }
 
-        // Get user's liquidity or shortfall
+        // Get user's shortfall (if any)
         // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = accountLiquidityInternal(borrower, type(uint256).max);
+        ( /* liquidity */ , uint256 shortfall) = _accountLiquidity(borrower, type(uint256).max);
 
         // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state
         if (shortfall <= 0) revert CygnusCollateral__NotLiquidatable();
@@ -112,29 +96,31 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Factor in liquidation incentive and current exchange rate to add/decrease collateral token balance
         cygLPAmount = (repayAmount.divWad(lpTokenPrice) * liquidationIncentive) / exchangeRate();
 
-        // Decrease borrower's balance of cygnus collateral tokens
-        _balances[borrower] -= cygLPAmount;
+        // Transfer the repaid amount + liq. incentive to the liquidator
+        // Use the transfer at erc20 bypassing `canRedeem`
+        _transfer(borrower, liquidator, cygLPAmount);
 
-        // Increase liquidator's balance of cygnus collateral tokens
-        _balances[liquidator] += cygLPAmount;
+        // Initialize and check if liquidation fee is set
+        uint256 daoFee;
 
         // Check for protocol fee
         if (liquidationFee > 0) {
             // Get the liquidation fee amount that is kept by the protocol
-            uint256 daoFee = cygLPAmount.mulWad(liquidationFee);
+            daoFee = cygLPAmount.mulWad(liquidationFee);
 
             // Assign reserves account
             address daoReserves = hangar18.daoReserves();
 
-            // update borrower's balance
-            _balances[borrower] -= daoFee;
-
-            // update reserve's balance
-            _balances[daoReserves] += daoFee;
+            // If applicable, seize daoFee from the borrower
+            // Use the transfer at erc20 bypassing `canRedeem`
+            _transfer(borrower, daoReserves, daoFee);
         }
 
-        /// @custom:event Transfer
-        emit Transfer(borrower, liquidator, cygLPAmount);
+        // Total CygLP seized from the borrower
+        uint256 totalSeized = cygLPAmount + daoFee;
+
+        /// @custom:event SeizeCygLP
+        emit SeizeCygLP(liquidator, borrower, cygLPAmount, daoFee, totalSeized);
     }
 
     /**
@@ -142,22 +128,12 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(
-        address redeemer,
-        uint256 assets,
-        bytes calldata data
-    ) external override nonReentrant update {
+    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
-        if (assets <= 0) {
-            revert CygnusCollateral__CantRedeemZero();
-        }
-        /// @custom:error BurnAmountInvalid Avoid redeeming more than shuttle's balance
-        else if (assets > totalBalance) {
-            revert CygnusCollateral__RedeemAmountInvalid();
-        }
+        if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
 
         // Withdraw hook to withdraw from the strategy (if any)
-        beforeWithdrawInternal(assets);
+        _beforeWithdraw(assets);
 
         // Optimistically transfer funds
         underlying.safeTransfer(redeemer, assets);
@@ -168,21 +144,22 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         }
 
         // CygLP tokens received by thsi contract
-        uint256 cygLPTokens = _balances[address(this)];
+        uint256 cygLPTokens = balanceOf(address(this));
 
         // Calculate the equivalent of the flash-redeemed assets in shares
         uint256 shares = assets.divWad(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared
-        if (cygLPTokens < shares) revert CygnusCollateral__InsufficientRedeemAmount();
+        if (cygLPTokens < shares) revert CygnusCollateral__InsufficientCygLPReceived();
 
         // Burn tokens and emit a Transfer event
+        // Use the burn at ERC20 since we don't have to check for `canRedeem`
         _burn(address(this), cygLPTokens);
     }
 
     /**
      *  @inheritdoc ICygnusCollateral
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
     function sync() external override nonReentrant update {}
 }

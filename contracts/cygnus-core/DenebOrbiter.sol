@@ -65,7 +65,7 @@ contract DenebOrbiter is IDenebOrbiter {
     /**
      *  @inheritdoc IDenebOrbiter
      */
-    bytes32 public constant override COLLATERAL_INIT_CODE_HASH = keccak256(type(CygnusCollateral).creationCode);
+    bytes32 public immutable override collateralInitCodeHash = keccak256(type(CygnusCollateral).creationCode);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             6. NON-CONSTANT FUNCTIONS

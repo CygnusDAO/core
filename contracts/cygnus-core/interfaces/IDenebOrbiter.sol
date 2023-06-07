@@ -21,18 +21,12 @@ interface IDenebOrbiter {
      */
     function shuttleParameters()
         external
-        returns (
-            address factory,
-            address underlying,
-            address borrowable,
-            address oracle,
-            uint256 shuttleId
-        );
+        returns (address factory, address underlying, address borrowable, address oracle, uint256 shuttleId);
 
     /**
-     *  @return COLLATERAL_INIT_CODE_HASH The init code hash of the collateral contract for this deployer
+     *  @return collateralInitCodeHash The init code hash of the collateral contract for this deployer
      */
-    function COLLATERAL_INIT_CODE_HASH() external view returns (bytes32);
+    function collateralInitCodeHash() external view returns (bytes32);
 
     /**
      *  @notice Function to deploy the collateral contract of a lending pool
@@ -44,10 +38,5 @@ interface IDenebOrbiter {
      *
      *  @return collateral The address of the new deployed Cygnus collateral contract
      */
-    function deployDeneb(
-        address underlying,
-        address borrowable,
-        address oracle,
-        uint256 shuttleId
-    ) external returns (address collateral);
+    function deployDeneb(address underlying, address borrowable, address oracle, uint256 shuttleId) external returns (address collateral);
 }

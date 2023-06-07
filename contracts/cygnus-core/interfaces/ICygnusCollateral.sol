@@ -29,14 +29,14 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
     /**
      *  @dev Reverts when the repayAmount in a liquidation is 0
      *
-     *  @custom:error CantLiquidateZero 
+     *  @custom:error CantLiquidateZero
      */
     error CygnusCollateral__CantLiquidateZero();
 
     /**
      *  @dev Reverts when trying to redeem 0 tokens
      *
-     *  @custom:error CantRedeemZero 
+     *  @custom:error CantRedeemZero
      */
     error CygnusCollateral__CantRedeemZero();
 
@@ -59,7 +59,22 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *
      *  @custom:error InsufficientRedeemAmount
      */
-    error CygnusCollateral__InsufficientRedeemAmount();
+    error CygnusCollateral__InsufficientCygLPReceived();
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+            2. CUSTOM EVENTS
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @dev Logs when collateral is seized from the borrower and sent to the liquidator
+     *
+     *  @param liquidator The address of the liquidator
+     *  @param borrower The address of the borrower being liquidated
+     *  @param cygLPAmount The amount of CygLP seized and sent to the liquidator
+     *  @param daoFee The amount of CygLP sent to the DAO Reserves
+     *  @param seized The total amount of CygLP seized from the borrower
+     */
+    event SeizeCygLP(address indexed liquidator, address indexed borrower, uint256 cygLPAmount, uint256 daoFee, uint256 seized);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -79,11 +94,7 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *
      *  @return cygLPAmount The amount of CygLP seized
      */
-    function seizeCygLP(
-        address liquidator,
-        address borrower,
-        uint256 repayAmount
-    ) external returns (uint256 cygLPAmount);
+    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external returns (uint256 cygLPAmount);
 
     /**
      *  @notice Flash redeems the underlying LP Token

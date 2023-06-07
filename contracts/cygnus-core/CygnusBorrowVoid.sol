@@ -4,10 +4,10 @@ pragma solidity >=0.8.17;
 // Dependencies
 import {ICygnusBorrowVoid} from "./interfaces/ICygnusBorrowVoid.sol";
 import {CygnusBorrowModel} from "./CygnusBorrowModel.sol";
+import {CygnusBorrowApprove} from "./CygnusBorrowApprove.sol";
 
 // Libraries
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
-import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -15,9 +15,9 @@ import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusHarvester} from "./interfaces/ICygnusHarvester.sol";
 
 // Strategy
-import {IStargatePool} from "./interfaces/BorrowableVoid/IStargatePool.sol";
-import {IStargateRouter} from "./interfaces/BorrowableVoid/IStargateRouter.sol";
-import {IStargateLPStaking} from "./interfaces/BorrowableVoid/IStargateLPStaking.sol";
+import {ISonnePool} from "./interfaces/BorrowableVoid/ISonnePool.sol";
+import {IUniTroller} from "./interfaces/BorrowableVoid/IUniTroller.sol";
+import {IStakedDistributor} from "./interfaces/BorrowableVoid/IStakedDistributor.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -27,7 +27,7 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
  *  @author CygnusDAO
  *  @notice Strategy for the underlying stablecoin deposits.
  */
-contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
+contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -37,41 +37,33 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     using SafeTransferLib for address;
 
-    /**
-     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers
-     */
-    using FixedPointMathLib for uint256;
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
-    /**
-     *  @notice Stargate Rewarder Pool Id
-     */
-    uint256 private constant STG_POOL_ID = 0;
+    /*  ─────────── Strategy */
 
     /**
-     *  @notice Stargate Router Pool Id to add liquidity after reinvesting rewards
+     *  @notice Sonne USDC Pool
      */
-    uint256 private constant STG_ROUTER_POOL_ID = 1;
+    ISonnePool private constant SONNE_USDC = ISonnePool(0xEC8FEa79026FfEd168cCf5C627c7f486D77b765F);
 
     /**
-     *  @notice Stargate pool for the underlying 0x1205f31718499dBf1fCa446663B532Ef87481fe1
+     *  @notice Comptroller implementation
      */
-    IStargatePool private constant STG_POOL = IStargatePool(0xDecC0c09c3B5f6e92EF4184125D5648a66E35298);
+    IUniTroller private constant REWARDER = IUniTroller(0x60CF091cD3f50420d50fD7f707414d0DF4751C58);
 
     /**
-     *  @notice Stargate Router
+     *  @notice Distributor for bonus rewards
      */
-    IStargateRouter private constant STG_ROUTER = IStargateRouter(0xB0D502E938ed5f4df2E681fE6E419ff29631d62b);
+    IStakedDistributor private constant DISTRIBUTOR = IStakedDistributor(0xDC05d85069Dc4ABa65954008ff99f2D73FF12618);
 
     /**
-     *  @notice Stargate LP Staking rewards
+     *  @notice Sonne Token
      */
-    IStargateLPStaking private constant REWARDER = IStargateLPStaking(0x4DeA9e918c6289a52cd469cAC652727B7b412Cd2);
+    address private constant SONNE = 0x1DB2466d9F5e10D7090E7152B68d62703a2245F0;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -98,7 +90,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── External ────────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
@@ -111,9 +103,9 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    function rewardToken() external view override returns (address) {
-        // Return the address of the reward tokn
-        return REWARDER.eToken();
+    function rewardToken() external pure override returns (address) {
+        // Return the address of the main reward tokn
+        return SONNE;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -136,25 +128,44 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     }
 
     /**
-     *  @notice Harvest rewards and return tokens and amounts received
-     *  @return tokens Array of reward tokens
-     *  @return amounts Array of received amounts of each token
+     *  @notice Gets the rewards from the stgRewarder contract
      */
     function getRewardsPrivate() private returns (address[] memory tokens, uint256[] memory amounts) {
-        // Get rewards by depositing 0, Goose clone
-        REWARDER.deposit(STG_POOL_ID, 0);
+        // Make the markets array to claim from the Comptroller
+        address[] memory markets = new address[](1);
 
-        // Single reward token array
-        tokens = new address[](1);
+        // Assign cToken
+        markets[0] = address(SONNE_USDC);
 
-        // Single reward amount
-        amounts = new uint256[](1);
+        // 1. Claim Sonne from Comptroller
+        REWARDER.claimComp(address(this), markets);
 
-        // Get reward token
-        tokens[0] = REWARDER.eToken();
+        // 2. Claim Sonne from Distributor
+        uint256[] memory _amounts = DISTRIBUTOR.claimAll();
 
-        // Get reward amount
-        amounts[0] = contractBalanceOf(tokens[0]);
+        // 3. Re-stake all Sonne
+        uint256 sonneRewards = contractBalanceOf(SONNE);
+
+        // Check non-zero
+        if (sonneRewards > 0) DISTRIBUTOR.mint(sonneRewards);
+
+        // 4. Get bonus rewards from Distributor (remove address 0 and index 0)
+        uint256 numTokens = _amounts.length - 1;
+
+        // Tokens harvested from the distributor
+        tokens = new address[](numTokens);
+
+        // Amounts harvested from the distributor
+        amounts = new uint256[](numTokens);
+
+        // Loop through each reward token
+        for (uint256 i = 1; i <= numTokens; i++) {
+            // Token
+            tokens[i - 1] = DISTRIBUTOR.tokens(i);
+
+            // Amounts
+            amounts[i - 1] = contractBalanceOf(tokens[i - 1]);
+        }
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -164,25 +175,22 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
      */
-    function previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
-        // S*USD LP Balance from the rewarder
-        (uint256 stgRewarderBalance, ) = REWARDER.userInfo(STG_POOL_ID, address(this));
-
-        // Convert S*USD LP balance to underlying
-        balance = stgRewarderBalance.fullMulDiv(STG_POOL.totalLiquidity(), STG_POOL.totalSupply());
+    function _previewTotalBalance() internal override(CygnusTerminal) returns (uint256 balance) {
+        // Accrue interest and return total balance
+        balance = SONNE_USDC.balanceOfUnderlying(address(this));
     }
 
     /**
-     *  @notice Deposits underlying in strategy and stakes the LP received
+     *  @notice Deposits underlying assets in the strategy
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
      */
-    function afterDepositInternal(uint256 assets) internal override(CygnusTerminal) {
-        // Add underlying as stargate liquidity
-        STG_ROUTER.addLiquidity(STG_ROUTER_POOL_ID, assets, address(this));
+    function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
+        // Mint sonneUsdc
+        uint256 errorcode = SONNE_USDC.mint(assets);
 
-        // Stake S*Underlying
-        REWARDER.deposit(STG_POOL_ID, contractBalanceOf(address(STG_POOL)));
+        /// @custom:error CTokenError Avoid cToken mint error (NO_ERROR == 0)
+        if (errorcode != 0) revert CygnusBorrowVoid__CTokenError();
     }
 
     /**
@@ -190,18 +198,30 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
      */
-    function beforeWithdrawInternal(uint256 assets) internal override(CygnusTerminal) {
-        // Convert Asset to LP (doing a full round up)
-        uint256 amountLP = assets.fullMulDivUp(STG_POOL.totalSupply(), STG_POOL.totalLiquidity());
+    function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
+        // Redeem for underlying
+        uint256 errorcode = SONNE_USDC.redeemUnderlying(assets);
 
-        // Withdraw S*Underlying from Rewarder (round up)
-        REWARDER.withdraw(STG_POOL_ID, amountLP);
-
-        // Redeem S*Underlying for underlying
-        STG_ROUTER.instantRedeemLocal(uint16(STG_ROUTER_POOL_ID), contractBalanceOf(address(STG_POOL)), address(this));
+        /// @custom:error CTokenError Avoid cToken redeem error (NO_ERROR == 0)
+        if (errorcode != 0) revert CygnusBorrowVoid__CTokenError();
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security non-reentrant
+     */
+    function chargeVoid() external override nonReentrant {
+        // Allow cToken to access our underlying
+        approveTokenPrivate(underlying, address(SONNE_USDC), type(uint256).max);
+
+        // Allow cToken to access our underlying
+        approveTokenPrivate(SONNE, address(DISTRIBUTOR), type(uint256).max);
+
+        /// @custom:event ChargeVoid
+        emit ChargeVoid(underlying, shuttleId, msg.sender);
+    }
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
@@ -222,25 +242,10 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         if (msg.sender != address(harvester)) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
         // After deposit hook
-        afterDepositInternal(liquidity);
+        _afterDeposit(liquidity);
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(msg.sender, liquidity, lastReinvest = block.timestamp);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant
-     */
-    function chargeVoid() external override nonReentrant {
-        // Allow Stargate router to use our USDC to deposits
-        approveTokenPrivate(underlying, address(STG_ROUTER), type(uint256).max);
-
-        // Allow Stargate Rewarder to use our S*Underlying to deposit
-        approveTokenPrivate(address(STG_POOL), address(REWARDER), type(uint256).max);
-
-        /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, shuttleId, msg.sender);
     }
 
     /**
@@ -262,7 +267,13 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Loop through each token
         for (uint256 i = 0; i < tokens.length; i++) {
             // Approve harvester in token `i`
-            if (tokens[i] != underlying) approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);
+            if (tokens[i] != underlying) {
+                // Remove allowance for old harvester
+                approveTokenPrivate(tokens[i], address(harvester), 0);
+
+                // Approve new harvester
+                approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);
+            }
         }
 
         /// @custom:event NewHarvester

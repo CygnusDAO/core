@@ -4,14 +4,15 @@ pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowModel} from "./ICygnusBorrowModel.sol";
+import {ICygnusBorrowApprove} from "./ICygnusBorrowApprove.sol";
 
-// Stargate
+// Harvester
 import {ICygnusHarvester} from "./ICygnusHarvester.sol";
 
 /**
  *  @title ICygnusBorrowVoid
  */
-interface ICygnusBorrowVoid is ICygnusBorrowModel {
+interface ICygnusBorrowVoid is ICygnusBorrowModel, ICygnusBorrowApprove {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

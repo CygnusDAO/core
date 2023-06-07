@@ -100,13 +100,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:event Borrow
      */
-    event Borrow(
-        address indexed sender,
-        address indexed borrower,
-        address indexed receiver,
-        uint256 borrowAmount,
-        uint256 repayAmount
-    );
+    event Borrow(address indexed sender, address indexed borrower, address indexed receiver, uint256 borrowAmount, uint256 repayAmount);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -124,24 +118,6 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
     /**
      *  @notice This low level function should only be called from `CygnusAltair` contract only
      *
-     *  @param borrower The address of the borrower being liquidated
-     *  @param receiver The address of the receiver of the collateral
-     *  @param repayAmount USD amount covering the loan
-     *  @param data Calltype data passed to Router contract.
-     *  @return usdAmount The amount of USD deposited after taking into account liq. incentive
-     *
-     *  @custom:security non-reentrant
-     */
-    function liquidate(
-        address borrower,
-        address receiver,
-        uint256 repayAmount,
-        bytes calldata data
-    ) external returns (uint256 usdAmount);
-
-    /**
-     *  @notice This low level function should only be called from `CygnusAltair` contract only
-     *
      *  @param borrower The address of the Borrow contract.
      *  @param receiver The address of the receiver of the borrow amount.
      *  @param borrowAmount The amount of the underlying asset to borrow.
@@ -152,9 +128,22 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
     function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external;
 
     /**
+     *  @notice This low level function should only be called from `CygnusAltair` contract only
+     *
+     *  @param borrower The address of the borrower being liquidated
+     *  @param receiver The address of the receiver of the collateral
+     *  @param repayAmount USD amount covering the loan
+     *  @param data Calltype data passed to Router contract.
+     *  @return usdAmount The amount of USD deposited after taking into account liq. incentive
+     *
+     *  @custom:security non-reentrant
+     */
+    function liquidate(address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
+
+    /**
      *  @notice Syncs internal balance with totalBalance
      *
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
     function sync() external;
 }

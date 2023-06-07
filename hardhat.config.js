@@ -1,7 +1,6 @@
 require("@nomicfoundation/hardhat-chai-matchers");
 require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-contract-sizer");
-require("hardhat-gas-reporter");
 
 const optimizerSettings = {
     enabled: true,
@@ -40,21 +39,34 @@ module.exports = {
             {
                 version: "0.8.17",
                 settings: {
-                    viaIR: false,
+                    viaIR: true,
                     optimizer: {
                         ...optimizerSettings,
+                    },
+                    metadata: {
+                        bytecodeHash: "none",
                     },
                 },
             },
         ],
         overrides: {
+            "contracts/cygnus-periphery/CygnusAltair.sol": {
+                version: "0.8.17",
+                settings: {
+                    viaIR: true,
+                    optimizer: {
+                        enabled: true,
+                        runs: 1000000,
+                    },
+                },
+            },
             "contracts/cygnus-periphery/CygnusAltairX.sol": {
                 version: "0.8.17",
                 settings: {
                     viaIR: true,
                     optimizer: {
                         enabled: true,
-                        runs: 999999,
+                        runs: 1000000,
                     },
                 },
             },
@@ -78,7 +90,7 @@ module.exports = {
                     },
                 },
             },
-            "contracts/cygnus-core/CygnusTerminal.sol": {
+            "contracts/cygnus-token/CygnusComplexRewarder.sol": {
                 version: "0.8.17",
                 settings: {
                     viaIR: true,
@@ -111,9 +123,6 @@ module.exports = {
         },
     },
     defaultNetwork: "localhost",
-    gasReporter: {
-        enabled: true,
-    },
     networks: {
         // Local
         localhost: {
@@ -151,10 +160,13 @@ module.exports = {
             url: "https://rpc.ankr.com/optimism",
             chainId: 10,
         },
+        bsc: {
+            url: "https://rpc.ankr.com/bsc",
+            chainId: 56,
+        },
     },
     mocha: {
         timeout: 100000000,
     },
 };
-
 

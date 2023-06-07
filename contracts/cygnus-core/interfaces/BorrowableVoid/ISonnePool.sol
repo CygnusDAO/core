@@ -43,7 +43,7 @@ interface ISonnePool {
     /**
      * @notice Sender redeems underlying assets
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param assets The number of assets to redeem 
+     * @param assets The number of assets to redeem
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemUnderlying(uint256 assets) external returns (uint256);

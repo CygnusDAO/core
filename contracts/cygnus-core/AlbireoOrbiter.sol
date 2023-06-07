@@ -62,11 +62,10 @@ contract AlbireoOrbiter is IAlbireoOrbiter {
      */
     BorrowParameters public override shuttleParameters;
 
-    
     /**
      *  @inheritdoc IAlbireoOrbiter
      */
-    bytes32 public constant override BORROWABLE_INIT_CODE_HASH = keccak256(type(CygnusBorrow).creationCode);
+    bytes32 public immutable override borrowableInitCodeHash = keccak256(type(CygnusBorrow).creationCode);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             6. NON-CONSTANT FUNCTIONS

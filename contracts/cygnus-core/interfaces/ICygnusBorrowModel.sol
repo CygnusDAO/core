@@ -16,19 +16,25 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *  @param totalBorrowsStored Total borrow balances of this lending pool
      *  @param interestAccumulated Interest accumulated since last accrual
      *
-     *  @custom:event AccrueInterest 
+     *  @custom:event AccrueInterest
      */
-    event AccrueInterest(
-        uint256 cashStored,
-        uint256 totalBorrowsStored,
-        uint256 interestAccumulated
-    );
+    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @notice Getter for internal storage of borrow balances for borrowers
+     *
+     *  @param borrower The address of the borrower
+     *
+     *  @return principal The total borrowed amount without interest accrued
+     *  @return interestIndex Borrow index as of the most recent balance-changing action
+     */
+    function borrowBalances(address borrower) external view returns (uint128 principal, uint128 interestIndex);
 
     /**
      *  @return totalBorrows Total borrows stored in the lending pool
@@ -41,7 +47,7 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     function borrowIndex() external view returns (uint80);
 
     /**
-     *  @return borrowRate The current per-second borrow rate stored for this pool. 
+     *  @return borrowRate The current per-second borrow rate stored for this pool.
      */
     function borrowRate() external view returns (uint48);
 

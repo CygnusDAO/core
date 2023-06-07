@@ -12,4 +12,6 @@ interface IUniTroller {
     function claimComp(address holder) external;
 
     function getCompAddress() external view returns (address);
+
+    function claimComp(address holder, address[] memory cTokens) external;
 }

@@ -181,9 +181,7 @@ library FixedPointMathLib {
             // * the 1e18 / 2**96 factor for base conversion.
             // We do this all at once, with an intermediate result in 2**213
             // basis, so the final right shift is always by a positive amount.
-            r = int256(
-                (uint256(r) * 3822833074963236453042738258902158003155416615667) >> uint256(195 - k)
-            );
+            r = int256((uint256(r) * 3822833074963236453042738258902158003155416615667) >> uint256(195 - k));
         }
     }
 
@@ -224,8 +222,10 @@ library FixedPointMathLib {
                 v := or(v, shr(16, v))
 
                 // forgefmt: disable-next-item
-                k := sub(or(k, byte(shr(251, mul(v, shl(224, 0x07c4acdd))),
-                    0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f)), 96)
+                k := sub(
+                    or(k, byte(shr(251, mul(v, shl(224, 0x07c4acdd))), 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f)),
+                    96
+                )
             }
 
             // Reduce range of x to (1, 2) * 2**96
@@ -290,7 +290,11 @@ library FixedPointMathLib {
         /// @solidity memory-safe-assembly
         assembly {
             // forgefmt: disable-next-item
-            for {} 1 {} {
+            for {
+
+            } 1 {
+
+            } {
                 // 512-bit multiply `[prod1 prod0] = x * y`.
                 // Compute the product mod `2**256` and mod `2**256 - 1`
                 // then use the Chinese Remainder Theorem to reconstruct
@@ -312,7 +316,7 @@ library FixedPointMathLib {
                         revert(0x1c, 0x04)
                     }
                     result := div(prod0, d)
-                    break       
+                    break
                 }
 
                 // Make sure the result is less than `2**256`.
@@ -502,13 +506,14 @@ library FixedPointMathLib {
     function factorial(uint256 x) internal pure returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
-            for {} 1 {} {
+            for {
+
+            } 1 {
+
+            } {
                 if iszero(lt(10, x)) {
                     // forgefmt: disable-next-item
-                    result := and(
-                        shr(mul(22, x), 0x375f0016260009d80004ec0002d00001e0000180000180000200000400001),
-                        0x3fffff
-                    )
+                    result := and(shr(mul(22, x), 0x375f0016260009d80004ec0002d00001e0000180000180000200000400001), 0x3fffff)
                     break
                 }
                 if iszero(lt(57, x)) {
@@ -518,10 +523,16 @@ library FixedPointMathLib {
                         end := 10
                         result := 3628800
                     }
-                    for { let w := not(0) } 1 {} {
+                    for {
+                        let w := not(0)
+                    } 1 {
+
+                    } {
                         result := mul(result, x)
                         x := add(x, w)
-                        if eq(x, end) { break }
+                        if eq(x, end) {
+                            break
+                        }
                     }
                     break
                 }
@@ -559,8 +570,7 @@ library FixedPointMathLib {
             x := or(x, shr(16, x))
 
             // forgefmt: disable-next-item
-            r := or(r, byte(shr(251, mul(x, shl(224, 0x07c4acdd))),
-                0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f))
+            r := or(r, byte(shr(251, mul(x, shl(224, 0x07c4acdd))), 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f))
         }
     }
 
@@ -640,11 +650,7 @@ library FixedPointMathLib {
     }
 
     /// @dev Returns `x`, bounded to `minValue` and `maxValue`.
-    function clamp(uint256 x, uint256 minValue, uint256 maxValue)
-        internal
-        pure
-        returns (uint256 z)
-    {
+    function clamp(uint256 x, uint256 minValue, uint256 maxValue) internal pure returns (uint256 z) {
         z = min(max(x, minValue), maxValue);
     }
 
@@ -658,7 +664,11 @@ library FixedPointMathLib {
         /// @solidity memory-safe-assembly
         assembly {
             // forgefmt: disable-next-item
-            for { z := x } y {} {
+            for {
+                z := x
+            } y {
+
+            } {
                 let t := y
                 y := mod(z, y)
                 z := t
