@@ -136,7 +136,7 @@ const cygnusLiquidate = async () => {
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
 
     // Approve borrow
-    await hangar18.connect(borrower).setMasterBorrowApproval(router.address);
+    await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
     await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')

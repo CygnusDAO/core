@@ -56,7 +56,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
     /**
      *  @notice ERC20 Overrides
-     *  @notice Before burning we check whether the user has sufficient liquidity (no debt) to redeem `burnAmount`
+     *  @notice Before any token transfer we check whether the user has sufficient liquidity (no debt) to transfer
      */
     function _beforeTokenTransfer(address from, address, uint256 amount) internal view override(ERC20) {
         // Escape in case of flash redeem
@@ -153,7 +153,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         if (cygLPTokens < shares) revert CygnusCollateral__InsufficientCygLPReceived();
 
         // Burn tokens and emit a Transfer event
-        // Use the burn at ERC20 since we don't have to check for `canRedeem`
+        // Escapes `canRedeem` since we are burning tokens from this address only
         _burn(address(this), cygLPTokens);
     }
 

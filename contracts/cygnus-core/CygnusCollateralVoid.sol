@@ -121,9 +121,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function approveTokenPrivate(address token, address to, uint256 amount) private {
         // Check allowance for `router` for deposit
-        if (IERC20(token).allowance(address(this), to) >= amount) {
-            return;
-        }
+        if (IERC20(token).allowance(address(this), to) >= amount) return;
 
         // Is less than amount, safe approve max
         token.safeApprove(to, type(uint256).max);
@@ -166,21 +164,21 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
-     *  @param assets The amount of assets to withdraw from the strategy
-     */
-    function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
-        // Withdraw assets from the strategy
-        gauge.withdraw(assets);
-    }
-
-    /**
-     *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
      *  @param assets The amount of assets to deposit in the strategy
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
         // Deposit assets into the strategy with no tokenId
         gauge.deposit(assets, 0);
+    }
+
+    /**
+     *  @notice Cygnus Terminal Override
+     *  @inheritdoc CygnusTerminal
+     *  @param assets The amount of assets to withdraw from the strategy
+     */
+    function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
+        // Withdraw assets from the strategy
+        gauge.withdraw(assets);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -198,16 +196,15 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security non-reentrant
      */
-    // prettier-ignore
-    function getRewards() external override returns (address[] memory tokens, uint256[] memory amounts) {
+    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         // Harvest rewards and return tokens and amounts
         return getRewardsPrivate();
     }
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
-     *  @custom:security non-reentrant
      */
     function reinvestRewards_y7b(uint256 liquidity) external override update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
@@ -233,7 +230,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
         // Get reward tokens for the harvester.
         // We harvest once to get the tokens and set approvals in case reward tokens/harvester change.
-        // NOTE: This is safe because reward token is never underlying
+        // NOTE: This is safe because approved token is never underlying
         (address[] memory tokens, ) = getRewardsPrivate();
 
         // Loop through each token

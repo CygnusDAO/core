@@ -50,23 +50,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-         4. MODIFIERS
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @notice Overrides the previous modifier from CygnusTerminal to update before interactions too
-     *  @notice CygnusTerminal override
-     *  @custom:modifier update Updates the total balance var in terms of its underlying
-     */
-    modifier update() override(CygnusTerminal) {
-        // Update before deposit to prevent deposit spam for yield bearing tokens
-        _update();
-        _;
-        // Update after deposit
-        _update();
-    }
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
          6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 

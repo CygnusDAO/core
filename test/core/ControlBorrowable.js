@@ -16,7 +16,7 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 /**
  *  @notice Admin controls for core pools
  */
-describe("CgynusBorrow Admin Controls", function () {
+describe("Borrowable Admin Controls", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */

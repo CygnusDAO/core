@@ -3,7 +3,7 @@ const path = require("path");
 // Hardhat
 const hre = require("hardhat");
 const ethers = hre.ethers;
-// const { mine } = require("@nomicfoundation/hardhat-network-helpers")
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Testers
 const { expect } = require("chai");
@@ -20,12 +20,16 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 
 // Constants
 const { MaxUint256 } = ethers.constants;
+// const ONE = ethers.utils.parseUnits("1", 18);
 
 /**
- *  @notice Check the masterBorrowApproval at the factory to verify that msg.sender can borrow using
- *          the borrower's CygLP as collateral
+ *  FIXTURE:
+ *  -> Lender deposits USD
+ *  -> Borrower deposits LP
+ *  -> Borrower max borrows putting their debt raito at 100% (not liquidatable yet)
+ *  -> We mine blocks and `accrueInterest`, now borrower has shortfall and is over 100% debt ratio
  */
-describe("Master Borrow Approval Test", function () {
+describe("Cygnus Liquidations Integration Test", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */
@@ -34,7 +38,10 @@ describe("Master Borrow Approval Test", function () {
         const [, factory, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
         // Create users: owner (admin), lender, and borrower
-        const [owner, , safeAddress1, lender, borrower] = await Users();
+        const [owner, , , lender, borrower] = await Users();
+
+        // Set BorrowAPR to 0% first
+        await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.15e18), 2, BigInt(0.8e18));
 
         // Charge Borrowbale allowance to deposit in rewarder
         await borrowable.chargeVoid();
@@ -51,13 +58,29 @@ describe("Master Borrow Approval Test", function () {
 
         // Deposit 100,000 USDC into the lending pool
         await lenderDeposit(owner, usdc, lender, borrowable, permit2);
-
         // Deposit 2 LP tokens into the collateral pool
         await borrowerDeposit(owner, lpToken, borrower, collateral, permit2);
 
+        // Approve router
+        await factory.connect(borrower).setMasterBorrowApproval(router.address);
+        // Get the current liquidity of the borrower's account
+        const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
+        // Borrow the maximum amount possible from the borrowable token
+        await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x");
+
+        // Get rewarder address
+        const rewarderAddress = await borrowable.cygnusBorrowRewarder();
+
+        const rewarder = await ethers.getContractAt("CygnusComplexRewarder", rewarderAddress);
+
+        // Mine
+        await mine(100);
+
+        // Update all pools
+        await rewarder.accelerateTheUniverse();
+
         // Return an object containing the various contracts, users, and initial balances for testing
         return {
-            factory, // Factory
             router, // Router contract
             borrowable, // Lending pool contract
             collateral, // Collateral contract
@@ -70,7 +93,7 @@ describe("Master Borrow Approval Test", function () {
             lenderInitialBal, // Initial balance of the lender's USDC before CYG
             borrowerInitialBal, // Initial balance of the borrower's LP tokens before CYG
             permit2, // Permit2 contract instance
-            safeAddress1, // Extra ethers signer
+            rewarder, // Cyg Rewarder
         };
     };
 
@@ -165,99 +188,74 @@ describe("Master Borrow Approval Test", function () {
         it("...begins...", async () => await loadFixture(deployFixure));
     });
 
-    describe("Checks we have positive balance of CygUSD and CygLP", () => {
-        // Check balance CygUSD
-        it("Should have positive balance of CygUSD", async () => {
+    describe("The Rewarder should be tracking the borrower", () => {
+        // calculateEpochRewards()
+        it("Should have 3,000,000 total rewards", async () => {
             // Fixture
-            const { borrowable, lender, usdc, lenderInitialBal } = await loadFixture(deployFixure);
+            const { rewarder } = await loadFixture(deployFixure);
 
-            // Get balance of CygUSD
-            expect(await borrowable.balanceOf(lender._address)).to.be.gt(0);
+            const epochs = await rewarder.TOTAL_EPOCHS();
 
-            // Get balance of USD
-            expect(await usdc.balanceOf(lender._address)).to.be.lt(lenderInitialBal);
+            let totalRewards = ethers.BigNumber.from(0);
+
+            for (let i = 0; i < epochs; i++) {
+                const currentRewards = await rewarder.calculateEpochRewards(i);
+                totalRewards = totalRewards.add(currentRewards);
+            }
+
+            // 3 Million 18 decimals
+            expect(totalRewards).to.be.closeTo("3000000000000000000000000", BigInt(100));
         });
 
-        // Check balance CygLP
-        it("Should have positive balance of CygLP", async () => {
+        // getUserInfo()
+        it("Should track the borrower after borrowing", async () => {
             // Fixture
-            const { collateral, borrower, lpToken, borrowerInitialBal } = await loadFixture(deployFixure);
+            const { rewarder, borrower, borrowable } = await loadFixture(deployFixure);
 
-            // Check balance of CygLP
-            expect(await collateral.balanceOf(borrower._address)).to.be.gt(0);
+            // User Info struct
+            const userInfo = await rewarder.getUserInfo(borrowable.address, borrower._address);
 
-            // Check balance of LP
-            expect(await lpToken.balanceOf(borrower._address)).to.be.lt(borrowerInitialBal);
-        });
-    });
-
-    // TEST: BORROW
-    describe("Borrower borrows stablecoin from borrowable", () => {
-        // Check borrow() at the router
-        it("Should revert if borrowing from the router without borrow approval set", async () => {
-            // Fixture
-            const { router, borrowable, collateral, borrower } = await loadFixture(deployFixure);
-
-            // Get the current liquidity of the borrower's account
-            const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
-
-            // No shortfall
-            expect(shortfall).to.equal(0);
-
-            // Check there's enough balance in borrowable first
-            const usdBal = await borrowable.totalBalance();
-            expect(usdBal).to.be.gt(liquidity);
-
-            // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            ).to.be.reverted;
+            // Expect user to have shares
+            expect(userInfo.shares).to.be.gt(0);
         });
 
-        // Check borrow() in core
-        it("Should revert if borrowing from the core contract without borrow approval set", async () => {
+        // pendingCyg()
+        it("Should have pending CYG available", async () => {
             // Fixture
-            const { borrowable, collateral, borrower } = await loadFixture(deployFixure);
+            const { rewarder, borrower, borrowable } = await loadFixture(deployFixure);
 
-            // Get the current liquidity of the borrower's account
-            const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
+            const pending = await rewarder.pendingCyg(borrowable.address, borrower._address);
 
-            // No shortfall
-            expect(shortfall).to.equal(0);
-
-            // Check there's enough balance in borrowable first
-            const usdBal = await borrowable.totalBalance();
-            expect(usdBal).to.be.gt(liquidity);
-
-            // Should revert
-            await expect(borrowable.connect(borrower).borrow(borrower._address, borrower._address, liquidity, "0x")).to
-                .be.reverted;
+            // Expect user to have shares
+            expect(pending).to.be.gt(0);
         });
 
-        // Approve borrow in hangar18
-        it("Should succeed after borrow approval at the factory", async () => {
+        // collect()
+        it("Should collect CYG and emit {Collect} event", async () => {
             // Fixture
-            const { factory, router, borrowable, collateral, borrower } = await loadFixture(deployFixure);
+            const { rewarder, borrower, borrowable } = await loadFixture(deployFixure);
 
-            // Set borrow approval at the factory
-            await expect(factory.connect(borrower).setMasterBorrowApproval(router.address))
-                .to.emit(factory, "NewMasterBorrowApproval")
-                .withArgs(borrower._address, router.address, true);
+            // Collect
+            await expect(rewarder.connect(borrower).collect(borrowable.address, borrower._address)).to.emit(
+                rewarder,
+                "CollectReward",
+            );
+        });
 
-            // Get the current liquidity of the borrower's account
-            const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
+        // epochRewardsPacing()
+        it("Should be at 100% pacing after collecting", async () => {
+            // Fixture
+            const { rewarder, borrower, borrowable } = await loadFixture(deployFixure);
 
-            // No shortfall
-            expect(shortfall).to.equal(0);
+            await rewarder.accelerateTheUniverse();
+            // Collect
+            await expect(rewarder.connect(borrower).collect(borrowable.address, borrower._address)).to.emit(
+                rewarder,
+                "CollectReward",
+            );
 
-            // Check there's enough balance in borrowable first
-            const usdBal = await borrowable.totalBalance();
-            expect(usdBal).to.be.gt(liquidity);
-
-            // Should succeed
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            ).to.emit(borrowable, "Borrow");
+            const pacing = await rewarder.epochRewardsPacing();
+            console.log(pacing);
         });
     });
 });

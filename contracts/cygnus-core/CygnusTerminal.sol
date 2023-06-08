@@ -248,7 +248,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         address recipient,
         IAllowanceTransfer.PermitSingle calldata _permit,
         bytes calldata signature
-    ) external override update returns (uint256 shares) {
+    ) external override nonReentrant update returns (uint256 shares) {
         // Get balance before depositing in case of deposit fees
         uint256 balanceBefore = _previewTotalBalance();
 
@@ -304,7 +304,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant
      */
-    function redeem(uint256 shares, address recipient, address owner) external override update returns (uint256 assets) {
+    function redeem(uint256 shares, address recipient, address owner) external override nonReentrant update returns (uint256 assets) {
         // Withdraw flow
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 

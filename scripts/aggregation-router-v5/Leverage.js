@@ -1,20 +1,16 @@
 /**
- *  @notice Build 1inch swaps using AggregationRouterV5.
+ *  @notice Build 1inch swaps using AggregationRouterV5 for leverage. The router has already received
+ *          `leverageUsdcAmount` from the borrowable contract. We must convert this USDC amount to token0
+ *          or token1 of the LP. After this swap, we do the other swap on chain.
+ *  @notice Only 1 swap is needed.
  */
-module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lendingToken, router, leverageUsdcAmount) {
+module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount) {
     // Get token0 and token1 for this lp
     const token0 = await lpToken.token0();
     const token1 = await lpToken.token1();
 
-    /**
-     *  @notice TokenA and TokenB placeholders, and placeholders for the maximum amount of swaps possible (2)
-     */
-    let firstSwap;
-
-    /**
-     *  @notice Byte data array to pass to our periphery contract with the api calls from 1inch to complete the swaps
-     */
-    let calls = [];
+    const protocols =
+        "OPTIMISM_UNISWAP_V3,OPTIMISM_SYNTHETIX,OPTIMISM_SYNTHETIX_WRAPPER,OPTIMISM_CURVE,OPTIMISM_BALANCER_V2,OPTIMISM_VELODROME,OPTIMISM_CLIPPER_COVES,OPTIMISM_AAVE_V3,OPTIMISM_ELK,OPTIMISM_TRIDENT,OPTIMISM_MUMMY_FINANCE,OPTIMISM_NOMISWAPEPCS";
 
     /**
      *  @notice 1inch swagger API call
@@ -22,11 +18,11 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
      *  @param {String} fromToken - The address of the token we are swapping
      *  @param {String} toToken - The address of the token we are receiving
      *  @param {String} amount - The amount of `fromToken` we are swapping
-     *  @param {String} router - The address of the router (this is not really needed, but convinient)
+     *  @param {String} router - The address of the owner of the USDC (router)
      */
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api call
-        const apiUrl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&slippage=0.1&disableEstimate=true&compatibilityMode=true&complexityLevel=3`;
+        const apiUrl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&compatibilityMode=true&slippage=1&protocols=${protocols}`;
 
         // Fetch from 1inch api
         const swapdata = await fetch(apiUrl).then((response) => response.json());
@@ -35,35 +31,33 @@ module.exports = async function SwapCallData(chainId, lpToken, nativeToken, lend
         return swapdata;
     };
 
-    //
-    // ─────────────────────── 1. Check if token0 or token1 is already USDC
-    //
-    if (token0 === lendingToken || token1 === lendingToken) {
-        return calls;
-    } else {
-        //
-        // ───────────────────── 2. Check if token0 or token1 is Native token (WETH)
-        //
-        if (token0 === nativeToken || token1 === nativeToken) {
-            // Make first swap from USDC to Native Token
-            firstSwap = await oneInch(chainId, lendingToken, nativeToken, leverageUsdcAmount, router);
+    // 1Inch call array to pass to periphery
+    let calls = [];
+
+    // Check if token0 is already usdc
+    if (token0.toLowerCase() === usdc.toLowerCase() || token1.toLowerCase() === usdc.toLowerCase()) {
+        // If usdc pass empty bytes
+        calls = [...calls, "0x"];
+    }
+    // Not usdc, check for native token (ie WETH) to minimize slippage
+    else {
+        if (token0.toLowerCase() === nativeToken.toLowerCase() || token1.toLowerCase() === nativeToken.toLowerCase()) {
+            // Swap USDC to Native
+            const swapdata = await oneInch(chainId, usdc, nativeToken, leverageUsdcAmount, router.address);
 
             // Add to call array
-            calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x")];
-        } else {
-            //
-            // ───────────────────── 3. Neither token are USDC or Native Token, swap all USDC to token0
-            //
+            calls = [...calls, swapdata.tx.data.toString().replace("0x12aa3caf", "0x")];
+        }
+        // Swap to token0
+        else {
             // Swap USDC to token0
-            firstSwap = await oneInch(chainId, lendingToken, token0, leverageUsdcAmount, router);
+            const swapdata = await oneInch(chainId, usdc, token0, leverageUsdcAmount, router.address);
 
             // Add to call array
-            calls = [...calls, firstSwap.tx.data.toString().replace("0x12aa3caf", "0x")];
+            calls = [...calls, swapdata.tx.data.toString().replace("0x12aa3caf", "0x")];
         }
     }
 
-    // ───────────────────────── 4. Calculate optimal deposit of tokenA to tokenB
-
-    // Return LP Tokens minted by borrowing `leverageUsdcAmount` of USDC
+    // Return bytes array to pass to periphery
     return calls;
 };

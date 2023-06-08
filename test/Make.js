@@ -48,8 +48,7 @@ module.exports = async function Make() {
     const chainId = 10; // For 1inch
 
     // Set the LP Token address
-    // ETH/USDC - 0.05%
-    const lpTokenAddress = "0x7086622e6db990385b102d79cb1218947fb549a9";
+    const lpTokenAddress = "0xcdd41009E74bD1AE4F7B2EeCF892e4bC718b9302";
 
     // Set the USDC address on this chain
     const usdcAddress = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607";
@@ -61,10 +60,10 @@ module.exports = async function Make() {
     const usdcAggregator = "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3";
 
     // Set the chainlink aggregator addresses for the LP token's assets (token0/token1)
-    const aggregators = ["0x13e3Ee699D1909E989722E753853AE30b17e08c5", "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3"];
+    const aggregators = ["0x13e3Ee699D1909E989722E753853AE30b17e08c5", "0x0D276FC14719f9292D5C1eA2198673d1f4269246"];
 
     // Set a friendly name for the orbiter
-  const orbiterName = "Sushi: Constant Product AMM";
+    const orbiterName = "Velodrome Volatile LP";
 
     // You can create your own below or just leave as it is
 
@@ -139,7 +138,7 @@ module.exports = async function Make() {
 
     // Deploy the CygnusAltairX router to do borrows, liquidations, leverage, deleverage, repays, etc.
     const Router = await ethers.getContractFactory("CygnusAltairX");
-    const router = await Router.deploy(factory.address);
+    const router = await Router.deploy(factory.address, 0);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Router      | %s", chalk.magentaBright(router.address));
@@ -151,7 +150,7 @@ module.exports = async function Make() {
     const cygToken = await CygToken.deploy("Cygnus", "CYG", 18);
 
     console.log("\t-----------------------------------------------------------------------------");
-    console.log("\tCygnus Token       | %s", chalk.redBright(cygToken.address));
+    console.log("\tCygnus Token       | %s", chalk.cyanBright(cygToken.address));
 
     // ═══════════════════ 8. CYG REWARDER ═════════════════════════════════════════════════════
 
@@ -164,10 +163,6 @@ module.exports = async function Make() {
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
     const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards);
 
-    console.log("\t-----------------------------------------------------------------------------");
-    console.log("\tCygnus X1 Vault    | %s", chalk.redBright(cygRewarder.address));
-    console.log("\t-----------------------------------------------------------------------------");
-
     // Initialize rewarder
     await cygRewarder.initializeShuttleRewards(0, 1000);
 
@@ -177,19 +172,44 @@ module.exports = async function Make() {
     // Send the 3 M tokens from Owner to rewarder
     await cygToken.transfer(cygRewarder.address, totalCygRewards);
 
+    console.log("\t-----------------------------------------------------------------------------");
+    console.log("\tCygnus Rewarder    | %s", chalk.cyanBright(cygRewarder.address));
+
+    // ═══════════════════ 9. X1 Vault ═════════════════════════════════════════════════════
+
+    const Vault = await ethers.getContractFactory("CygnusX1Vault");
+    const vault = await Vault.deploy(factory.address, cygToken.address);
+
+    console.log("\t-----------------------------------------------------------------------------");
+    console.log("\tCygnus X1 Vault    | %s", chalk.cyanBright(vault.address));
+
     // Set the X1 Vault (not needed)
-    await factory.setCygnusX1Vault(cygRewarder.address);
+    await factory.setCygnusX1Vault(vault.address);
+
+    // ═══════════════════ 10. DAO Reserves ═════════════════════════════════════════════════════
+
+    const DAOReserves = await ethers.getContractFactory("CygnusDAOReserves");
+    const reserves = await DAOReserves.deploy(factory.address, daoReserves.address, BigInt(0.5e18));
+    await factory.setPendingDaoReserves(reserves.address);
+    await factory.setNewDaoReserves();
+    console.log("\t-----------------------------------------------------------------------------");
+    console.log("\tCygnus USD Reserve | %s", chalk.whiteBright(reserves.address));
+    console.log("\t-----------------------------------------------------------------------------");
 
     // ═════════════════════════════════════════════════════════════════════════════════════════
 
     return [
-        oracle, // The oracle contract instance.
-        factory, // The hagar18 contract instance
-        router, // The CygnusAltairX router contract instance
+        oracle, // CygnusNebulaOracle.sol
+        factory, // Hangar18.sol
+        router, // CygnusAltairX.sol
         borrowable, // The CygnusBorrow.sol contract instance which accepts stablecoin deposits
         collateral, // The CygnusCollateral.sol contract instance which accepts LP Token deposits
-        usdc, // THe Borrowable's underlying stablecoin contract instance
+        usdc, // The Borrowable's underlying stablecoin contract instance
         lpToken, // The collateral's underlying LP Token contract instance
         chainId, // The chain ID used for 1inch swaps
+        cygRewarder, // ComplexRewarder.sol
+        vault, // CygnusX1Vault.sol
+        reserves,
+        cygToken,
     ];
 };

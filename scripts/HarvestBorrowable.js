@@ -5,6 +5,7 @@ const chalk = require("chalk");
 // Hardhat
 const hre = require("hardhat");
 const ethers = hre.ethers;
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Permit2
 const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
@@ -13,12 +14,12 @@ const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
 const Users = require(path.resolve(__dirname, "../test/Users.js"));
 
-// Swapdata
+const HarvesterC = require(path.resolve(__dirname, "./aggregation-router-v5/ReinvestCollateral.js"));
 
-// Simple Borrow
-const cygnusBorrow = async () => {
+// Harvesters
+const harvestCollateral = async () => {
     // CONFIG
-    const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
+    const [, hangar18, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Charge allowances
@@ -27,6 +28,13 @@ const cygnusBorrow = async () => {
 
     // Set interest rate to 1% base rate and 10% slope
     await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.1e18), 2, BigInt(0.8e18));
+
+    // Deploy harvester
+    const BHarvester = await ethers.getContractFactory("BorrowableHarvester");
+    const harvester = await BHarvester.deploy(hangar18.address);
+
+    await harvester.initializeHarvester(borrowable.address);
+    await collateral.setHarvester(harvester.address);
 
     /***********************************************************************************************************
                                                  START FLASH LIQUIDATE
@@ -139,11 +147,11 @@ const cygnusBorrow = async () => {
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
-    // Approve Borrow
+    // Approve borrow
     await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
 
-    // Borrow
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
+    // prettier-ignore
+    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -166,6 +174,22 @@ const cygnusBorrow = async () => {
     console.log("----------------------------------------------------------------------------------------------");
     console.log("Borrower's Loan                               | %s USD", chalk.cyan("+" + loan));
     console.log("----------------------------------------------------------------------------------------------");
+    console.log(" ");
+    console.log("----------------------------------------------------------------------------------------------");
+    console.log("                                      HARVEST REWARDS                                         ");
+    console.log("----------------------------------------------------------------------------------------------");
+
+    const _lpBalance = await collateral.totalBalance();
+    await mine(200000);
+    const reinvestData = await HarvesterC(chainId, collateral, harvester);
+
+    await harvester.harvestRewards(collateral.address, reinvestData);
+
+    const lpBalance = await collateral.totalBalance();
+
+    console.log("Collateral`s Total Balance before reinvest    | %s LP Tokens", _lpBalance);
+    console.log("Borrowable`s Total Balance ater reinvest      | %s LP Tokens", lpBalance);
+
 };
 
-cygnusBorrow();
+harvestCollateral();

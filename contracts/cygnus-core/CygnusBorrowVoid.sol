@@ -11,7 +11,6 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusHarvester} from "./interfaces/ICygnusHarvester.sol";
 
 // Strategy
@@ -85,6 +84,23 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
      *  @notice Constructs the Cygnus Void contract which handles the strategy for the borrowable`s underlying.
      */
     constructor() {}
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+         4. MODIFIERS
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @notice Overrides the previous modifier from CygnusTerminal to update before interactions too
+     *  @notice CygnusTerminal override
+     *  @custom:modifier update Updates the total balance var in terms of its underlying
+     */
+    modifier update() override(CygnusTerminal) {
+        // Update before deposit to prevent deposit spam for yield bearing tokens
+        _update();
+        _;
+        // Update after deposit
+        _update();
+    }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
@@ -210,9 +226,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant
      */
-    function chargeVoid() external override nonReentrant {
+    function chargeVoid() external override {
         // Allow cToken to access our underlying
         approveTokenPrivate(underlying, address(SONNE_USDC), type(uint256).max);
 
@@ -227,7 +242,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant
      */
-    // prettier-ignore
     function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         // Harvest rewards and return tokens and amounts
         return getRewardsPrivate();
@@ -235,9 +249,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant
      */
-    function reinvestRewards_y7b(uint256 liquidity) external override nonReentrant update accrue {
+    function reinvestRewards_y7b(uint256 liquidity) external override update accrue {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
         if (msg.sender != address(harvester)) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
@@ -261,7 +274,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
 
         // Get reward tokens for the harvester.
         // We harvest once to get the tokens and set approvals in case reward tokens/harvester change.
-        // NOTE: This is safe because reward token is never underlying
+        // NOTE: This is safe because approved token is never underlying
         (address[] memory tokens, ) = getRewardsPrivate();
 
         // Loop through each token

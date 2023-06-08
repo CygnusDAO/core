@@ -4,6 +4,9 @@ pragma solidity >=0.8.17;
 // Dependencies
 import {ICygnusBorrowControl} from "./ICygnusBorrowControl.sol";
 
+/**
+ *  @notice Interface for the borrow model
+ */
 interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

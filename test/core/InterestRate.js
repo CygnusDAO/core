@@ -28,13 +28,13 @@ const ONE = ethers.utils.parseUnits("1", 18);
  *  - Utilization rate ~20%
  *  - Borrower borrows as much USDC as possible
  */
-describe("Cygnus Integration Redeem Tests", function () {
+describe("Cygnus Interest Rate Model", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */
     const deployFixure = async () => {
         // Make lending pool and collateral
-        const [, factory, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+        const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
         // Create users: owner (admin), lender, and borrower
         const [owner, , safeAddress1, lender, borrower] = await Users();
@@ -60,9 +60,6 @@ describe("Cygnus Integration Redeem Tests", function () {
 
         // Set BorrowAPR to 0% first
         await borrowable.connect(owner).setInterestRateModel(BigInt(0), BigInt(0), 2, BigInt(0.8e18));
-
-        // Approve router
-        await factory.connect(borrower).setMasterBorrowApproval(router.address);
 
         // Borrow max Liquidity
         await borrowUsd(borrower, borrowable, collateral, router);
@@ -347,7 +344,6 @@ describe("Cygnus Integration Redeem Tests", function () {
 
             // Accrue
             await expect(borrowable.accrueInterest()).to.emit(borrowable, "AccrueInterest");
-
             expect(await borrowable.totalBorrows()).to.be.gt(totalBorrows);
             expect(await borrowable.borrowIndex()).to.be.gt(borrowIndex);
             expect(await borrowable.totalBalance()).to.be.equal(totalBalance);

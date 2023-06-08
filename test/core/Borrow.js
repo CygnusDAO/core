@@ -3,7 +3,7 @@ const path = require("path");
 // Hardhat
 const hre = require("hardhat");
 const ethers = hre.ethers;
-// const { mine } = require("@nomicfoundation/hardhat-network-helpers")
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Testers
 const { expect } = require("chai");
@@ -44,13 +44,13 @@ const ONE = ethers.utils.parseUnits("1", 18);
  *      | Max Borrow                 | (Amount Collateral * Debt Ratio) / Liquidation Penalty     |
  *      +----------------------------+------------------------------------------------------------+
  */
-describe("Cygnus Integration Redeem Tests", function () {
+describe("Borrow Integration Tests", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */
     const deployFixure = async () => {
         // Make lending pool and collateral
-        const [, factory, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+        const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
         // Create users: owner (admin), lender, and borrower
         const [owner, , safeAddress1, lender, borrower] = await Users();
@@ -74,8 +74,7 @@ describe("Cygnus Integration Redeem Tests", function () {
         // Deposit 2 LP tokens into the collateral pool
         await borrowerDeposit(owner, lpToken, borrower, collateral, permit2);
 
-        // Approve router
-        await factory.connect(borrower).setMasterBorrowApproval(router.address);
+        await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
 
         // Return an object containing the various contracts, users, and initial balances for testing
         return {
@@ -160,7 +159,7 @@ describe("Cygnus Integration Redeem Tests", function () {
         const permit = {
             details: {
                 token: lpToken.address,
-                amount: BigInt(2e18),
+                amount: BigInt(4e18),
                 expiration: MaxAllowanceExpiration,
                 nonce: nonce,
             },
@@ -173,10 +172,10 @@ describe("Cygnus Integration Redeem Tests", function () {
         const signature = await owner._signTypedData(permitData.domain, permitData.types, permitData.values);
 
         // 3. Transfer LP tokens to owner
-        await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+        await lpToken.connect(borrower).transfer(owner.address, BigInt(4e18));
 
         // 4. Owner deposits using borrower address
-        await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+        await collateral.connect(owner).deposit(BigInt(4e18), borrower._address, permit, signature);
     };
 
     /**
@@ -224,18 +223,12 @@ describe("Cygnus Integration Redeem Tests", function () {
             expect(shares).to.be.equal(0);
 
             // Should revert with no liquidity error
-            await expect(
-                router
-                    .connect(safeAddress1)
-                    .borrow(borrowable.address, BigInt(1), safeAddress1.address, MaxUint256, "0x"),
-            ).to.be.reverted;
+            await expect(router.connect(safeAddress1).borrow(borrowable.address, BigInt(1), safeAddress1.address, MaxUint256, "0x")).to.be
+                .reverted;
 
             // Should revert with no liquidity error
-            await expect(
-                router
-                    .connect(safeAddress1)
-                    .borrow(borrowable.address, BigInt(1000e6), safeAddress1.address, MaxUint256, "0x"),
-            ).to.be.reverted;
+            await expect(router.connect(safeAddress1).borrow(borrowable.address, BigInt(1000e6), safeAddress1.address, MaxUint256, "0x")).to
+                .be.reverted;
         });
 
         // CHECK: `borrow()`
@@ -272,11 +265,8 @@ describe("Cygnus Integration Redeem Tests", function () {
             expect(usdBal).to.be.gt(liquidity);
 
             // Should revert
-            await expect(
-                router
-                    .connect(borrower)
-                    .borrow(borrowable.address, liquidity.add(BigInt(1)), borrower._address, MaxUint256, "0x"),
-            ).to.be.reverted; // Max Deadline and no permit
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity.add(BigInt(1)), borrower._address, MaxUint256, "0x"))
+                .to.be.reverted; // Max Deadline and no permit
         });
 
         // Check `borrow()`
@@ -294,16 +284,12 @@ describe("Cygnus Integration Redeem Tests", function () {
             const usdBalBefore = await usdc.balanceOf(borrower._address); // Get the USDC balance of the borrower's account before borrowing
 
             // Borrow the maximum amount possible from the borrowable token
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow") // Check `Borrow` event was emitted
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
             const usdBalAfter = await usdc.balanceOf(borrower._address); // Get the USDC balance of the borrower's account after borrowing
-            const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(
-                borrower._address,
-            ); // Get the current liquidity and shortfall of the borrower's collateral account
+            const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address); // Get the current liquidity and shortfall of the borrower's collateral account
 
             // Check that the borrower received the correct amount of USDC
             expect(usdBalAfter.sub(usdBalBefore)).to.be.equal(liquidity);
@@ -326,9 +312,7 @@ describe("Cygnus Integration Redeem Tests", function () {
             const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
 
             // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0); // No repay amount
 
@@ -348,9 +332,7 @@ describe("Cygnus Integration Redeem Tests", function () {
             const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
 
             // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0); // No repay amount
 
@@ -367,9 +349,7 @@ describe("Cygnus Integration Redeem Tests", function () {
             const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
 
             // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0); // No repay amount
 
@@ -397,16 +377,12 @@ describe("Cygnus Integration Redeem Tests", function () {
             const usdBalBefore = await usdc.balanceOf(borrower._address); // Get the USDC balance of the borrower's account before borrowing
 
             // Borrow the maximum amount possible from the borrowable token
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow") // Check `Borrow` event was emitted
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
             const usdBalAfter = await usdc.balanceOf(borrower._address); // Get the USDC balance of the borrower's account after borrowing
-            const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(
-                borrower._address,
-            );
+            const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
 
             // Check that the borrower received the correct amount of USDC
             expect(usdBalAfter.sub(usdBalBefore)).to.be.equal(liquidity);
@@ -422,16 +398,12 @@ describe("Cygnus Integration Redeem Tests", function () {
             //
             // Second borrow
             //
-            await expect(
-                router
-                    .connect(borrower)
-                    .borrow(borrowable.address, BigInt(100102940194e18), borrower._address, MaxUint256, "0x"),
-            ).to.be.reverted;
+            await expect(router.connect(borrower).borrow(borrowable.address, BigInt(19000e6), borrower._address, MaxUint256, "0x")).to.be
+                .reverted;
 
             // Min USDC unit
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, BigInt(1), borrower._address, MaxUint256, "0x"),
-            ).to.be.reverted;
+            await expect(router.connect(borrower).borrow(borrowable.address, BigInt(1), borrower._address, MaxUint256, "0x")).to.be
+                .reverted;
         });
 
         // Test: `transfer()`
@@ -443,9 +415,7 @@ describe("Cygnus Integration Redeem Tests", function () {
             const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
 
             // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
@@ -453,10 +423,64 @@ describe("Cygnus Integration Redeem Tests", function () {
             const debtRatio = await collateral.getDebtRatio(borrower._address);
             expect(debtRatio).to.be.equal(BigInt(1e18));
 
-            await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(0.0000001e18))).to.be
-                .reverted;
+            await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(0.1e18))).to.be.reverted;
+            await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(1e18))).to.be.reverted;
             await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(2e18))).to.be.reverted;
             await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(4e18))).to.be.reverted;
+        });
+
+        // Test: `transfer()`
+        it("Should be able to transfer CygLP if they have 0 borrows", async () => {
+            // Load the fixture to get the collateral and borrower objects
+            const { collateral, borrower, safeAddress1 } = await loadFixture(deployFixure);
+
+            // Get the current liquidity of the borrower's account
+            const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
+
+            await expect(collateral.connect(borrower).transfer(safeAddress1.address, liquidity)).to.emit(collateral, "Transfer");
+        });
+
+      //Transfer test: transferFrom()
+        it("Should be able to give allowance to another address and use `transferFrom` when they have 0 borrows", async () => {
+            // Load the fixture to get the collateral and borrower objects
+            const { collateral, borrower, safeAddress1 } = await loadFixture(deployFixure);
+
+            // Get the current liquidity of the borrower's account
+            const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
+
+            // Approve safe address
+            await expect(collateral.connect(borrower).approve(safeAddress1.address, BigInt(1000000e18))).to.emit(collateral, "Approval");
+
+            //
+            await expect(collateral.connect(safeAddress1).transferFrom(borrower._address, safeAddress1.address, liquidity)).to.emit(
+                collateral,
+                "Transfer",
+            );
+        });
+
+        // Test: `transferFrom()`
+        it("Should not be able to give allowance to others to transfer their CygLP through `transferFrom` if it would put their account in shortfall", async () => {
+            // Load the fixture to get the collateral and borrower objects
+            const { router, borrowable, collateral, borrower, safeAddress1 } = await loadFixture(deployFixure);
+
+            // Get the current liquidity of the borrower's account
+            const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
+
+            // Approve safe address
+            await expect(collateral.connect(borrower).approve(safeAddress1.address, BigInt(1000000e18))).to.emit(collateral, "Approval");
+
+            // Should revert
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
+                .to.emit(borrowable, "Borrow")
+                .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
+
+            // Get debt ratio, should be 100%
+            const debtRatio = await collateral.getDebtRatio(borrower._address);
+            expect(debtRatio).to.be.equal(BigInt(1e18));
+
+            // Should not be able to do this
+            await expect(collateral.connect(safeAddress1).transferFrom(borrower._address, safeAddress1.address, BigInt(0.1e18))).to.be
+                .reverted;
         });
 
         // TEST: redeem()
@@ -468,9 +492,7 @@ describe("Cygnus Integration Redeem Tests", function () {
             const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
 
             // Should revert
-            await expect(
-                router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"),
-            )
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
@@ -478,15 +500,28 @@ describe("Cygnus Integration Redeem Tests", function () {
             const debtRatio = await collateral.getDebtRatio(borrower._address);
             expect(debtRatio).to.be.equal(BigInt(1e18));
 
-            await expect(
-                collateral.connect(borrower).redeem(BigInt(0.0000001e18), borrower._address, borrower._address),
-            ).to.be.reverted;
+            await expect(collateral.connect(borrower).redeem(BigInt(0.0000001e18), borrower._address, borrower._address)).to.be.reverted;
+            await expect(collateral.connect(borrower).redeem(BigInt(1e18), borrower._address, borrower._address)).to.be.reverted;
 
-            await expect(collateral.connect(borrower).redeem(BigInt(2e18), borrower._address, borrower._address)).to.be
-                .reverted;
+            await expect(collateral.connect(borrower).redeem(BigInt(2e18), borrower._address, borrower._address)).to.be.reverted;
 
-            await expect(collateral.connect(borrower).redeem(BigInt(4e18), borrower._address, borrower._address)).to.be
-                .reverted;
+            await expect(collateral.connect(borrower).redeem(BigInt(4e18), borrower._address, borrower._address)).to.be.reverted;
+        });
+
+        it("Should accrue interest if there are borrows", async () => {
+            // Load the fixture to get the collateral and borrower objects
+            const { router, borrowable, collateral, borrower } = await loadFixture(deployFixure);
+
+            // Get the current liquidity of the borrower's account
+            const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
+
+            // Should revert
+            await expect(router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, MaxUint256, "0x"))
+                .to.emit(borrowable, "Borrow")
+                .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
+
+            await mine(100);
+            await expect(borrowable.connect(borrower).accrueInterest()).to.emit(borrowable, "AccrueInterest");
         });
     });
 });

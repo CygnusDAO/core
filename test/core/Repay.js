@@ -40,7 +40,7 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
  *       - Repays full loan and updates correctly
  *       - Repays half the loan and updates correctly
  */
-describe("Cygnus Integration Redeem Tests", function () {
+describe("Repay loans", function () {
     // Deploy fixture
     const deployFixure = async () => {
         // Make lending pool and collateral
@@ -75,8 +75,7 @@ describe("Cygnus Integration Redeem Tests", function () {
         await borrowable.connect(owner).setInterestRateModel(baseRate, multiplier, kinkMultiplier, BigInt(0.75e18));
         await borrowable.sync();
 
-        // Approve router
-        await factory.connect(borrower).setMasterBorrowApproval(router.address);
+        await borrowable.connect(owner).borrowApprove(router.address, ethers.constants.MaxUint256);
 
         // Borrow max Liquidity
         await borrowUsd(borrower, borrowable, collateral, router);

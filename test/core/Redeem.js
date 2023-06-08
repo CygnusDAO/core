@@ -29,7 +29,7 @@ const ONE = ethers.utils.parseUnits("1", 18);
  *            interest accrual
  *          - Lender then redeems and receives AT LEAST 100,000 USDC back
  */
-describe("Cygnus Integration Redeem Tests", function () {
+describe("Redeem Borrowable (CygUSD) for USDC and Collateral (CygLP) for LP", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */

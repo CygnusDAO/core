@@ -7,7 +7,7 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 // Permit2
-const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { PERMIT2_ADDRESS, AllowanceTransfer, SignatureTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
@@ -18,7 +18,7 @@ const Users = require(path.resolve(__dirname, "../test/Users.js"));
 // Simple Borrow
 const cygnusBorrow = async () => {
     // CONFIG
-    const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
+    const [, hangar18, router, borrowable, collateral, usdc, lpToken] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Charge allowances
@@ -139,11 +139,11 @@ const cygnusBorrow = async () => {
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
-    // Approve Borrow
+    // Approve borrow
     await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
 
-    // Borrow
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
+    // prettier-ignore
+    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -166,6 +166,39 @@ const cygnusBorrow = async () => {
     console.log("----------------------------------------------------------------------------------------------");
     console.log("Borrower's Loan                               | %s USD", chalk.cyan("+" + loan));
     console.log("----------------------------------------------------------------------------------------------");
+
+    console.log("----------------------------------------------------------------------------------------------");
+    console.log("                                             REPAY                                            ");
+    console.log("----------------------------------------------------------------------------------------------");
+
+    await usdc.connect(lender).transfer(owner.address, BigInt(500e6));
+
+    // Repays full amount of 4k but not whole is used
+    const repayAmount = BigInt(4000e6);
+
+    // 2. Build permit
+    const _permit = {
+        permitted: {
+            token: usdc.address,
+            amount: repayAmount,
+        },
+        spender: router.address,
+        nonce: 0,
+        deadline: ethers.constants.MaxUint256,
+    };
+
+    // 3. Sign the permit
+    const _permitData = SignatureTransfer.getPermitData(_permit, PERMIT2_ADDRESS, _chainId); // Get the permit data
+    const _signature = await owner._signTypedData(_permitData.domain, _permitData.types, _permitData.values); // Sign the permit
+
+    // 4. Repay with permit
+    await router
+        .connect(owner)
+        .repayPermit2Signature(borrowable.address, repayAmount, borrower._address, ethers.constants.MaxUint256, _permit, _signature);
+
+    // Check the borrower's new borrow balance
+    const newBorrowBal = await borrowable.getBorrowBalance(borrower._address);
+    console.log("Last Borrow Balance: %s", newBorrowBal);
 };
 
 cygnusBorrow();

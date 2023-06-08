@@ -3,6 +3,8 @@ pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusCollateralModel} from "./ICygnusCollateralModel.sol";
+
+// Harvester
 import {ICygnusHarvester} from "./ICygnusHarvester.sol";
 
 /**
@@ -90,16 +92,15 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
     /**
-     *  @notice Can be called by anyone
-     *  @notice Charges approvals needed for deposits and withdrawals along with setting rewarders (if any)
-     *
-     *  @custom:security non-reentrant
+     *  @notice Can be called by anyone. Charges approvals needed for deposits and withdrawals, and any other function
+     *          needed to get the vault started. ie, setting a pool ID from a MasterChef, a gauge, etc.
      */
     function chargeVoid() external;
 
     /**
-     *  @notice Only EOA can call
      *  @notice Get the pending rewards manually - helpful to get rewards through static calls
      *
      *  @return tokens The addresses of the reward tokens earned by harvesting rewards
@@ -110,16 +111,14 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     function getRewards() external returns (address[] memory tokens, uint256[] memory amounts);
 
     /**
-     *  @notice Only EOA can call
-     *  @notice Reinvests all rewards from the rewarder to buy more USD to then deposit back into the rewarder
+     *  @notice Only the harvester can reinvest 
+     *  @notice Reinvests all rewards from the rewarder to buy more LP to then deposit back into the rewarder
      *          This makes totalBalance increase in this contract, increasing the exchangeRate between
-     *          CygUSD and underlying and thus lowering utilization rate and borrow rate
+     *          CygLP and underlying and thus lowering debt ratio for all borrwers in the pool as they own more LP.
      *
-     *  @custom:security non-reentrant
+     *  @custom:security only-harvester
      */
     function reinvestRewards_y7b(uint256 liquidity) external;
-
-    // Admin
 
     /**
      *  @notice Admin 👽
@@ -127,7 +126,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *
      *  @param _harvester The address of the new harvester contract
      *
-     *  @custom:security non-reentrant only-admin
+     *  @custom:security only-admin
      */
     function setHarvester(ICygnusHarvester _harvester) external;
 }
