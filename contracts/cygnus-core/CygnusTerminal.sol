@@ -162,12 +162,12 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ─────────────────────────────────────────────── ─ */
 
     /**
      *  @notice Internal check for msg.sender admin, checks factory's current admin 👽
      */
-    function _checkAdmin() internal view {
+    function _checkAdmin() private view {
         // Current admin from the factory
         address admin = hangar18.admin();
 
@@ -175,12 +175,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         if (msg.sender != admin) revert CygnusTerminal__MsgSenderNotAdmin();
     }
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
     /**
      *  @notice Checks the `token` balance of this contract
      *  @param token The token to view balance of
      *  @return amount This contract's `token` balance
      */
-    function contractBalanceOf(address token) internal view returns (uint256) {
+    function _checkBalance(address token) internal view returns (uint256) {
         // Our balance of `token`
         return token.balanceOf(address(this));
     }
@@ -222,7 +224,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     function _previewTotalBalance() internal virtual returns (uint256 balance) {
         // Get current balanceOf this contract
-        balance = contractBalanceOf(underlying);
+        balance = _checkBalance(underlying);
     }
 
     /**
@@ -241,14 +243,13 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
     /**
      *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
      */
     function deposit(
         uint256 assets,
         address recipient,
         IAllowanceTransfer.PermitSingle calldata _permit,
         bytes calldata signature
-    ) external override nonReentrant update returns (uint256 shares) {
+    ) external override update returns (uint256 shares) {
         // Get balance before depositing in case of deposit fees
         uint256 balanceBefore = _previewTotalBalance();
 
@@ -302,9 +303,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
     /**
      *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant
      */
-    function redeem(uint256 shares, address recipient, address owner) external override nonReentrant update returns (uint256 assets) {
+    function redeem(uint256 shares, address recipient, address owner) external override update returns (uint256 assets) {
         // Withdraw flow
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 
@@ -336,7 +336,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         if (token == underlying) revert CygnusTerminal__CantSweepUnderlying();
 
         // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = contractBalanceOf(token);
+        uint256 balance = _checkBalance(token);
 
         // Transfer token
         token.safeTransfer(msg.sender, balance);

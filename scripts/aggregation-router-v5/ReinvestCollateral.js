@@ -14,9 +14,6 @@ module.exports = async function reinvestCollateral(chainId, collateral, harveste
     // 3. do a static call to the cygnuscollateral contract get the tokens and amounts harvested
     const { tokens, amounts } = await collateral.callStatic.getRewards();
 
-    console.log(tokens);
-    console.log(amounts);
-
     /**
      *  @notice make a 1inch api call
      *  @param {string} fromToken - the address of the token being swapped

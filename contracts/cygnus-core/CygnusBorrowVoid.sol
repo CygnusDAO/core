@@ -160,7 +160,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
         uint256[] memory _amounts = DISTRIBUTOR.claimAll();
 
         // 3. Re-stake all Sonne
-        uint256 sonneRewards = contractBalanceOf(SONNE);
+        uint256 sonneRewards = _checkBalance(SONNE);
 
         // Check non-zero
         if (sonneRewards > 0) DISTRIBUTOR.mint(sonneRewards);
@@ -180,7 +180,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowA
             tokens[i - 1] = DISTRIBUTOR.tokens(i);
 
             // Amounts
-            amounts[i - 1] = contractBalanceOf(tokens[i - 1]);
+            amounts[i - 1] = _checkBalance(tokens[i - 1]);
         }
     }
 

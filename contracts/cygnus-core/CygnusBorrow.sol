@@ -148,7 +148,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
         // ────────── 3. Get the repay amount (if any)
         // Amount of USD sent to the contract which is not deposited in the strategy.
-        uint256 repayAmount = contractBalanceOf(underlying);
+        uint256 repayAmount = _checkBalance(underlying);
 
         // ────────── 4. Update borrow internally with borrowAmount and repayAmount
         // IMPORTANT: During tests we want to keep track here of what was actually withdrawn from the strategy
@@ -216,7 +216,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Current balance of USD not deposited in strategy (if sell to market then router must have sent back USD).
         // The amount received back would have to be equal at least to `actualRepayAmount`, allowing liquidator
         // to keep the liquidation incentive
-        amountUsd = contractBalanceOf(underlying);
+        amountUsd = _checkBalance(underlying);
 
         /// @custom:error InsufficientUsdReceived Avoid liquidating if we received less usd than declared
         if (amountUsd < actualRepayAmount) revert CygnusBorrow__InsufficientUsdReceived();

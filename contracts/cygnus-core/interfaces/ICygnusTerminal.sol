@@ -9,7 +9,6 @@ import {IHangar18} from "./IHangar18.sol";
 import {IAllowanceTransfer} from "./IAllowanceTransfer.sol";
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
-
 /**
  *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts
  *  @notice The interface for the CygnusTerminal contract allows minting/redeeming Cygnus pool tokens
@@ -161,8 +160,6 @@ interface ICygnusTerminal is IERC20Permit {
      *  @param _permit Data signed over by the owner specifying the terms of approval
      *  @param _signature The owner's signature over the permit data
      *  @return shares Amount of Cygnus Vault shares minted and transferred to the `recipient`.
-     *
-     *  @custom:security non-reentrant
      */
     function deposit(
         uint256 assets,
@@ -183,8 +180,6 @@ interface ICygnusTerminal is IERC20Permit {
      *  @param owner The address that owns the shares.
      *
      *  @return assets The amount of underlying assets received by the `recipient`.
-     *
-     *  @custom:security non-reentrant
      */
     function redeem(uint256 shares, address recipient, address owner) external returns (uint256 assets);
 

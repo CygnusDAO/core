@@ -9,9 +9,6 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
     const token0 = await lpToken.token0();
     const token1 = await lpToken.token1();
 
-    const protocols =
-        "OPTIMISM_UNISWAP_V3,OPTIMISM_SYNTHETIX,OPTIMISM_SYNTHETIX_WRAPPER,OPTIMISM_CURVE,OPTIMISM_BALANCER_V2,OPTIMISM_VELODROME,OPTIMISM_CLIPPER_COVES,OPTIMISM_AAVE_V3,OPTIMISM_ELK,OPTIMISM_TRIDENT,OPTIMISM_MUMMY_FINANCE,OPTIMISM_NOMISWAPEPCS";
-
     /**
      *  @notice 1inch swagger API call
      *  @param {Number} chainId - The id of this chain
@@ -22,7 +19,7 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
      */
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api call
-        const apiUrl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&compatibilityMode=true&slippage=1&protocols=${protocols}`;
+        const apiUrl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&compatibilityMode=true&slippage=1`;
 
         // Fetch from 1inch api
         const swapdata = await fetch(apiUrl).then((response) => response.json());

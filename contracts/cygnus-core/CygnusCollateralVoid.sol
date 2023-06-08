@@ -146,7 +146,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         gauge.getReward(address(this), tokens);
 
         // Get our balance
-        amounts[0] = contractBalanceOf(VELO);
+        amounts[0] = _checkBalance(VELO);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -158,7 +158,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // Get this contracts deposited LP amount from Velo gauge
-        balance = contractBalanceOf(address(gauge));
+        balance = _checkBalance(address(gauge));
     }
 
     /**
