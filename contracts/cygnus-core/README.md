@@ -16,6 +16,10 @@
 
 - CollateralModel: Prices the collateral (LP) in USDC and determines if a user has sufficient collateral to borrow
 
+### BorrowVoid / Collateral Void
+
+- Strategies for each pool token. Borrowable has a USDC strategy (for example deposit in Stargate and accrue STG) and the Collateral has an LP strategy (deposit in the DEX' farm)
+
 ### Borrow / Collateral
 
 - Borrow: Liquidations and Borrows
