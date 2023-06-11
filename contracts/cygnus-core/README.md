@@ -18,7 +18,9 @@
 
 ### BorrowVoid / Collateral Void
 
-- Strategies for each pool token. Borrowable has a USDC strategy (for example deposit in Stargate and accrue STG) and the Collateral has an LP strategy (deposit in the DEX' farm)
+- Strategies for each pool token. 
+- Borrowable: USDC strategy (for example deposit in Stargate and accrue STG)
+- Collateral: LP strategy (stake the LP in the DEX' masterchef or rewards contract)
 
 ### Borrow / Collateral
 
