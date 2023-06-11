@@ -8,7 +8,7 @@
 
 ### BorrowControl / CollateralControl
 
-- Contract where admins can control pool variables according to governance
+- Contracts where admins can control pool variables according to governance
 
 ### BorrowModel / CollateralModel
 
@@ -18,9 +18,9 @@
 
 ### BorrowVoid / Collateral Void
 
-- Borrowable: USDC strategy (for example deposit in Stargate and accrue STG)
+- BorrowVoid: USDC strategy (for example deposit in Stargate and accrue STG)
 
-- Collateral: LP strategy (stake the LP in the DEX' masterchef or rewards contract)
+- CollateralVoid: LP strategy (stake the LP in the DEX' masterchef or rewards contract)
 
 ### Borrow / Collateral
 
