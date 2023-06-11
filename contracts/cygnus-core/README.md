@@ -1,4 +1,4 @@
-![image](https://github.com/CygnusDAO/core/assets/97303883/654c4f79-bb54-48ea-b703-97e320106032)
+![image](https://github.com/CygnusDAO/core/assets/97303883/3d52ffa0-9613-4042-aa0d-8645d2acf5f0)
 
 # Architecture
 
