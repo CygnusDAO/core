@@ -4,128 +4,6 @@
   "sourceName": "contracts/cygnus-core/interfaces/IERC20.sol",
   "abi": [
     {
-      "inputs": [],
-      "name": "ERC20_ApproveOwnerZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ERC20_ApproveSpenderZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ERC20_BurnHolderZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "senderBalance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "transferAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20_FromInsufficientBalance",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "allowance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "transferAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20_InsufficientAllowance",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ERC20_MintBeneficiaryZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ERC20_TransferFromZeroAddress",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ERC20_TransferToZeroAddress",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "Approval",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "Transfer",
-      "type": "event"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -158,7 +36,7 @@
         },
         {
           "internalType": "uint256",
-          "name": "value",
+          "name": "amount",
           "type": "uint256"
         }
       ],
@@ -203,54 +81,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "decreaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "increaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

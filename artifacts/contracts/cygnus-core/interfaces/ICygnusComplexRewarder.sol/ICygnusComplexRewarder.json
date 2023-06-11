@@ -6,11 +6,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "shuttleId",
-          "type": "uint256"
-        },
-        {
           "internalType": "address",
           "name": "borrower",
           "type": "address"

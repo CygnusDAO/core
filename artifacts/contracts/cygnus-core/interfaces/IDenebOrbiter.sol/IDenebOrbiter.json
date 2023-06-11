@@ -5,7 +5,7 @@
   "abi": [
     {
       "inputs": [],
-      "name": "COLLATERAL_INIT_CODE_HASH",
+      "name": "collateralInitCodeHash",
       "outputs": [
         {
           "internalType": "bytes32",

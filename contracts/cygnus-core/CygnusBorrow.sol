@@ -125,7 +125,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         bytes calldata data
     ) external override nonReentrant update accrue {
         // Check if msg.sender can borrow on behalf of borrower
-        if (borrower != msg.sender) _borrowAllowance(borrower, msg.sender, borrowAmount);
+        if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
         // ────────── 1. Optimistically send `borrowAmount` to `receiver`
         // Check for borrow amount, if a repay transaction this should be 0, else reverts at the end.

@@ -5,7 +5,7 @@
   "abi": [
     {
       "inputs": [],
-      "name": "BORROWABLE_INIT_CODE_HASH",
+      "name": "borrowableInitCodeHash",
       "outputs": [
         {
           "internalType": "bytes32",

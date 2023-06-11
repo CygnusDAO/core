@@ -9,6 +9,24 @@
           "internalType": "address",
           "name": "holder",
           "type": "address"
+        },
+        {
+          "internalType": "address[]",
+          "name": "cTokens",
+          "type": "address[]"
+        }
+      ],
+      "name": "claimComp",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "holder",
+          "type": "address"
         }
       ],
       "name": "claimComp",

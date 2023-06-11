@@ -3,7 +3,6 @@ pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowModel} from "./ICygnusBorrowModel.sol";
-import {ICygnusBorrowApprove} from "./ICygnusBorrowApprove.sol";
 
 // Harvester
 import {ICygnusHarvester} from "./ICygnusHarvester.sol";
@@ -13,7 +12,7 @@ import {ICygnusHarvester} from "./ICygnusHarvester.sol";
  *  @notice Interface for `CygnusBorrowVoid` which is in charge of connecting the stablecoin Token with
  *          a specified strategy (for example connect to a rewarder contract to stake the USDC, etc.)
  */
-interface ICygnusBorrowVoid is ICygnusBorrowModel, ICygnusBorrowApprove {
+interface ICygnusBorrowVoid is ICygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

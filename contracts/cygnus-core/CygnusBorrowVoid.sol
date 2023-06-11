@@ -4,7 +4,6 @@ pragma solidity >=0.8.17;
 // Dependencies
 import {ICygnusBorrowVoid} from "./interfaces/ICygnusBorrowVoid.sol";
 import {CygnusBorrowModel} from "./CygnusBorrowModel.sol";
-import {CygnusBorrowApprove} from "./CygnusBorrowApprove.sol";
 
 // Libraries
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
@@ -26,7 +25,7 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
  *  @author CygnusDAO
  *  @notice Strategy for the underlying stablecoin deposits.
  */
-contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel, CygnusBorrowApprove {
+contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             1. LIBRARIES
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
