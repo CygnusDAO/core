@@ -10,7 +10,6 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
 
@@ -55,14 +54,18 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice ERC20 Overrides
+     *  @notice ERC20 Overrides transfer, transferFrom & burn
      *  @notice Before any token transfer we check whether the user has sufficient liquidity (no debt) to transfer
+     *  @inheritdoc ERC20
      */
     function _beforeTokenTransfer(address from, address, uint256 amount) internal view override(ERC20) {
-        // Escape in case of flash redeem
-        if (from == address(this)) return;
+        // Escape in case of `flashRedeemAltair()` or _mint()
+        // 1. This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
+        // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem`
+        // 2. Sending from zero address there's no point to check as this would only be used at the time of minting CygLP
+        if (from == address(this) || from == address(0)) return;
 
-        /// @custom:error InsufficientLiquidity Avoid burning supply if there's shortfall
+        /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();
     }
 
@@ -79,9 +82,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
             revert CygnusCollateral__MsgSenderNotBorrowable();
         }
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
-        else if (repayAmount == 0) {
-            revert CygnusCollateral__CantLiquidateZero();
-        }
+        else if (repayAmount == 0) revert CygnusCollateral__CantLiquidateZero();
 
         // Get user's shortfall (if any)
         // prettier-ignore
@@ -96,8 +97,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Factor in liquidation incentive and current exchange rate to add/decrease collateral token balance
         cygLPAmount = (repayAmount.divWad(lpTokenPrice) * liquidationIncentive) / exchangeRate();
 
-        // Transfer the repaid amount + liq. incentive to the liquidator
-        // Use the transfer at erc20 bypassing `canRedeem`
+        // Transfer the repaid amount + liq. incentive to the liquidator, escapes canRedeem
         _transfer(borrower, liquidator, cygLPAmount);
 
         // Initialize and check if liquidation fee is set
@@ -112,7 +112,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
             address daoReserves = hangar18.daoReserves();
 
             // If applicable, seize daoFee from the borrower
-            // Use the transfer at erc20 bypassing `canRedeem`
             _transfer(borrower, daoReserves, daoFee);
         }
 
@@ -147,13 +146,13 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         uint256 cygLPTokens = balanceOf(address(this));
 
         // Calculate the equivalent of the flash-redeemed assets in shares
-        uint256 shares = assets.divWad(exchangeRate());
+        uint256 shares = assets.divWadUp(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared
         if (cygLPTokens < shares) revert CygnusCollateral__InsufficientCygLPReceived();
 
         // Burn tokens and emit a Transfer event
-        // Escapes `canRedeem` since we are burning tokens from this address only
+        // Escapes `canRedeem` since we are burning tokens from this address
         _burn(address(this), cygLPTokens);
     }
 

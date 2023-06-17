@@ -118,12 +118,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override reserveFactor = 0.15e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override exchangeRateStored = 1e18;
+    uint256 public override reserveFactor = 0.1e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR

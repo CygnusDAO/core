@@ -22,7 +22,7 @@ pragma solidity >=0.8.17;
 // Dependencies
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 
-// Contracts
+// CygnusCollateral.sol
 import {CygnusCollateral} from "./CygnusCollateral.sol";
 
 /**

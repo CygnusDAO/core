@@ -22,9 +22,10 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 const { MaxUint256 } = ethers.constants;
 const ONE = ethers.utils.parseUnits("1", 18);
 
-// TODO: `canRedeem` can suffer from small amounts of unlocked tokens due to losing decimal precision
-//       since usdc having 6 decimanls and lps 18. Should in theory add an extra check on core. Important
-//       for transfers/burns too.
+// TODO: `canRedeem` can suffer from tiny amounts of unlocked tokens due to losing decimal precision
+//       since usdc having 6 decimanls and lps have 18. This is only the case when we max borrow our liquidity.
+//       The loss in precision is less than $0.000001 but its still annoying
+//
 /**
  *  @notice Borrower does a simple borrow
  *  @notice As described in `ModelCollateral.js`

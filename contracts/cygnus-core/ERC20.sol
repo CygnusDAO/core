@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+// Dependencies
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 
-// Edited from original author, removed before/after transfer hooks from mint function since we override and don't need
+/// IMPORTANT: We removed hooks from the `_transfer` fucntion 
 
 /// @notice Simple ERC20 + EIP-2612 implementation.
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/tokens/ERC20.sol)
@@ -15,7 +16,7 @@ import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 /// For performance, this implementation WILL NOT revert for such actions.
 /// Please add any checks with overrides if desired.
 abstract contract ERC20 is IERC20Permit {
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+      /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       CUSTOM ERRORS                        */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
@@ -88,7 +89,7 @@ abstract contract ERC20 is IERC20Permit {
     ///     mstore(0x00, owner)
     ///     let nonceSlot := keccak256(0x0c, 0x20)
     /// ```
-    uint256 internal constant _NONCES_SLOT_SEED = 0x38377508;
+    uint256 private constant _NONCES_SLOT_SEED = 0x38377508;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ERC20 METADATA                       */
@@ -128,7 +129,12 @@ abstract contract ERC20 is IERC20Permit {
     }
 
     /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(address owner, address spender) public view virtual returns (uint256 result) {
+    function allowance(address owner, address spender)
+        public
+        view
+        virtual
+        returns (uint256 result)
+    {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x20, spender)
@@ -323,10 +329,15 @@ abstract contract ERC20 is IERC20Permit {
     /// authorized by a signed approval by `owner`.
     ///
     /// Emits a {Approval} event.
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        public
-        virtual
-    {
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual {
         bytes32 domainSeparator = DOMAIN_SEPARATOR();
         /// @solidity memory-safe-assembly
         assembly {
@@ -418,6 +429,7 @@ abstract contract ERC20 is IERC20Permit {
     ///
     /// Emits a {Transfer} event.
     function _mint(address to, uint256 amount) internal virtual {
+        _beforeTokenTransfer(address(0), to, amount);
         /// @solidity memory-safe-assembly
         assembly {
             let totalSupplyBefore := sload(_TOTAL_SUPPLY_SLOT)
@@ -439,6 +451,7 @@ abstract contract ERC20 is IERC20Permit {
             mstore(0x20, amount)
             log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, 0, shr(96, mload(0x0c)))
         }
+        _afterTokenTransfer(address(0), to, amount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -562,4 +575,3 @@ abstract contract ERC20 is IERC20Permit {
     /// This includes minting and burning.
     function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }
-

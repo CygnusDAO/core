@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity >=0.8.17;
 
-import '../CygnusBorrow.sol';
-
 /**
  *  @title CygnusPoolAddress
  *  @dev Provides functions for deriving Cygnus collateral and borrow addresses deployed by Factory

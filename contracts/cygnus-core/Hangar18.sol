@@ -70,11 +70,6 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    IAggregationRouterV5 public constant override AGGREGATION_ROUTER_V5 = IAggregationRouterV5(0x1111111254EEB25477B68fb85Ed929f73A960582);
-
-    /**
-     *  @inheritdoc IHangar18
-     */
     Orbiter[] public override allOrbiters;
 
     /**
@@ -312,7 +307,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     ) external override nonReentrant cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
         // Load orbiter to memory
-        Orbiter memory orbiter = getOrbiters[orbiterId];
+        Orbiter storage orbiter = getOrbiters[orbiterId];
 
         /// @custom:error OrbitersAreInactive
         if (!orbiter.status) {
@@ -322,7 +317,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
         // Load shuttle to storage
-        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiter.orbiterId);
+        Shuttle storage shuttle = boardShuttle(lpTokenPair, orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
         // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
@@ -345,7 +340,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         }
 
         //  ─────────────────────────────── Phase 4 ───────────────────────────────
-        // Oracle should never NOT be initialized for this pair. If not initialized, deployment of collateral auto fails
+        // Oracle should never NOT be initialized for this pair.
         bool oracleInitialized = orbiter.nebulaOracle.getNebula(lpTokenPair).initialized;
 
         /// @custom:error LPTokenPairNotSupported

@@ -55,9 +55,9 @@ import {ERC20} from "./ERC20.sol";
 import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
+import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
-import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
@@ -192,7 +192,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    function exchangeRate() public virtual override returns (uint256) {
+    function exchangeRate() public view virtual override returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply();
 
@@ -253,8 +253,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         // Get balance before depositing in case of deposit fees
         uint256 balanceBefore = _previewTotalBalance();
 
-        // Check for permit (users can just approve permit2 and skip this by passing an empty
-        // `_permit` and an empty `signature`)
+        // Check for permit to approve and deposit in 1 tx. Users can just approve this contract in
+        // permit2 and skip this by passing an empty `signature`).
         if (signature.length > 0) {
             // Set allowance using permit
             PERMIT2.permit(
@@ -285,13 +285,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         /// @custom:error CantMintZeroShares Avoid minting no shares
         if (shares == 0) revert CygnusTerminal__CantMintZeroShares();
 
-        // Avoid first depositor front-running & update shares - only for the first pool depositor
+        // Avoid inflation attack on the vault - This is only for the first pool depositor as after there will always
+        // be 1000 shares locked in zero address
         if (totalSupply() == 0) {
             // Update shares for first depositor
             shares -= 1000;
 
             // Lock initial tokens
-            _mint(address(0xdEaD), 1000);
+            _mint(address(0), 1000);
         }
 
         // Mint shares and emit Transfer event
@@ -328,10 +329,13 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     }
 
     /**
+     *  @notice We mark it as virtual in case we need to override it in the strategy contracts.
+     *          For example, if the strategy involves depositing USDC in a lending protocol and receiving
+     *          cTokens, then we also revert if admin attempts to withdraw cToken.
      *  @inheritdoc ICygnusTerminal
      *  @custom:security non-reentrant only-admin 👽
      */
-    function sweepToken(address token) external override nonReentrant cygnusAdmin {
+    function sweepToken(address token) external virtual override nonReentrant cygnusAdmin {
         /// @custom:error CantSweepUnderlying Avoid sweeping underlying
         if (token == underlying) revert CygnusTerminal__CantSweepUnderlying();
 

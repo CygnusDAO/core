@@ -178,8 +178,10 @@ const harvestCollateral = async () => {
     console.log("                                      HARVEST REWARDS                                         ");
     console.log("----------------------------------------------------------------------------------------------");
 
+    await harvester.newX1VaultReward(0);
+
     const _lpBalance = await collateral.totalBalance();
-    await mine(300000);
+    await mine(100000);
     const reinvestData = await harvesterSwapdata(chainId, collateral, harvester);
 
     await harvester.reinvestRewards(collateral.address, reinvestData);
@@ -187,7 +189,16 @@ const harvestCollateral = async () => {
     const lpBalance = await collateral.totalBalance();
 
     console.log("Collateral`s Total Balance before reinvest    | %s LP Tokens", _lpBalance);
-    console.log("Borrowable`s Total Balance ater reinvest      | %s LP Tokens", lpBalance);
+    console.log("Collateral`s Total Balance ater reinvest      | %s LP Tokens", lpBalance);
+
+    await mine(100000);
+    const _lpBalanceV2 = await collateral.totalBalance();
+    const _reinvestData = await harvesterSwapdata(chainId, collateral, harvester);
+    await harvester.reinvestRewards(collateral.address, _reinvestData);
+    const lpBalanceV2 = await collateral.totalBalance();
+
+    console.log("Collateral`s Total Balance before reinvest    | %s LP Tokens", _lpBalanceV2);
+    console.log("Collateral`s Total Balance ater reinvest      | %s LP Tokens", lpBalanceV2);
 
 };
 

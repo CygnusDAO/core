@@ -22,7 +22,7 @@ pragma solidity >=0.8.17;
 // Dependencies
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
-// Contracts
+// CygnusBorrow.sol
 import {CygnusBorrow} from "./CygnusBorrow.sol";
 
 /**

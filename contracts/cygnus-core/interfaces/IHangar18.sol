@@ -8,9 +8,6 @@ import {IAlbireoOrbiter} from "./IAlbireoOrbiter.sol";
 // Oracles
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
-// One inch
-import {IAggregationRouterV5} from "./IAggregationRouterV5.sol";
-
 /**
  *  @title The interface for the Cygnus Factory
  *  @notice The Cygnus factory facilitates creation of collateral and borrow pools
@@ -484,11 +481,6 @@ interface IHangar18 {
      *  @return nativeToken The address of the chain's native token
      */
     function nativeToken() external view returns (address);
-
-    /**
-     *  @return AGGREGATION_ROUTER_V5 The address of the 1inch router used for the swaps
-     */
-    function AGGREGATION_ROUTER_V5() external pure returns (IAggregationRouterV5);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

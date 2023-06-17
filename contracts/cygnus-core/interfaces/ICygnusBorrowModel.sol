@@ -18,26 +18,17 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *  @param cashStored Total balance of this lending pool's asset (USDC)
      *  @param totalBorrowsStored Total borrow balances of this lending pool
      *  @param interestAccumulated Interest accumulated since last accrual
+     *  @param reservesAdded The amount of CygUSD minted to the DAO
      *
      *  @custom:event AccrueInterest
      */
-    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated);
+    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated, uint256 reservesAdded);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
-    /**
-     *  @notice Getter for internal storage of borrow balances for borrowers
-     *
-     *  @param borrower The address of the borrower
-     *
-     *  @return principal The total borrowed amount without interest accrued
-     *  @return interestIndex Borrow index as of the most recent balance-changing action
-     */
-    function borrowBalances(address borrower) external view returns (uint128 principal, uint128 interestIndex);
 
     /**
      *  @return totalBorrows Total borrows stored in the lending pool
@@ -61,13 +52,18 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
 
     /**
      *  @notice This public view function is used to get the borrow balance of users based on stored data
-     *  @notice It is used by CygnusCollateral and CygnusCollateralModel contracts
      *
      *  @param borrower The address whose balance should be calculated
      *
-     *  @return balance The account's outstanding borrow balance or 0 if borrower's interest index is zero
+     *  @return principal The USD amount borrowed without interest accrual
+     *  @return borrowBalance The USD amount borrowed with interest accrual (ie. USD amount the borrower must repay)
      */
-    function getBorrowBalance(address borrower) external view returns (uint256 balance);
+    function getBorrowBalance(address borrower) external view returns (uint256 principal, uint256 borrowBalance);
+
+    /**
+     *  @notice Getter for the DAO's current reserves balance for this pool
+     */
+    function totalReserves() external view returns (address daoReserves, uint256 reserves);
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -85,14 +81,12 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @notice Applies interest accruals to borrows and reserves (uses 1 memory slot per accrual)
      */
     function accrueInterest() external;
-
-    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @notice Tracks borrows of each user for farming rewards and passes the borrow data back to the CYG Rewarder

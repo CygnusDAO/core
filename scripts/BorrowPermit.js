@@ -39,7 +39,7 @@ const cygnusBorrow = async () => {
     console.log("PRICE OF 1 LP TOKEN                            | %s USDC", oneLPToken);
     console.log("----------------------------------------------------------------------------------------------");
 
-    const lpBalBefore = (await lpToken.balanceOf(borrower._address)) / 1e18;
+    const lpBalBefore = (await lpToken.balanceOf(owner.address)) / 1e18;
     const usdBalBefore = (await usdc.balanceOf(lender._address)) / 1e6;
 
     console.log("Borrower`s LP balance before deposit           | %s LP Tokens", lpBalBefore);
@@ -83,7 +83,7 @@ const cygnusBorrow = async () => {
     await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(2e18), owner.address, permit, signature);
 
     // Lender //
 
@@ -117,7 +117,7 @@ const cygnusBorrow = async () => {
 
     // Balance of vault tokens
 
-    const cygLPBal = (await collateral.balanceOf(borrower._address)) / 1e18;
+    const cygLPBal = (await collateral.balanceOf(owner.address)) / 1e18;
     const cygUsdBal = (await borrowable.balanceOf(lender._address)) / 1e6;
 
     console.log("Borrower's CygLP Balance                       | %s CygLP", cygLPBal);
@@ -128,35 +128,84 @@ const cygnusBorrow = async () => {
     console.log("----------------------------------------------------------------------------------------------");
 
     // Get liquidity
-    const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
-    const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    //const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { liquidity, shortfall } = await collateral.getAccountLiquidity(owner.address);
+    const usdBal = (await usdc.balanceOf(owner.address)) / 1e6;
+    const debtRatio = (await collateral.getDebtRatio(owner.address)) / 1e16;
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    //console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
-    // Approve Borrow
-    await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
+    //
+    // DOMAIN
+    //
+    const _name = await borrowable.name();
+    const _chainId_ = await owner.getChainId();
+    const _verifyingContract = await borrowable.address;
+    const domain = {
+        name: _name,
+        version: "1",
+        chainId: _chainId_,
+        verifyingContract: _verifyingContract,
+    };
+
+    //
+    // TYPES
+    //
+    const types = {
+        BorrowPermit: [
+            { name: "owner", type: "address" },
+            { name: "spender", type: "address" },
+            { name: "value", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+        ],
+    };
+
+    //
+    // VALUES
+    //
+    const _nonce = await borrowable.nonces(owner.address);
+    const values = {
+        owner: owner.address,
+        spender: router.address,
+        value: liquidity,
+        nonce: _nonce,
+        deadline: ethers.constants.MaxUint256,
+    };
+
+    // Sign
+    const _signature = await owner._signTypedData(domain, types, values);
+    const { v, r, s } = await ethers.utils.splitSignature(_signature);
+
+  console.log(values.value == ethers.constants.MaxUint256);
+  console.log(values.value);
+  console.log(ethers.constants.MaxUint256);
+
+    // Encode Permit data to pass to router
+    const permitBytes = await ethers.utils.defaultAbiCoder.encode(
+        ["bool", "uint8", "bytes32", "bytes32"],
+        [values.value == ethers.constants.MaxUint256, v, r, s],
+    );
 
     // Borrow
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
+    await router.connect(owner).borrow(borrowable.address, liquidity, owner.address, ethers.constants.MaxUint256, permitBytes);
 
     console.log("----------------------------------------------------------------------------------------------");
 
     // Get liquidity
-    const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
-    const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
-    const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
+    const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(owner.address);
+    const usdBalAfter = (await usdc.balanceOf(owner.address)) / 1e6;
+    const debtRatioAfter = (await collateral.getDebtRatio(owner.address)) / 1e16;
+    const _borrowBal = (await borrowable.getBorrowBalance(owner.address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    //console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);

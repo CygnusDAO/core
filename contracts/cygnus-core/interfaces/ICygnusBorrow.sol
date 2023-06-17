@@ -108,11 +108,6 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    /**
-     *  @notice Overrides the exchange rate of `CygnusTerminal` for borrow contracts to mint reserves
-     */
-    function exchangeRate() external override(ICygnusTerminal) returns (uint256);
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**

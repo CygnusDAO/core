@@ -14,6 +14,12 @@ module.exports = async function reinvestCollateral(chainId, collateral, harveste
     // 3. do a static call to the cygnuscollateral contract get the tokens and amounts harvested
     const { tokens, amounts } = await collateral.callStatic.getRewards();
 
+  console.log("VELO AMOUNT:");
+  console.log(amounts);
+
+    const protocols =
+        "OPTIMISM_UNISWAP_V3,OPTIMISM_SYNTHETIX,OPTIMISM_SYNTHETIX_WRAPPER,OPTIMISM_CURVE,OPTIMISM_BALANCER_V2,OPTIMISM_VELODROME,OPTIMISM_CLIPPER_COVES,OPTIMISM_AAVE_V3,OPTIMISM_ELK,OPTIMISM_TRIDENT,OPTIMISM_MUMMY_FINANCE,OPTIMISM_NOMISWAPEPCS";
+
     /**
      *  @notice make a 1inch api call
      *  @param {string} fromToken - the address of the token being swapped
@@ -23,7 +29,9 @@ module.exports = async function reinvestCollateral(chainId, collateral, harveste
      */
     const oneInchSwap = async (fromToken, toToken, amount) => {
         // api call
-        const apiurl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${harvester.address}&slippage=1&disableEstimate=true&compatibilityMode=true`;
+        const apiurl = `https://api.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${harvester.address}&slippage=1&disableEstimate=true&compatibilityMode=true&protocols=${protocols}`;
+
+      console.log(apiurl);
 
         // fetch data
         const swapdata = await fetch(apiurl).then((response) => response.json());

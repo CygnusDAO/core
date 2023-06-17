@@ -80,28 +80,28 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @notice Called by CygnusCollateral when a liquidation takes place
      *  @param borrower Address of the borrower
-     *  @param borrowedAmount Borrowed amount of stablecoins by `borrower`
+     *  @param borrowBalance Borrowed amount of stablecoins by `borrower`
      *  @return liquidity The user's current LP liquidity priced in USD
      *  @return shortfall The user's current LP shortfall priced in USD (if positive they can be liquidated)
      */
-    function _accountLiquidity(address borrower, uint256 borrowedAmount) internal view returns (uint256, uint256) {
+    function _accountLiquidity(address borrower, uint256 borrowBalance) internal view returns (uint256, uint256) {
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
         if (borrower == address(0)) {
+            // Not sure if necessary but check just in case to avoid calculating collateral from zero address (burnt LPs?)
             revert CygnusCollateralModel__BorrowerCantBeAddressZero();
         }
         /// @custom:error BorrowerCantBeCollateral Avoid borrower collateral
-        else if (borrower == address(this)) {
-            revert CygnusCollateralModel__BorrowerCantBeCollateral();
-        }
+        else if (borrower == address(this)) revert CygnusCollateralModel__BorrowerCantBeCollateral();
 
-        // Check if called externally or borrowable. If called externally then borrowedAmount is always MaxUint256
-        if (borrowedAmount == type(uint256).max) borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        // Check if called externally or from borrowable. If called externally then borrowedAmount is always MaxUint256
+        // prettier-ignore
+        if (borrowBalance == type(uint256).max) (/* principal */, borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
         uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
 
         // Calculate user's liquidity or shortfall internally
-        return _collateralNeeded(amountCollateral, borrowedAmount);
+        return _collateralNeeded(amountCollateral, borrowBalance);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -139,11 +139,12 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         uint256 amountCollateral = finalBalance.mulWad(exchangeRate());
 
         // Get borrower's borrow balance from borrowable contract
-        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        // prettier-ignore
+        (/* principal */, uint256 borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
 
         // Get the LP price and calculate the needed collateral
         // prettier-ignore
-        ( /*liquidity*/ , uint256 shortfall) = _collateralNeeded(amountCollateral, borrowedAmount);
+        (/* liquidity */ , uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
 
         // If user has no shortfall after redeeming return true
         return shortfall == 0;
@@ -162,21 +163,33 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getDebtRatio(address borrower) external view override returns (uint256) {
-        // Get the borrower's deposited LP Tokens and adjust with current exchange Rate
-        uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
+    function getBorrowerPosition(
+        address borrower
+    )
+        external
+        view
+        override
+        returns (uint256 cygLPBalance, uint256 principal, uint256 borrowBalance, uint256 price, uint256 positionUsd, uint256 health)
+    {
+        // Collateral balance of the borrower (CygLP)
+        cygLPBalance = balanceOf(borrower);
 
-        // Multiply LP collateral by LP Token price
-        uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
+        // The original borrowed amount without interest
+        (principal, borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
 
-        // The borrower's stablecoin debt
-        uint256 borrowedAmount = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        // The LP Token price
+        price = getLPTokenPrice();
 
+        // LP Tokens balance = balance of CygLP Tokens * current exchange Rate
+        // Position in USD = LP Tokens balance * price
+        positionUsd = cygLPBalance.mulWad(exchangeRate()).mulWad(price);
+
+        // Health = (Borrow Balance * Liquidation Penalty) / (Collateral in USD * Debt Ratio)
         // Adjust borrowed admount with liquidation incentive, rounding up
-        uint256 collateralNeededInUsd = borrowedAmount.mulWadUp(liquidationIncentive + liquidationFee);
+        uint256 collateralNeededInUsd = borrowBalance.mulWadUp(liquidationIncentive + liquidationFee);
 
-        // Prefer to do borrowedAmount / (collateral * debtRatio) instead of dividing by debtRatio for better precision
-        return collateralInUsd == 0 ? 0 : collateralNeededInUsd.divWad(collateralInUsd.mulWad(debtRatio));
+        // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
+        health = positionUsd == 0 ? 0 : collateralNeededInUsd.divWad(positionUsd.mulWad(debtRatio));
     }
 
     /**

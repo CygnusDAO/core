@@ -18,7 +18,7 @@ import {IUniTroller} from "./interfaces/BorrowableVoid/IUniTroller.sol";
 import {IStakedDistributor} from "./interfaces/BorrowableVoid/IStakedDistributor.sol";
 
 // Overrides
-import {CygnusTerminal} from "./CygnusTerminal.sol";
+import {CygnusTerminal, ICygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin
@@ -49,7 +49,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     ISonnePool private constant SONNE_USDC = ISonnePool(0xEC8FEa79026FfEd168cCf5C627c7f486D77b765F);
 
     /**
-     *  @notice Comptroller implementation
+     *  @notice Comptroller
      */
     IUniTroller private constant REWARDER = IUniTroller(0x60CF091cD3f50420d50fD7f707414d0DF4751C58);
 
@@ -85,7 +85,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     constructor() {}
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-         4. MODIFIERS
+            4. MODIFIERS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
@@ -96,6 +96,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     modifier update() override(CygnusTerminal) {
         // Update before deposit to prevent deposit spam for yield bearing tokens
         _update();
+        // Accrue interest before any state changing function
+        _accrueInterest();
         _;
         // Update after deposit
         _update();
@@ -249,7 +251,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    function reinvestRewards_y7b(uint256 liquidity) external override update accrue {
+    function reinvestRewards_y7b(uint256 liquidity) external override update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
         if (msg.sender != address(harvester)) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
@@ -279,7 +281,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Loop through each token
         for (uint256 i = 0; i < tokens.length; i++) {
             // Approve harvester in token `i`
-            if (tokens[i] != underlying) {
+            if (tokens[i] != underlying && tokens[i] != address(SONNE_USDC)) {
                 // Remove allowance for old harvester
                 approveTokenPrivate(tokens[i], address(harvester), 0);
 
@@ -290,5 +292,24 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         /// @custom:event NewHarvester
         emit NewHarvester(oldHarvester, _harvester);
+    }
+
+    /**
+     *  @notice CygnusTerminal override
+     *  @inheritdoc CygnusTerminal
+     *  @custom:security non-reentrant only-admin 👽
+     */
+    function sweepToken(address token) external override(CygnusTerminal, ICygnusTerminal) nonReentrant cygnusAdmin {
+        /// @custom:error CantSweepUnderlying Avoid sweeping underlying
+        if (token == underlying || token == address(SONNE_USDC)) revert CygnusTerminal__CantSweepUnderlying();
+
+        // Balance this contract has of the erc20 token we are recovering
+        uint256 balance = _checkBalance(token);
+
+        // Transfer token
+        token.safeTransfer(msg.sender, balance);
+
+        /// @custom:event SweepToken
+        emit SweepToken(msg.sender, token, balance);
     }
 }

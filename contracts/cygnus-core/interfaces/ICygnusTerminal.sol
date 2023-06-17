@@ -137,7 +137,7 @@ interface ICygnusTerminal is IERC20Permit {
     /**
      *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount.
      */
-    function exchangeRate() external returns (uint256);
+    function exchangeRate() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

@@ -153,17 +153,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
         return IERC20(underlying).decimals();
     }
 
-    /**
-     *  @notice CygnusTerminl override converting the function to view only
-     */
-    function exchangeRate() public view override(CygnusTerminal, ICygnusTerminal) returns (uint256) {
-        // Gas savings if non-zero
-        uint256 _totalSupply = totalSupply();
-
-        // If there is no supply for this token return initial rate
-        return _totalSupply == 0 ? 1e18 : uint256(totalBalance).divWad(_totalSupply);
-    }
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

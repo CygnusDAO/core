@@ -111,11 +111,6 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      */
     function reserveFactor() external view returns (uint256);
 
-    /**
-     *  @return exchangeRateStored The exchange rate used to mint reserves
-     */
-    function exchangeRateStored() external view returns (uint256);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

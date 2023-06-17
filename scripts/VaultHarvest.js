@@ -25,7 +25,7 @@ const x1VaultHarvest = async () => {
     await borrowable.connect(owner).chargeVoid();
 
     // Set interest rate to 1% base rate and 10% slope
-    await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.1e18), 2, BigInt(0.8e18));
+    await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.13e18), 2, BigInt(0.8e18));
 
     // Deploy harvester
     const Harvester = await ethers.getContractFactory("CollateralHarvester");
@@ -325,7 +325,7 @@ const x1VaultHarvest = async () => {
     await mine(8000000);
     console.log("----------------------------------------------------------------------------------------------");
     // Mint CygUSD
-    await borrowable.exchangeRate();
+    await borrowable.sync();
     const cygUsdAfter = await borrowable.balanceOf(daoReserves.address);
 
     console.log("Balance of DAO Reserves after mine            | %s CygUSD", chalk.yellowBright(cygUsdAfter / 1e6));

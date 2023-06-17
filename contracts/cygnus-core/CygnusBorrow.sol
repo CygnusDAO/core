@@ -10,7 +10,6 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
-import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
 import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
@@ -53,62 +52,19 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
          6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    /**
-     *  @notice mints reserves to `daoReserves` if exchange rate increases
-     *  @param _exchangeRate The latest calculated exchange rate (totalBalance / totalSupply) not yet stored
-     *  @return Latest exchange rate
-     */
-    function _mintReserves(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
-        // Get current exchange rate stored for borrow contract
-        uint256 exchangeRateLast = exchangeRateStored;
-
-        // Calculate new exchange rate, if different to last mint reserves
-        if (_exchangeRate > exchangeRateLast) {
-            // Calculate new exchange rate taking reserves into account
-            uint256 newExchangeRate = _exchangeRate - ((_exchangeRate - exchangeRateLast).mulWad(reserveFactor));
-
-            // Calculate new reserves if any
-            uint256 newReserves = _totalSupply.fullMulDiv(_exchangeRate, newExchangeRate) - _totalSupply;
-
-            // if there are no new reserves to mint, just return exchangeRate
-            if (newReserves > 0) {
-                // Get the current DAO reserves
-                address daoReserves = hangar18.daoReserves();
-
-                // Mint reserves to the DAO
-                _mint(daoReserves, newReserves);
-            }
-
-            // Update exchange rate
-            exchangeRateStored = newExchangeRate;
-
-            // Return new exchange rate
-            return newExchangeRate;
-        }
-        // Else return the previous exchange rate
-        else return _exchangeRate;
-    }
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
      *  @notice Overrides the previous exchange rate from CygnusTerminal
-     *  @inheritdoc ICygnusBorrow
+     *  @inheritdoc CygnusTerminal
      */
-    function exchangeRate() public override(ICygnusBorrow, ICygnusTerminal, CygnusTerminal) accrue returns (uint256) {
-        // Save SLOAD if non zero
+    function exchangeRate() public view override(ICygnusTerminal, CygnusTerminal) returns (uint256) {
+        // Gas savings if non-zero
         uint256 _totalSupply = totalSupply();
 
-        // If there are no tokens in circulation, return initial (1e18), else calculate new exchange rate
-        if (_totalSupply == 0) return exchangeRateStored;
-
-        // totalBalance * scale / total supply
-        uint256 _exchangeRate = (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
-
-        // Check if new exchange rate and thus reserve to mint, else just return this exchange rate
-        return _mintReserves(_exchangeRate, _totalSupply);
+        // Compute the exchange rate as the total balance plus the total borrows of the underlying asset
+        // Unlike cTokens we don't take into account totalReserves since our reserves are in CygUSD instead of the stablecoin asset
+        return _totalSupply == 0 ? 1e18 : (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -118,12 +74,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function borrow(
-        address borrower,
-        address receiver,
-        uint256 borrowAmount,
-        bytes calldata data
-    ) external override nonReentrant update accrue {
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update {
         // Check if msg.sender can borrow on behalf of borrower
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
@@ -192,16 +143,18 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         address receiver,
         uint256 repayAmount,
         bytes calldata data
-    ) external override nonReentrant update accrue returns (uint256 amountUsd) {
+    ) external override nonReentrant update returns (uint256 amountUsd) {
         // ────────── 1. Get borrower's USD debt
         // Latest borrow balance
-        uint256 borrowerBalance = getBorrowBalance(borrower);
+        (, uint256 borrowBalance) = getBorrowBalance(borrower);
 
         // Adjust declared amount to max liquidatable
-        uint256 actualRepayAmount = borrowerBalance < repayAmount ? borrowerBalance : repayAmount;
+        uint256 actualRepayAmount = borrowBalance < repayAmount ? borrowBalance : repayAmount;
 
         // ────────── 2. Seize CygLP from borrower
-        // CygLP = (actualRepayAmount * liq. incentive). Reverts at Collateral if `actualRepayAmount` is 0.
+        // CygLP = (actualRepayAmount * liq. incentive). Reverts at Collateral if:
+        // - `actualRepayAmount` is 0.
+        // - `borrower`'s position is not in liquidatable state
         uint256 cygLPAmount = ICygnusCollateral(collateral).seizeCygLP(receiver, borrower, actualRepayAmount);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
@@ -237,8 +190,5 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function sync() external override nonReentrant update accrue {
-        // Check for new reserves
-        exchangeRate();
-    }
+    function sync() external override nonReentrant update {}
 }
