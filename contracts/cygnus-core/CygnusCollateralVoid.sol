@@ -11,7 +11,6 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
-import {IHangar18} from "./interfaces/IHangar18.sol";
 import {ICygnusHarvester} from "./interfaces/ICygnusHarvester.sol";
 
 // Strategy
@@ -79,7 +78,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @notice Constructs the Cygnus Void contract which handles the strategy for the collateral`s underlying.
      */
     constructor() {
-        // Get factory for nativeToken, and asset for token0 and token1
+        // Get asset from factory to get the gauge (underlying is immutable so can't read)
         (, address asset, , , ) = IOrbiter(msg.sender).shuttleParameters();
 
         // Store pool ID from rewarder contract

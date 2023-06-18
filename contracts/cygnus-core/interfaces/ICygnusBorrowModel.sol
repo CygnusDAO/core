@@ -60,11 +60,6 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      */
     function getBorrowBalance(address borrower) external view returns (uint256 principal, uint256 borrowBalance);
 
-    /**
-     *  @notice Getter for the DAO's current reserves balance for this pool
-     */
-    function totalReserves() external view returns (address daoReserves, uint256 reserves);
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**

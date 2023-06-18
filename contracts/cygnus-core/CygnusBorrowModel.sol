@@ -121,19 +121,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // TODO: Function on dao reserves contract to retrieve it
-
-    /**
-     *  @inheritdoc ICygnusBorrowModel
-     */
-    function totalReserves() public view override returns (address daoReserves, uint256 reserves) {
-        // Get the current DAO reserves
-        daoReserves = hangar18.daoReserves();
-
-        // Return the total reserves held by the DAO
-        reserves = balanceOf(daoReserves).mulWad(exchangeRate());
-    }
-
     /**
      *  @dev It is used by CygnusCollateral contract to check a borrower's position
      *  @inheritdoc ICygnusBorrowModel
@@ -197,14 +184,17 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @return newReserves The amount of CygUSD minted based on `interestAccumulated and the current exchangeRate
      */
     function mintReservesPrivate(uint256 interestAccumulated) private returns (uint256 newReserves) {
-        // Get the DAO Reserves current address
-        address daoReserves = hangar18.daoReserves();
-
         // Calculate new reserves to mint based on the reserve factor and latest exchange rate
         newReserves = interestAccumulated.fullMulDiv(reserveFactor, exchangeRate());
 
-        // Mint reserves to the DAO
-        if (newReserves > 0) _mint(daoReserves, newReserves);
+        // Check to mint new reserves
+        if (newReserves > 0) {
+            // Get the DAO Reserves current address
+            address daoReserves = hangar18.daoReserves();
+
+            // Mint to Hangar18's latest `daoReserves`
+            _mint(daoReserves, newReserves);
+        }
     }
 
     /**

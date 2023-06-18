@@ -18,7 +18,7 @@ import {IUniTroller} from "./interfaces/BorrowableVoid/IUniTroller.sol";
 import {IStakedDistributor} from "./interfaces/BorrowableVoid/IStakedDistributor.sol";
 
 // Overrides
-import {CygnusTerminal, ICygnusTerminal} from "./CygnusTerminal.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusBorrowVoid The strategy contract for the underlying stablecoin
@@ -96,7 +96,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     modifier update() override(CygnusTerminal) {
         // Update before deposit to prevent deposit spam for yield bearing tokens
         _update();
-        // Accrue interest before any state changing function
+        // Accrue interest before any state changing action
         _accrueInterest();
         _;
         // Update after deposit
@@ -163,7 +163,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // 3. Re-stake all Sonne
         uint256 sonneRewards = _checkBalance(SONNE);
 
-        // Check non-zero
+        // Stake rewards
         if (sonneRewards > 0) DISTRIBUTOR.mint(sonneRewards);
 
         // 4. Get bonus rewards from Distributor (remove address 0 and index 0)
@@ -292,24 +292,5 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         /// @custom:event NewHarvester
         emit NewHarvester(oldHarvester, _harvester);
-    }
-
-    /**
-     *  @notice CygnusTerminal override
-     *  @inheritdoc CygnusTerminal
-     *  @custom:security non-reentrant only-admin 👽
-     */
-    function sweepToken(address token) external override(CygnusTerminal, ICygnusTerminal) nonReentrant cygnusAdmin {
-        /// @custom:error CantSweepUnderlying Avoid sweeping underlying
-        if (token == underlying || token == address(SONNE_USDC)) revert CygnusTerminal__CantSweepUnderlying();
-
-        // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = _checkBalance(token);
-
-        // Transfer token
-        token.safeTransfer(msg.sender, balance);
-
-        /// @custom:event SweepToken
-        emit SweepToken(msg.sender, token, balance);
     }
 }

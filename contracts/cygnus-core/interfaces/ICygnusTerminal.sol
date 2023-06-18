@@ -182,14 +182,4 @@ interface ICygnusTerminal is IERC20Permit {
      *  @return assets The amount of underlying assets received by the `recipient`.
      */
     function redeem(uint256 shares, address recipient, address owner) external returns (uint256 assets);
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Recovers any ERC20 token accidentally sent to this contract, sent to msg.sender
-     *
-     *  @param token The address of the token we are recovering
-     *
-     *  @custom:security non-reentrant only-admin
-     */
-    function sweepToken(address token) external;
 }

@@ -327,25 +327,4 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         /// @custom:event Withdraw
         emit Withdraw(msg.sender, recipient, owner, assets, shares);
     }
-
-    /**
-     *  @notice We mark it as virtual in case we need to override it in the strategy contracts.
-     *          For example, if the strategy involves depositing USDC in a lending protocol and receiving
-     *          cTokens, then we also revert if admin attempts to withdraw cToken.
-     *  @inheritdoc ICygnusTerminal
-     *  @custom:security non-reentrant only-admin 👽
-     */
-    function sweepToken(address token) external virtual override nonReentrant cygnusAdmin {
-        /// @custom:error CantSweepUnderlying Avoid sweeping underlying
-        if (token == underlying) revert CygnusTerminal__CantSweepUnderlying();
-
-        // Balance this contract has of the erc20 token we are recovering
-        uint256 balance = _checkBalance(token);
-
-        // Transfer token
-        token.safeTransfer(msg.sender, balance);
-
-        /// @custom:event SweepToken
-        emit SweepToken(msg.sender, token, balance);
-    }
 }
