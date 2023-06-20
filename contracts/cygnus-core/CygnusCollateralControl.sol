@@ -88,12 +88,12 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override liquidationIncentive = 1.035e18;
+    uint256 public override liquidationIncentive = 1.02e18;
 
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
-    uint256 public override liquidationFee;
+    uint256 public override liquidationFee = 0.01e18;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
             3. CONSTRUCTOR

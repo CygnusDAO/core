@@ -94,10 +94,10 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @custom:modifier update Updates the total balance var in terms of its underlying
      */
     modifier update() override(CygnusTerminal) {
-        // Update before deposit to prevent deposit spam for yield bearing tokens
-        _update();
         // Accrue interest before any state changing action
         _accrueInterest();
+        // Update before deposit to prevent deposit spam for yield bearing tokens
+        _update();
         _;
         // Update after deposit
         _update();
@@ -249,6 +249,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     }
 
     /**
+     *  @notice Not marked as non-reentrant since only trusted harvester can call
      *  @inheritdoc ICygnusBorrowVoid
      */
     function reinvestRewards_y7b(uint256 liquidity) external override update {
@@ -283,7 +284,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying && tokens[i] != address(SONNE_USDC)) {
                 // Remove allowance for old harvester
-                approveTokenPrivate(tokens[i], address(harvester), 0);
+                if (address(oldHarvester) != address(0)) approveTokenPrivate(tokens[i], address(oldHarvester), 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);

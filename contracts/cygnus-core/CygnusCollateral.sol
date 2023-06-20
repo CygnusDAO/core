@@ -94,8 +94,8 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Get price from oracle
         uint256 lpTokenPrice = getLPTokenPrice();
 
-        // Factor in liquidation incentive and current exchange rate to add/decrease collateral token balance
-        cygLPAmount = (repayAmount.divWad(lpTokenPrice) * liquidationIncentive) / exchangeRate();
+        // Factor in liquidation incentive and current exchange rate to get the equivalent of the USDC repaid amount in CygLP
+        cygLPAmount = (repayAmount.divWad(lpTokenPrice)).fullMulDiv(liquidationIncentive, exchangeRate());
 
         // Transfer the repaid amount + liq. incentive to the liquidator, escapes canRedeem
         _transfer(borrower, liquidator, cygLPAmount);

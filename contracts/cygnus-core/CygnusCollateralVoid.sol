@@ -237,7 +237,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying) {
                 // Remove allowance for old harvester
-                approveTokenPrivate(tokens[i], address(harvester), 0);
+                if (address(oldHarvester) != address(0)) approveTokenPrivate(tokens[i], address(oldHarvester), 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);

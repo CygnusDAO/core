@@ -49,7 +49,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-         6. NON-CONSTANT FUNCTIONS
+         5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -63,9 +63,13 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 _totalSupply = totalSupply();
 
         // Compute the exchange rate as the total balance plus the total borrows of the underlying asset
-        // Unlike cTokens we don't take into account totalReserves since our reserves are in CygUSD instead of the stablecoin asset
+        // Unlike cTokens we don't take into account totalReserves since our reserves are minted CygUSD instead
         return _totalSupply == 0 ? 1e18 : (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
     }
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+         6. NON-CONSTANT FUNCTIONS
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 

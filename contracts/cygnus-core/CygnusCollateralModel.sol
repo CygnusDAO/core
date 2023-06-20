@@ -16,15 +16,18 @@ import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
  *          borrowable`s underlying (stablecoins). All functions are marked as view to be queried by borrowers
  *          to check their positions
  *  @author CygnusDAO
- *  @notice Theres 2 main functions to calculate the liquidity of a user: `getDebtRatio` and `getAccountLiquidity`
+ *  @notice There are 2 main functions in the modelto calculate the liquidity of a user: 
+ *          `getBorrowerPosition` and `getAccountLiquidity`
  *
- *          `getDebtRatio` will return the percentage of the borrowed amount divided by the user's collateral,
- *          scaled to current `debtRatio`. If `getDebtRatio` returns higher than 100% (or 1e18) then the user
- *          has shortfall and can be liquidated. Else they have enough LPs to borrow more.
+ *          `getBorrowerPosition` will return all the data related to the borrower's current position, including
+ *          amount of CygLP, collateral value in USD, LP price and Health. The health is the percentage of the 
+ *          borrowed amount divided by the user's collateral (ie. Debt Ratio), Note that this health is scaled
+ *          to the current `debtRatio` param. If `health` returns higher than 100% (or 1e18) then the user
+ *          has shortfall and can be liquidated. If `health` returns lower than 100% then the user can borrow
+ *          more.
  *
  *          The same can be calculated with `getAccountLiquidity`, but instead of returning a percentage will
- *          return the actual amount of the user's liquidity or shortfall denominated in the borrowable's
- *          underlying (a stablecoin)
+ *          return the total amount of USD that the borrower can borrow before their position is in shortfall.
  *
  *          The last function `canBorrow` is called by the `borrowable` contract during borrows to confirm if a
  *          user can borrow or not and can be called by anyone, returning `false` if the account has shortfall,
