@@ -1,4 +1,69 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusCollateral.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+/*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  
+    .              .            .               .      🛰️     .           .                .           .
+           █████████           ---======*.                                                 .           ⠀
+          ███░░░░░███                                               📡                🌔                      . 
+         ███     ░░░  █████ ████  ███████ ████████   █████ ████  █████        ⠀
+        ░███         ░░███ ░███  ███░░███░░███░░███ ░░███ ░███  ███░░      .     .⠀           .           .
+        ░███          ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███ ░░█████       ⠀
+        ░░███     ███ ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███  ░░░░███              .             .⠀
+         ░░█████████  ░░███████ ░░███████ ████ █████ ░░████████ ██████     .----===*  ⠀
+          ░░░░░░░░░    ░░░░░███  ░░░░░███░░░░ ░░░░░   ░░░░░░░░ ░░░░░░            .                           .⠀
+                       ███ ░███  ███ ░███                .                 .               🌔  .⠀
+        .             ░░██████  ░░██████                                             .                 .     
+                       ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
+           .                            .       .          .            .                        .             .⠀
+        
+        COLLATERAL - https://cygnusdao.finance                                                          .                     .
+    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+     Smart contracts to `go long` on your liquidity.
+
+     Deposit liquidity, borrow USD.
+
+     Structure of all Cygnus Contracts:
+
+     Contract                        ⠀Interface                                             
+        ├ 1. Libraries                   ├ 1. Custom Errors                                               
+        ├ 2. Storage                     ├ 2. Custom Events
+        │     ├ Private             ⠀    ├ 3. Constant Functions                          ⠀        
+        │     ├ Internal                 │     ├ Public                            ⠀       
+        │     └ Public                   │     └ External                        ⠀⠀⠀              
+        ├ 3. Constructor                 └ 4. Non-Constant Functions  
+        ├ 4. Modifiers              ⠀          ├ Public
+        ├ 5. Constant Functions     ⠀          └ External
+        │     ├ Private             ⠀                      
+        │     ├ Internal            
+        │     ├ Public              
+        │     └ External            
+        └ 6. Non-Constant Functions 
+              ├ Private             
+              ├ Internal            
+              ├ Public              
+              └ External            
+
+    @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
+          only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
+          are handled with the new `custom errors` feature among other small things...                           */
+
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -25,12 +90,12 @@ import {ERC20} from "./ERC20.sol";
  *
  *          When a user's position gets liquidated, it is initially called by the borrow arm. The liquidator
  *          first repays back stables to the borrowable arm and then calls `liquidate` which then calls
- *         `seizeCygLP` in this contract to seize the amount of CygLP being repaid + the liquidation incentive.
+ *         `seizeCygLP` in this contract to seize the equivalent of the repaid amount + the liquidation
+ *          incentive in CygLP.
+ *
  *          There is a liquidation fee which can be set by the hangar18 admin that goes to the DAO Reserves,
  *          taken directly from the user being liquidated. This fee is set to 0 as default.
  *
- *          The last function `flashRedeemAltair` allows users to deleverage their positions. Anyone can flash
- *          redeem the underlying LP Tokens, as long as they are paid back by the end of the function call.
  */
 contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -59,11 +124,10 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ERC20
      */
     function _beforeTokenTransfer(address from, address, uint256 amount) internal view override(ERC20) {
-        // Escape in case of `flashRedeemAltair()` or _mint()
+        // Escape in case of `flashRedeemAltair()`
         // 1. This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
-        // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem`
-        // 2. Sending from zero address there's no point to check as this would only be used at the time of minting CygLP
-        if (from == address(this) || from == address(0)) return;
+        // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem`.
+        if (from == address(this)) return;
 
         /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();

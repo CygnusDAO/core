@@ -1,4 +1,21 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusBorrowVoid.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -10,7 +27,6 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {ICygnusHarvester} from "./interfaces/ICygnusHarvester.sol";
 
 // Strategy
 import {ISonnePool} from "./interfaces/BorrowableVoid/ISonnePool.sol";
@@ -68,7 +84,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    ICygnusHarvester public override harvester;
+    address public override harvester;
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
@@ -114,7 +130,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     function rewarder() external pure override returns (address) {
         // Return the contract that rewards us with `rewardsToken`
-        return address(REWARDER);
+        return address(DISTRIBUTOR);
     }
 
     /**
@@ -160,8 +176,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // 2. Claim Sonne from Distributor
         uint256[] memory _amounts = DISTRIBUTOR.claimAll();
 
-        // 3. Re-stake all Sonne
-        uint256 sonneRewards = _checkBalance(SONNE);
+        // 3. Re-stake 50% of Sonne rewards, convert the rest to USD
+        uint256 sonneRewards = _checkBalance(SONNE) / 2;
 
         // Stake rewards
         if (sonneRewards > 0) DISTRIBUTOR.mint(sonneRewards);
@@ -267,9 +283,9 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security only-admin 👽
      */
-    function setHarvester(ICygnusHarvester _harvester) external override cygnusAdmin {
+    function setHarvester(address _harvester) external override cygnusAdmin {
         // Old harvester
-        ICygnusHarvester oldHarvester = harvester;
+        address oldHarvester = harvester;
 
         // Assign harvester.
         harvester = _harvester;
@@ -284,10 +300,10 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying && tokens[i] != address(SONNE_USDC)) {
                 // Remove allowance for old harvester
-                if (address(oldHarvester) != address(0)) approveTokenPrivate(tokens[i], address(oldHarvester), 0);
+                if (oldHarvester != address(0)) approveTokenPrivate(tokens[i], oldHarvester, 0);
 
                 // Approve new harvester
-                approveTokenPrivate(tokens[i], address(_harvester), type(uint256).max);
+                approveTokenPrivate(tokens[i], _harvester, type(uint256).max);
             }
         }
 

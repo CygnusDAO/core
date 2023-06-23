@@ -1,4 +1,21 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusCollateralModel.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -16,11 +33,11 @@ import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
  *          borrowable`s underlying (stablecoins). All functions are marked as view to be queried by borrowers
  *          to check their positions
  *  @author CygnusDAO
- *  @notice There are 2 main functions in the modelto calculate the liquidity of a user: 
+ *  @notice There are 2 main functions in the modelto calculate the liquidity of a user:
  *          `getBorrowerPosition` and `getAccountLiquidity`
  *
  *          `getBorrowerPosition` will return all the data related to the borrower's current position, including
- *          amount of CygLP, collateral value in USD, LP price and Health. The health is the percentage of the 
+ *          amount of CygLP, collateral value in USD, LP price and Health. The health is the percentage of the
  *          borrowed amount divided by the user's collateral (ie. Debt Ratio), Note that this health is scaled
  *          to the current `debtRatio` param. If `health` returns higher than 100% (or 1e18) then the user
  *          has shortfall and can be liquidated. If `health` returns lower than 100% then the user can borrow

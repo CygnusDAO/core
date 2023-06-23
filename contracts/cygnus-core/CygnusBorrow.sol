@@ -1,4 +1,69 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusBorrow.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+/*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+    
+           █████████                🛸                                       🛸          .                    
+          ███░░░░░███                                              📡                                     🌔   
+         ███     ░░░  █████ ████  ███████ ████████   █████ ████  █████        ⠀
+        ░███         ░░███ ░███  ███░░███░░███░░███ ░░███ ░███  ███░░      .     .⠀        🛰️   .             
+        ░███          ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███ ░░█████       ⠀
+        ░░███     ███ ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███  ░░░░███              .             .           
+         ░░█████████  ░░███████ ░░███████ ████ █████ ░░████████ ██████       -----========*⠀
+          ░░░░░░░░░    ░░░░░███  ░░░░░███░░░░ ░░░░░   ░░░░░░░░ ░░░░░░            .                            .
+                       ███ ░███  ███ ░███                .                 .         🛸           ⠀             
+         .      *     ░░██████  ░░██████   .                         🛰️                 .          .        
+                       ░░░░░░    ░░░░░░                                                 ⠀
+           .                            .       .         ------======*             .                          
+    
+        BORROWABLE - https://cygnusdao.finance                                                          .                     .
+    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+     Smart contracts to lend to liquidity providers.
+
+     Deposit USD, earn USD.
+
+     Structure of all Cygnus Contracts:
+
+     Contract                        ⠀Interface                                             
+        ├ 1. Libraries                   ├ 1. Custom Errors                                               
+        ├ 2. Storage                     ├ 2. Custom Events
+        │     ├ Private             ⠀    ├ 3. Constant Functions                          ⠀        
+        │     ├ Internal                 │     ├ Public                            ⠀       
+        │     └ Public                   │     └ External                        ⠀⠀⠀              
+        ├ 3. Constructor                 └ 4. Non-Constant Functions  
+        ├ 4. Modifiers              ⠀          ├ Public
+        ├ 5. Constant Functions     ⠀          └ External
+        │     ├ Private             ⠀                      
+        │     ├ Internal            
+        │     ├ Public              
+        │     └ External            
+        └ 6. Non-Constant Functions 
+              ├ Private             
+              ├ Internal            
+              ├ Public              
+              └ External            
+
+    @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
+          only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
+          are handled with the new `custom errors` feature among other small things...                           */
+
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -19,6 +84,7 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
+ *  @author CygnusDAO
  *  @notice This is the main Borrow contract which is used for borrowing stablecoins and liquidating shortfall
  *          positions.
  *

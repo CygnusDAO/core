@@ -1,3 +1,22 @@
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  Hangar18.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  .
     .               .            .               .      🛰️     .           .                 *              .
            █████████           ---======*.                                                 .           ⠀
@@ -13,10 +32,8 @@
                        ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
            .                            .       .          .            .                          .             .⠀
     
-        CYGNUS FACTORY V1 - `Hangar18`                                                           
+        LENDING POOL FACTORY V1 - `Hangar18`                                                           
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -28,9 +45,6 @@ import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 
 // Interfaces
 import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
-import {IAggregationRouterV5, IAggregationExecutor} from "./interfaces/IAggregationRouterV5.sol";
-
-// Orbiters
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
 
@@ -249,9 +263,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         bool deployed = getShuttles[lpTokenPair][orbiterId].launched;
 
         /// @custom:error ShuttleAlreadyDeployed
-        if (deployed == true) {
-            revert Hangar18__ShuttleAlreadyDeployed({lpTokenPair: lpTokenPair, orbiterId: orbiterId});
-        }
+        if (deployed == true) revert Hangar18__ShuttleAlreadyDeployed({lpTokenPair: lpTokenPair, orbiterId: orbiterId});
 
         // Create shuttle
         return

@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 // Dependencies
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 
-/// IMPORTANT: We removed hooks from the `_transfer` fucntion 
+/// IMPORTANT: We removed the before/after hooks from the `_transfer` and `_mint` functions
 
 /// @notice Simple ERC20 + EIP-2612 implementation.
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/tokens/ERC20.sol)
@@ -16,7 +16,7 @@ import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 /// For performance, this implementation WILL NOT revert for such actions.
 /// Please add any checks with overrides if desired.
 abstract contract ERC20 is IERC20Permit {
-      /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       CUSTOM ERRORS                        */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
@@ -52,12 +52,10 @@ abstract contract ERC20 is IERC20Permit {
     event Approval(address indexed owner, address indexed spender, uint256 amount);
 
     /// @dev `keccak256(bytes("Transfer(address,address,uint256)"))`.
-    uint256 private constant _TRANSFER_EVENT_SIGNATURE =
-        0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
+    uint256 private constant _TRANSFER_EVENT_SIGNATURE = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
 
     /// @dev `keccak256(bytes("Approval(address,address,uint256)"))`.
-    uint256 private constant _APPROVAL_EVENT_SIGNATURE =
-        0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925;
+    uint256 private constant _APPROVAL_EVENT_SIGNATURE = 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STORAGE                           */
@@ -129,12 +127,7 @@ abstract contract ERC20 is IERC20Permit {
     }
 
     /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(address owner, address spender)
-        public
-        view
-        virtual
-        returns (uint256 result)
-    {
+    function allowance(address owner, address spender) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x20, spender)
@@ -329,15 +322,7 @@ abstract contract ERC20 is IERC20Permit {
     /// authorized by a signed approval by `owner`.
     ///
     /// Emits a {Approval} event.
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual {
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) public virtual {
         bytes32 domainSeparator = DOMAIN_SEPARATOR();
         /// @solidity memory-safe-assembly
         assembly {
@@ -429,7 +414,6 @@ abstract contract ERC20 is IERC20Permit {
     ///
     /// Emits a {Transfer} event.
     function _mint(address to, uint256 amount) internal virtual {
-        _beforeTokenTransfer(address(0), to, amount);
         /// @solidity memory-safe-assembly
         assembly {
             let totalSupplyBefore := sload(_TOTAL_SUPPLY_SLOT)
@@ -451,7 +435,6 @@ abstract contract ERC20 is IERC20Permit {
             mstore(0x20, amount)
             log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, 0, shr(96, mload(0x0c)))
         }
-        _afterTokenTransfer(address(0), to, amount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

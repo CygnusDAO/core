@@ -1,11 +1,25 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  ICygnusBorrowVoid.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusBorrowModel} from "./ICygnusBorrowModel.sol";
-
-// Harvester
-import {ICygnusHarvester} from "./ICygnusHarvester.sol";
 
 /**
  *  @title  ICygnusBorrowVoid
@@ -66,7 +80,7 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
      *
      *  @custom:event NewHarvester
      */
-    event NewHarvester(ICygnusHarvester oldHarvester, ICygnusHarvester newHarvester);
+    event NewHarvester(address oldHarvester, address newHarvester);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -77,7 +91,7 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     /**
      *  @return harvester The address of the harvester contract
      */
-    function harvester() external view returns (ICygnusHarvester);
+    function harvester() external view returns (address);
 
     /**
      *  @return lastReinvest Timestamp of the last reinvest performed by the harvester contract
@@ -136,5 +150,5 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
      *
      *  @custom:security only-admin
      */
-    function setHarvester(ICygnusHarvester _harvester) external;
+    function setHarvester(address _harvester) external;
 }

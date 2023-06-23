@@ -1,4 +1,21 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  ICygnusTerminal.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -10,8 +27,8 @@ import {IAllowanceTransfer} from "./IAllowanceTransfer.sol";
 import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
 
 /**
- *  @title The interface for CygnusTerminal which handles pool tokens shared by Collateral and Borrow contracts
- *  @notice The interface for the CygnusTerminal contract allows minting/redeeming Cygnus pool tokens
+ *  @title ICygnusTerminal
+ *  @notice The interface to mint/redeem pool tokens (CygLP and CygUSD)
  */
 interface ICygnusTerminal is IERC20Permit {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -83,19 +100,6 @@ interface ICygnusTerminal is IERC20Permit {
      *  @custom:event Redeem
      */
     event Withdraw(address indexed sender, address indexed recipient, address indexed owner, uint256 assets, uint256 shares);
-
-    /**
-     *  @dev Logs when the admin sweeps a token that was incorrectly sent to this address
-     *  @notice It CANNOT sweep the underlying token (USD for borrowable and LPs for collateral pools), doing so
-     *          will revert the tx.
-     *
-     *  @param sender The msg.sender
-     *  @param token The token being swept
-     *  @param balance The balance of `token` swept from this contract
-     *
-     *  @custom:event SweepToken
-     */
-    event SweepToken(address indexed sender, address indexed token, uint256 balance);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
            3. CONSTANT FUNCTIONS

@@ -1,4 +1,21 @@
-// SPDX-License-Identifier: Unlicense
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusBorrowModel.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -117,6 +134,17 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Return per second borrow rate
         return excessUtil.mulWad(jumpMultiplierPerSecond) + normalRate;
+    }
+
+    function _trackLender(address lender, uint256 amount) internal override {
+        // Rewarder address (if any)
+        address rewarder = cygnusBorrowRewarder;
+
+        // If not initialized return
+        if (rewarder == address(0)) return;
+
+        // Pass borrow to this chain's CYG rewarder
+        ICygnusComplexRewarder(rewarder).trackLender(lender, amount);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */

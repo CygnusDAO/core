@@ -1,52 +1,40 @@
+//  SPDX-License-Identifier: AGPL-3.0-or-later
+//
+//  CygnusTerminal.sol
+//
+//  Copyright (C) 2023 CygnusDAO
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU Affero General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Affero General Public License for more details.
+//
+//  You should have received a copy of the GNU Affero General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+    
+           █████████                🛸         🛸                              🛸          .                    
+     🛸   ███░░░░░███                                              📡                                     🌔   
+         ███     ░░░  █████ ████  ███████ ████████   █████ ████  █████        ⠀
+        ░███         ░░███ ░███  ███░░███░░███░░███ ░░███ ░███  ███░░      .     .⠀        🛰️   .             
+        ░███          ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███ ░░█████       ⠀
+        ░░███     ███ ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███  ░░░░███              .             .           
+         ░░█████████  ░░███████ ░░███████ ████ █████ ░░████████ ██████       -----========*⠀
+          ░░░░░░░░░    ░░░░░███  ░░░░░███░░░░ ░░░░░   ░░░░░░░░ ░░░░░░            .                            .
+                       ███ ░███  ███ ░███                .                 .         🛸           ⠀             
+         .    🛸*     ░░██████  ░░██████   .    🛸                     🛰️            -----=========*                 
+                       ░░░░░░    ░░░░░░                                               🛸  ⠀
+           .                            .       .             🛰️         .                          
+    
+        CygUSD / CygLP - https://cygnusdao.finance                                                          .                     .
+    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-       █████████           ---======*.                                       🛸          .                    .⠀
-      ███░░░░░███                                              📡                                         🌔   
-     ███     ░░░  █████ ████  ███████ ████████   █████ ████  █████        ⠀
-    ░███         ░░███ ░███  ███░░███░░███░░███ ░░███ ░███  ███░░      .     .⠀        🛰️   .               
-    ░███          ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███ ░░█████       ⠀
-    ░░███     ███ ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███  ░░░░███              .             .              .⠀
-     ░░█████████  ░░███████ ░░███████ ████ █████ ░░████████ ██████       -----========*⠀
-      ░░░░░░░░░    ░░░░░███  ░░░░░███░░░░ ░░░░░   ░░░░░░░░ ░░░░░░            .                            .⠀
-                   ███ ░███  ███ ░███                .                 .         🛸           ⠀               
-     .      *     ░░██████  ░░██████   .                         🛰️                 .          .                
-                   ░░░░░░    ░░░░░░                                                 ⠀
-       .                            .       .         ------======*             .                          .      ⠀
-
-     https://cygnusdao.finance                                                          .                     .
-
-    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
-
-     Smart contracts to `go long` on your liquidity.
-
-     Deposit liquidity, borrow USD.
-
-     Structure of all Cygnus Contracts:
-
-     Contract                        ⠀Interface                                             
-        ├ 1. Libraries                   ├ 1. Custom Errors                                               
-        ├ 2. Storage                     ├ 2. Custom Events
-        │     ├ Private             ⠀    ├ 3. Constant Functions                          ⠀        
-        │     ├ Internal                 │     ├ Public                            ⠀       
-        │     └ Public                   │     └ External                        ⠀⠀⠀              
-        ├ 3. Constructor                 └ 4. Non-Constant Functions  
-        ├ 4. Modifiers              ⠀          ├ Public
-        ├ 5. Constant Functions     ⠀          └ External
-        │     ├ Private             ⠀                      
-        │     ├ Internal            
-        │     ├ Public              
-        │     └ External            
-        └ 6. Non-Constant Functions 
-              ├ Private             
-              ├ Internal            
-              ├ Public              
-              └ External            
-
-    @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
-          only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
-          are handled with the new `custom errors` feature among other small things...                           */
-
-// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -241,6 +229,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
+    function _trackLender(address lender, uint256 amount) internal virtual {}
+
     /**
      *  @inheritdoc ICygnusTerminal
      */
@@ -298,6 +288,9 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         // Mint shares and emit Transfer event
         _mint(recipient, shares);
 
+        // Track lender for CygUSD
+        _trackLender(recipient, shares);
+
         /// @custom:event Deposit
         emit Deposit(msg.sender, recipient, assets, shares);
     }
@@ -323,6 +316,9 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
         // Transfer assets to recipient
         underlying.safeTransfer(recipient, assets);
+
+        // Track lender for CygUSD
+        _trackLender(recipient, shares);
 
         /// @custom:event Withdraw
         emit Withdraw(msg.sender, recipient, owner, assets, shares);
