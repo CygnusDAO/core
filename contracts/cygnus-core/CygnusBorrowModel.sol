@@ -118,7 +118,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param cash Total current balance of assets this contract holds
      *  @param borrows Total amount of borrowed funds
      */
-    function getBorrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
+    function _borrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
         // Utilization rate = borrows / (cash + borrows)
         // We don't take into account reserves since we mint CygUSD
         uint256 util = borrows.divWad(cash + borrows);
@@ -134,17 +134,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Return per second borrow rate
         return excessUtil.mulWad(jumpMultiplierPerSecond) + normalRate;
-    }
-
-    function _trackLender(address lender, uint256 amount) internal override {
-        // Rewarder address (if any)
-        address rewarder = cygnusBorrowRewarder;
-
-        // If not initialized return
-        if (rewarder == address(0)) return;
-
-        // Pass borrow to this chain's CYG rewarder
-        ICygnusComplexRewarder(rewarder).trackLender(lender, amount);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -245,6 +234,22 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
+     *  @notice Track lenders for lend rewards (if any)
+     *  @param lender The address of the lender
+     *  @param amount The amount of USD deposited
+     */
+    function _trackLender(address lender, uint256 amount) internal override {
+        // Rewarder address (if any)
+        address rewarder = cygnusBorrowRewarder;
+
+        // If not initialized return
+        if (rewarder == address(0)) return;
+
+        // Pass borrow to this chain's CYG rewarder
+        ICygnusComplexRewarder(rewarder).trackLender(lender, amount);
+    }
+
+    /**
      *  @notice Applies accrued interest to total borrows and reserves
      *  @notice Calculates the interest accumulated during the time elapsed since the last accrual and mints reserves accordingly.
      */
@@ -275,7 +280,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // ──────────────────────────────────────────────────────────────────────
 
         // 1. Get per-second BorrowRate
-        uint256 borrowRateStored = getBorrowRate(cashStored, totalBorrowsStored);
+        uint256 borrowRateStored = _borrowRate(cashStored, totalBorrowsStored);
 
         // 2. BorrowRate by the time elapsed
         uint256 interestFactor = borrowRateStored * timeElapsed;
@@ -416,5 +421,16 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Pass borrower info to the Rewarder (if any)
         trackBorrowerPrivate(borrower, borrowBalance, borrowIndex);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowModel
+     */
+    function trackLender(address lender) external override {
+      // Get the amount of CygUSD the lender owns
+        uint256 cygUsdBalance = balanceOf(lender);
+
+        // Pass lender info to the rewarder (if any)
+        _trackLender(lender, cygUsdBalance);
     }
 }

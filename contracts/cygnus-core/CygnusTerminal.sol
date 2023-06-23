@@ -83,7 +83,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    IAllowanceTransfer public constant override PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+    IAllowanceTransfer public constant override PERMIT2 =
+        IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -227,9 +228,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     function _beforeWithdraw(uint256 assets) internal virtual {}
 
-    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
+    /**
+     *  @notice Tracks USD deposits for lender rewards
+     *  @param lender The address of the lender
+     *  @param amount The amount of USD deposited
+     */
     function _trackLender(address lender, uint256 amount) internal virtual {}
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -239,7 +245,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         address recipient,
         IAllowanceTransfer.PermitSingle calldata _permit,
         bytes calldata signature
-    ) external override update returns (uint256 shares) {
+    ) external override nonReentrant update returns (uint256 shares) {
         // Get balance before depositing in case of deposit fees
         uint256 balanceBefore = _previewTotalBalance();
 
@@ -298,7 +304,11 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    function redeem(uint256 shares, address recipient, address owner) external override update returns (uint256 assets) {
+    function redeem(
+        uint256 shares,
+        address recipient,
+        address owner
+    ) external override nonReentrant update returns (uint256 assets) {
         // Withdraw flow
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 

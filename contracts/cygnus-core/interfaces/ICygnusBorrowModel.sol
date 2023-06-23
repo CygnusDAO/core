@@ -107,4 +107,11 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *  @param borrower Address of borrower
      */
     function trackBorrower(address borrower) external;
+
+    /**
+     *  @notice Tracks CygUSD amounts of each user for farming rewards and passes the data back to the CYG Rewarder
+     *
+     *  @param lender Address of lender
+     */
+    function trackLender(address lender) external;
 }
