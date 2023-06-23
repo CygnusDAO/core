@@ -53,5 +53,10 @@ interface IAlbireoOrbiter {
      *  @param shuttleId The ID of the shuttle we are deploying (shared by borrow and collateral)
      *  @return borrowable The address of the new borrow contract
      */
-    function deployAlbireo(address underlying, address collateral, address oracle, uint256 shuttleId) external returns (address borrowable);
+    function deployAlbireo(
+        address underlying,
+        address collateral,
+        address oracle,
+        uint256 shuttleId
+    ) external returns (address borrowable);
 }

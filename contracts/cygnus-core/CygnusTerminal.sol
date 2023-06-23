@@ -34,7 +34,6 @@
     
         CygUSD / CygLP - https://cygnusdao.finance                                                          .                     .
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
-
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -107,7 +106,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     uint256 public immutable override shuttleId;
 
     /**
-     *  @notice The contract's totalBalance is stored as a uint160 which is the max asset allowance the Permit2 router allows.
+     *  @notice The contract's totalBalance is stored as a uint160 which is the max transfer Permit2 allows
      *  @inheritdoc ICygnusTerminal
      */
     uint160 public override totalBalance;

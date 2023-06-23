@@ -63,7 +63,6 @@
     @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
           only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
           are handled with the new `custom errors` feature among other small things...                           */
-
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -140,7 +139,11 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @notice Not marked as non-reentrant since only the borrowable may call it through the non-reentrant `liquidate()`
      *  @inheritdoc ICygnusCollateral
      */
-    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
+    function seizeCygLP(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount
+    ) external override returns (uint256 cygLPAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         if (msg.sender != borrowable) {
             revert CygnusCollateral__MsgSenderNotBorrowable();
@@ -191,7 +194,11 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update {
+    function flashRedeemAltair(
+        address redeemer,
+        uint256 assets,
+        bytes calldata data
+    ) external override nonReentrant update {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
 

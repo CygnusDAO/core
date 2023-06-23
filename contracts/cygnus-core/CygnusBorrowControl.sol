@@ -237,7 +237,9 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
         kinkUtilizationRate = kinkUtilizationRate_;
 
         // Calculate the Jump Multiplier per second and update to storage
-        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(kinkUtilizationRate_);
+        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(
+            kinkUtilizationRate_
+        );
 
         /// @custom:event NewInterestParameter
         emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);

@@ -40,7 +40,12 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *
      *  @custom:event AccrueInterest
      */
-    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated, uint256 reservesAdded);
+    event AccrueInterest(
+        uint256 cashStored,
+        uint256 totalBorrowsStored,
+        uint256 interestAccumulated,
+        uint256 reservesAdded
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS

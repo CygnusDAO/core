@@ -71,7 +71,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @param amountCollateral The collateral amount the borrower has deposited (CygLP * exchangeRate)
      *  @param borrowedAmount The total amount of stablecoins the user has borrowed (can be 0)
      */
-    function _collateralNeeded(uint256 amountCollateral, uint256 borrowedAmount) internal view returns (uint256, uint256) {
+    function _collateralNeeded(
+        uint256 amountCollateral,
+        uint256 borrowedAmount
+    ) internal view returns (uint256, uint256) {
         // Collateral Deposited * LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
@@ -175,7 +178,9 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getAccountLiquidity(address borrower) external view override returns (uint256 liquidity, uint256 shortfall) {
+    function getAccountLiquidity(
+        address borrower
+    ) external view override returns (uint256 liquidity, uint256 shortfall) {
         // Calculate if `borrower` has liquidity or shortfall
         return _accountLiquidity(borrower, type(uint256).max);
     }
@@ -189,7 +194,14 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         external
         view
         override
-        returns (uint256 cygLPBalance, uint256 principal, uint256 borrowBalance, uint256 price, uint256 positionUsd, uint256 health)
+        returns (
+            uint256 cygLPBalance,
+            uint256 principal,
+            uint256 borrowBalance,
+            uint256 price,
+            uint256 positionUsd,
+            uint256 health
+        )
     {
         // Collateral balance of the borrower (CygLP)
         cygLPBalance = balanceOf(borrower);

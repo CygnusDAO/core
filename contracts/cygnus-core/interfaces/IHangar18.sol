@@ -203,7 +203,13 @@ interface IHangar18 {
      *
      *  @custom:event NewShuttle
      */
-    event NewShuttle(address indexed lpTokenPair, uint256 indexed shuttleId, uint256 orbiterId, address borrowable, address collateral);
+    event NewShuttle(
+        address indexed lpTokenPair,
+        uint256 indexed shuttleId,
+        uint256 orbiterId,
+        address borrowable,
+        address collateral
+    );
 
     /**
      *  @dev Logs when a new Cygnus admin is requested
@@ -526,7 +532,10 @@ interface IHangar18 {
      *
      *  @custom:security non-reentrant only-admin 👽
      */
-    function deployShuttle(address lpTokenPair, uint256 orbiterId) external returns (address borrowable, address collateral);
+    function deployShuttle(
+        address lpTokenPair,
+        uint256 orbiterId
+    ) external returns (address borrowable, address collateral);
 
     /**
      *  @notice Admin 👽

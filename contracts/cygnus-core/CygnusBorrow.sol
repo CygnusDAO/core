@@ -63,7 +63,6 @@
     @dev: Inspired by Impermax, follows similar architecture and code but with significant edits. It should 
           only be tested with Solidity >=0.8 as some functions don't check for overflow/underflow and all errors
           are handled with the new `custom errors` feature among other small things...                           */
-
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -144,7 +143,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update {
+    function borrow(
+        address borrower,
+        address receiver,
+        uint256 borrowAmount,
+        bytes calldata data
+    ) external override nonReentrant update {
         // Check if msg.sender can borrow on behalf of borrower
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 

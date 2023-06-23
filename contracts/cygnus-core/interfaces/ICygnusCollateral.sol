@@ -92,7 +92,13 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *  @param daoFee The amount of CygLP sent to the DAO Reserves
      *  @param seized The total amount of CygLP seized from the borrower
      */
-    event SeizeCygLP(address indexed liquidator, address indexed borrower, uint256 cygLPAmount, uint256 daoFee, uint256 seized);
+    event SeizeCygLP(
+        address indexed liquidator,
+        address indexed borrower,
+        uint256 cygLPAmount,
+        uint256 daoFee,
+        uint256 seized
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -112,7 +118,11 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *
      *  @return cygLPAmount The amount of CygLP seized
      */
-    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external returns (uint256 cygLPAmount);
+    function seizeCygLP(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount
+    ) external returns (uint256 cygLPAmount);
 
     /**
      *  @notice Flash redeems the underlying LP Token

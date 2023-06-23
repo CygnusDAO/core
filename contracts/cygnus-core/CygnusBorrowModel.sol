@@ -142,7 +142,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @dev It is used by CygnusCollateral contract to check a borrower's position
      *  @inheritdoc ICygnusBorrowModel
      */
-    function getBorrowBalance(address borrower) public view override returns (uint256 principal, uint256 borrowBalance) {
+    function getBorrowBalance(
+        address borrower
+    ) public view override returns (uint256 principal, uint256 borrowBalance) {
         // Load user struct to memory
         BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
@@ -325,7 +327,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      * @param repayAmount The amount of tokens being repaid by the borrower.
      * @return accountBorrows The borrower's updated borrow balance
      */
-    function _updateBorrow(address borrower, uint256 borrowAmount, uint256 repayAmount) internal returns (uint256 accountBorrows) {
+    function _updateBorrow(
+        address borrower,
+        uint256 borrowAmount,
+        uint256 repayAmount
+    ) internal returns (uint256 accountBorrows) {
         // Get the borrower's current borrow balance
         // prettier-ignore
         (/* principal */, uint256 borrowBalance) = getBorrowBalance(borrower);
@@ -391,7 +397,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             // Never underflows
             unchecked {
                 // Condition check to update protocols total borrows
-                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount ? totalBorrowsStored - actualDecreaseAmount : 0;
+                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount
+                    ? totalBorrowsStored - actualDecreaseAmount
+                    : 0;
             }
 
             // Update total protocol borrows
@@ -427,7 +435,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @inheritdoc ICygnusBorrowModel
      */
     function trackLender(address lender) external override {
-      // Get the amount of CygUSD the lender owns
+        // Get the amount of CygUSD the lender owns
         uint256 cygUsdBalance = balanceOf(lender);
 
         // Pass lender info to the rewarder (if any)

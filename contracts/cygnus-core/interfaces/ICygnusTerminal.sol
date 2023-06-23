@@ -99,7 +99,13 @@ interface ICygnusTerminal is IERC20Permit {
      *
      *  @custom:event Redeem
      */
-    event Withdraw(address indexed sender, address indexed recipient, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed sender,
+        address indexed recipient,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
            3. CONSTANT FUNCTIONS

@@ -17,13 +17,32 @@ interface IAllowanceTransfer {
     error ExcessiveInvalidation();
 
     /// @notice Emits an event when the owner successfully invalidates an ordered nonce.
-    event NonceInvalidation(address indexed owner, address indexed token, address indexed spender, uint48 newNonce, uint48 oldNonce);
+    event NonceInvalidation(
+        address indexed owner,
+        address indexed token,
+        address indexed spender,
+        uint48 newNonce,
+        uint48 oldNonce
+    );
 
     /// @notice Emits an event when the owner successfully sets permissions on a token for the spender.
-    event Approval(address indexed owner, address indexed token, address indexed spender, uint160 amount, uint48 expiration);
+    event Approval(
+        address indexed owner,
+        address indexed token,
+        address indexed spender,
+        uint160 amount,
+        uint48 expiration
+    );
 
     /// @notice Emits an event when the owner successfully sets permissions using a permit signature on a token for the spender.
-    event Permit(address indexed owner, address indexed token, address indexed spender, uint160 amount, uint48 expiration, uint48 nonce);
+    event Permit(
+        address indexed owner,
+        address indexed token,
+        address indexed spender,
+        uint160 amount,
+        uint48 expiration,
+        uint48 nonce
+    );
 
     /// @notice Emits an event when the owner sets the allowance back to 0 with the lockdown function.
     event Lockdown(address indexed owner, address token, address spender);

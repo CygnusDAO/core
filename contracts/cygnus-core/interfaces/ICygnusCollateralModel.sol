@@ -104,7 +104,14 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
     )
         external
         view
-        returns (uint256 cygLPBalance, uint256 principal, uint256 borrowBalance, uint256 price, uint256 positionUsd, uint256 health);
+        returns (
+            uint256 cygLPBalance,
+            uint256 principal,
+            uint256 borrowBalance,
+            uint256 price,
+            uint256 positionUsd,
+            uint256 health
+        );
 
     /**
      *  @notice Check if a borrower can borrow a specified amount of an asset from CygnusBorrow.

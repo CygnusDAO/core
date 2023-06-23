@@ -55,5 +55,10 @@ interface IDenebOrbiter {
      *
      *  @return collateral The address of the new deployed Cygnus collateral contract
      */
-    function deployDeneb(address underlying, address borrowable, address oracle, uint256 shuttleId) external returns (address collateral);
+    function deployDeneb(
+        address underlying,
+        address borrowable,
+        address oracle,
+        uint256 shuttleId
+    ) external returns (address collateral);
 }
