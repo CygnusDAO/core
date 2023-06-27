@@ -79,17 +79,23 @@ module.exports = async function Make() {
     const lpToken = new ethers.Contract(lpTokenAddress, lpTokenAbi, owner);
 
     // ═══════════════════ 1. ORACLE ═══════════════════════════════════════════════════════════
+    // Deploy registry first
+    const Registry = await ethers.getContractFactory("CygnusNebulaRegistry");
+    const registry = await Registry.deploy();
+    
+    // Deploy nebula
+    const Nebula = await ethers.getContractFactory("CygnusNebula");
+    const nebula = await Nebula.deploy(usdcAddress, usdcAggregator, registry.address);
 
-    // Create a CygnusNebulaOracle contract instance with the address of the denomination token (USDC)
-    // and its Chainlink aggregator
-    const Oracle = await ethers.getContractFactory("CygnusNebulaOracle");
-    const oracle = await Oracle.deploy(usdcAddress, usdcAggregator);
-
-    // Initialize the oracle for the LP token, which is necessary for the deployment of this lending pool to succeed
-    await oracle.initializeNebula(lpTokenAddress, aggregators);
+    // Add nebula to registry
+    await registry.createNebula(nebula.address);
+    // Initialize LP Oracle
+    await registry.initializeOracleInNebula(0, lpTokenAddress, aggregators);
 
     console.log("\t-----------------------------------------------------------------------------");
-    console.log("\tCygnus LP Oracle   | %s", chalk.yellowBright(oracle.address));
+    console.log("\tCygnus LP Registry | %s", chalk.yellowBright(registry.address));
+    console.log("\t-----------------------------------------------------------------------------");
+    console.log("\tCygnus LP Oracle   | %s", chalk.yellowBright(nebula.address));
 
     // ═══════════════════ 2. BORROW DEPLOYER ══════════════════════════════════════════════════
 
@@ -107,10 +113,10 @@ module.exports = async function Make() {
 
     // Create a Hangar18 factory contract instance
     const Factory = await ethers.getContractFactory("Hangar18");
-    const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress);
+    const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, registry.address);
 
     // Initialize the factory with the Albireo and Deneb orbiter instances, and the CygnusNebulaOracle instance
-    await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address, oracle.address);
+    await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Factory     | %s", chalk.green(factory.address));
@@ -138,7 +144,7 @@ module.exports = async function Make() {
 
     // Deploy the CygnusAltairX router to do borrows, liquidations, leverage, deleverage, repays, etc.
     const Router = await ethers.getContractFactory("CygnusAltairX");
-    const router = await Router.deploy(factory.address, 0);
+    const router = await Router.deploy(factory.address, orbiterName);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Router      | %s", chalk.magentaBright(router.address));
@@ -147,7 +153,7 @@ module.exports = async function Make() {
 
     // CYG token
     const CygToken = await ethers.getContractFactory("CygnusERC20");
-    const cygToken = await CygToken.deploy("Cygnus", "CYG", 18);
+    const cygToken = await CygToken.deploy();
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Token       | %s", chalk.cyanBright(cygToken.address));
@@ -155,10 +161,10 @@ module.exports = async function Make() {
     // ═══════════════════ 8. CYG REWARDER ═════════════════════════════════════════════════════
 
     // CYG Rewarder
-    const CygRewarder = await ethers.getContractFactory("CygnusComplexRewarder");
+    const CygRewarder = await ethers.getContractFactory("CygnusIndustrialComplex");
 
     // 3_000_000 Tokens as an example
-    const totalCygRewards = "3000000000000000000000000";
+    const totalCygRewards = "2000000000000000000000000";
 
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
     const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards);
@@ -167,10 +173,9 @@ module.exports = async function Make() {
     await cygRewarder.initializeShuttleRewards(0, 1000);
 
     // Set rewarder in borrowable
-    await borrowable.setCygnusBorrowRewarder(cygRewarder.address);
+    await borrowable.setCygnusIndustrialComplex(cygRewarder.address);
 
-    // Send the 3 M tokens from Owner to rewarder
-    await cygToken.transfer(cygRewarder.address, totalCygRewards);
+    await cygToken.connect(owner).transferOwnership(cygRewarder.address);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Rewarder    | %s", chalk.cyanBright(cygRewarder.address));
@@ -199,7 +204,7 @@ module.exports = async function Make() {
     // ═════════════════════════════════════════════════════════════════════════════════════════
 
     return [
-        oracle, // CygnusNebulaOracle.sol
+        nebula, // CygnusNebulaOracle.sol
         factory, // Hangar18.sol
         router, // CygnusAltairX.sol
         borrowable, // The CygnusBorrow.sol contract instance which accepts stablecoin deposits

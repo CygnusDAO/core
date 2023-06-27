@@ -265,7 +265,7 @@ describe("BorrowAllowance Tests", function () {
             const usdBal = await borrowable.totalBalance();
             expect(usdBal).to.be.gt(liquidity);
 
-            await borrowable.connect(owner).borrowApprove(router.address, MaxUint256);
+            await borrowable.connect(owner).approve(router.address, MaxUint256);
 
             // Should succeed
             await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.emit(
@@ -279,11 +279,11 @@ describe("BorrowAllowance Tests", function () {
             // Fixture
             const { router, borrowable, owner } = await loadFixture(deployFixure);
 
-            const borrowAllowanceBefore = await borrowable.borrowAllowance(owner.address, router.address);
+            const allowanceBefore = await borrowable.allowance(owner.address, router.address);
 
-            await borrowable.connect(owner).borrowApprove(router.address, MaxUint256);
+            await borrowable.connect(owner).approve(router.address, MaxUint256);
 
-            expect(await borrowable.borrowAllowance(owner.address, router.address)).to.be.gt(borrowAllowanceBefore);
+            expect(await borrowable.allowance(owner.address, router.address)).to.be.gt(allowanceBefore);
         });
 
         // borrowPermit()
@@ -301,7 +301,7 @@ describe("BorrowAllowance Tests", function () {
             const usdBal = await borrowable.totalBalance();
             expect(usdBal).to.be.gt(liquidity);
 
-            const borrowAllowanceBefore = await borrowable.borrowAllowance(owner.address, router.address);
+            const allowanceBefore = await borrowable.allowance(owner.address, router.address);
 
             // DOMAIN
             const _name = await borrowable.name();
@@ -317,7 +317,7 @@ describe("BorrowAllowance Tests", function () {
 
             // TYPES
             const types = {
-                BorrowPermit: [
+                Permit: [
                     { name: "owner", type: "address" },
                     { name: "spender", type: "address" },
                     { name: "value", type: "uint256" },
@@ -341,11 +341,11 @@ describe("BorrowAllowance Tests", function () {
 
             const { v, r, s } = await ethers.utils.splitSignature(signature);
 
-            await borrowable.connect(owner).borrowPermit(owner.address, router.address, liquidity, MaxUint256, v, r, s);
+            await borrowable.connect(owner).permit(owner.address, router.address, liquidity, MaxUint256, v, r, s);
 
-            const borrowAllowanceAfter = await borrowable.borrowAllowance(owner.address, router.address);
+            const allowanceAfter = await borrowable.allowance(owner.address, router.address);
 
-            expect(borrowAllowanceAfter).to.be.gt(borrowAllowanceBefore);
+            expect(allowanceAfter).to.be.gt(allowanceBefore);
         });
 
         // borrowPermit()
@@ -376,7 +376,7 @@ describe("BorrowAllowance Tests", function () {
 
             // TYPES
             const types = {
-                BorrowPermit: [
+                Permit: [
                     { name: "owner", type: "address" },
                     { name: "spender", type: "address" },
                     { name: "value", type: "uint256" },
@@ -400,7 +400,7 @@ describe("BorrowAllowance Tests", function () {
 
             const { v, r, s } = await ethers.utils.splitSignature(signature);
 
-            await expect(borrowable.connect(owner).borrowPermit(borrower._address, owner.address, liquidity, MaxUint256, v, r, s)).to.be
+            await expect(borrowable.connect(owner).permit(borrower._address, owner.address, liquidity, MaxUint256, v, r, s)).to.be
                 .reverted;
         });
     });

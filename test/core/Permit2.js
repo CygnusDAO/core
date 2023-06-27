@@ -18,8 +18,7 @@ const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("
 const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.json"));
 
 // Constants
-const { MaxUint256 } = ethers.constants;
-const deadAddress = "0x000000000000000000000000000000000000dEaD";
+const { MaxUint256, AddressZero } = ethers.constants;
 
 /**
  *  @notice Simple deposit tests for permit2 and to check modifiers/shares received by both borrowable/collateral
@@ -194,7 +193,7 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
         });
 
         // TEST: Deposit without permit2
-        it("Should allow deposits without permit2 (requires 2 txs)", async () => {
+        it("Should allow deposits without permit2 signature (requires 2 txs)", async () => {
             // Fixture
             const { borrowable, usdc, lender } = await loadFixture(deployFixure);
 
@@ -228,7 +227,7 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
         });
 
         // TEST: Deposit without permit2
-        it("Should allow deposits without permit2 to someone else (requires 2 txs)", async () => {
+        it("Should allow deposits without permit2 without signature to someone else (requires 2 txs)", async () => {
             // Fixture
             const { borrowable, usdc, lender, owner } = await loadFixture(deployFixure);
 
@@ -262,7 +261,7 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
         });
 
         // TEST: Deposit without permit2
-        it("Should mint 1000 shares to 0xdEaD only on first deposits", async () => {
+        it("Should mint 1000 shares to address zero only on first deposits", async () => {
             // Fixture
             const { borrowable, usdc, lender, owner } = await loadFixture(deployFixure);
 
@@ -293,14 +292,14 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
 
             // Substract initial 1000 shares mint
             expect(await borrowable.balanceOf(lender._address)).to.be.closeTo(BigInt(100000e6 - 1000), 1);
-            expect(await borrowable.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await borrowable.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
 
             // Second deposit
             await expect(borrowable.connect(lender).deposit(BigInt(200e6), lender._address, permitB, "0x")).to.emit(
                 borrowable,
                 "Deposit",
             );
-            expect(await borrowable.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await borrowable.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
 
             // Third deposit
             // 1. Approve permit2 in USDC
@@ -315,7 +314,7 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
             // 4. Owner deposits using lender address
             // prettier-ignore
             await expect(borrowable.connect(owner).deposit(BigInt(995e6), owner.address, permitB, "0x")).to.emit(borrowable, 'Deposit')
-            expect(await borrowable.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await borrowable.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
         });
     });
 
@@ -506,13 +505,13 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
 
             // Substract initial 1000 shares mint
             expect(await collateral.balanceOf(borrower._address)).to.be.closeTo(BigInt(1.25e18) - BigInt(1000), 1);
-            expect(await collateral.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await collateral.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
 
             // Second deposit
             await expect(
                 collateral.connect(borrower).deposit(BigInt(0.25e18), borrower._address, permitB, "0x"),
             ).to.emit(collateral, "Deposit");
-            expect(await collateral.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await collateral.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
 
             // Third deposit
             // 1. Approve permit2 in USDC
@@ -529,7 +528,7 @@ describe("Borrowable and Collateral Deposit with Permit2", function () {
             // 4. Owner deposits using lender address
             // prettier-ignore
             await expect(collateral.connect(owner).deposit(BigInt(1.75e18), owner.address, permitB, "0x")).to.emit(collateral, 'Deposit').to.emit(collateral, 'Sync')
-            expect(await collateral.balanceOf(deadAddress)).to.be.equal(BigInt(1000));
+            expect(await collateral.balanceOf(AddressZero)).to.be.equal(BigInt(1000));
         });
     });
 

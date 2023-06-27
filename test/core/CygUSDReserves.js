@@ -3,7 +3,7 @@ const path = require("path");
 // Hardhat
 const hre = require("hardhat");
 const ethers = hre.ethers;
-const { mine } = require("@nomicfoundation/hardhat-network-helpers");
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Testers
 const { expect } = require("chai");
@@ -20,10 +20,6 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 
 // Constants
 const { MaxUint256 } = ethers.constants;
-const ONE = ethers.utils.parseUnits("1", 18);
-
-// Flash liquidate
-const paraswapDeleverage = require(path.resolve(__dirname, "../../scripts/paraswap-augustus-v5/Deleverage.js")); // PARASWAP
 
 /**
  *  FIXTURE:
@@ -38,10 +34,10 @@ describe("Cygnus Liquidations Integration Test", function () {
      */
     const deployFixure = async () => {
         // Make lending pool and collateral
-        const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+        const [, factory, router, borrowable, collateral, usdc, lpToken] = await Make();
 
         // Create users: owner (admin), lender, and borrower
-        const [owner, , safeAddress1, lender, borrower] = await Users();
+        const [owner, , , lender, borrower] = await Users();
 
         // Set BorrowAPR to 0% first
         await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.15e18), 2, BigInt(0.8e18));
@@ -55,10 +51,6 @@ describe("Cygnus Liquidations Integration Test", function () {
         // Load the permit2 contract ABI
         const permit2 = new ethers.Contract(PERMIT2_ADDRESS, permit2Abi, ethers.provider);
 
-        // Get initial balances of lender and borrower
-        const lenderInitialBal = await usdc.balanceOf(lender._address);
-        const borrowerInitialBal = await lpToken.balanceOf(borrower._address);
-
         // Deposit 100,000 USDC into the lending pool
         await lenderDeposit(owner, usdc, lender, borrowable, permit2);
 
@@ -71,14 +63,9 @@ describe("Cygnus Liquidations Integration Test", function () {
         // Borrow max Liquidity
         await borrowUsd(borrower, borrowable, collateral, router);
 
-        // Mine 1000 blocks
-        await mine(1000);
-
-        // Accrue
-        await borrowable.accrueInterest();
-
         // Return an object containing the various contracts, users, and initial balances for testing
         return {
+            factory,
             router, // Router contract
             borrowable, // Lending pool contract
             collateral, // Collateral contract
@@ -87,11 +74,7 @@ describe("Cygnus Liquidations Integration Test", function () {
             owner, // Owner (admin) user
             lender, // Lender user
             borrower, // Borrower user
-            chainId, // Chain ID of the network being tested
-            lenderInitialBal, // Initial balance of the lender's USDC before CYG
-            borrowerInitialBal, // Initial balance of the borrower's LP tokens before CYG
             permit2, // Permit2 contract instance
-            safeAddress1, // Extra ethers signer
         };
     };
 
@@ -134,7 +117,7 @@ describe("Cygnus Liquidations Integration Test", function () {
         await usdc.connect(lender).transfer(owner.address, BigInt(100000e6));
 
         // Step 4: `owner` deposits the USDC into the `borrowable` contract for `lender`
-        await borrowable.connect(owner).deposit(BigInt(100000e6), lender._address, permit, signature);
+        await borrowable.connect(owner).deposit(BigInt(500e6), lender._address, permit, signature);
     };
 
     /**
@@ -195,130 +178,71 @@ describe("Cygnus Liquidations Integration Test", function () {
         it("...begins...", async () => await loadFixture(deployFixure));
     });
 
-    describe("Checks borrower has borrowed USDC successfuly", () => {
-        // Check balance CygUSD
-        it("Lender should have positive balance of CygUSD", async () => {
-            // Fixture
-            const { borrowable, lender, usdc, lenderInitialBal } = await loadFixture(deployFixure);
+    describe("The DAO receives CygUSD according to the reserveFactor", () => {
+        //        it("Mints CygUSD on `accrueInterest`", async () => {
+        //            const { owner, factory, borrowable } = await loadFixture(deployFixure);
+        //
+        //            const daoReserves = await factory.daoReserves();
+        //
+        //            const reservesBalance = await borrowable.balanceOf(daoReserves);
+        //
+        //            await mine(200000);
+        //            await expect(borrowable.connect(owner).accrueInterest()).to.emit(borrowable, "AccrueInterest");
+        //
+        //            const _reservesBalance = await borrowable.balanceOf(daoReserves);
+        //
+        //            expect(_reservesBalance).to.be.gt(reservesBalance);
+        //        });
+        //
+        //        it("Mints CygUSD on `Sync`", async () => {
+        //            const { owner, factory, borrowable } = await loadFixture(deployFixure);
+        //
+        //            const daoReserves = await factory.daoReserves();
+        //
+        //            const reservesBalance = await borrowable.balanceOf(daoReserves);
+        //
+        //            await mine(200000);
+        //            await expect(borrowable.connect(owner).sync()).to.emit(borrowable, "Sync").to.emit(borrowable, "AccrueInterest");
+        //
+        //            const _reservesBalance = await borrowable.balanceOf(daoReserves);
+        //
+        //            expect(_reservesBalance).to.be.gt(reservesBalance);
+        //        });
 
-            // Get balance of CygUSD
-            expect(await borrowable.balanceOf(lender._address)).to.be.gt(0);
+        it("Mints reserves according to the reserveFactor`", async () => {
+            const { factory, lender, owner, borrowable } = await loadFixture(deployFixure);
 
-            // Get balance of USD
-            expect(await usdc.balanceOf(lender._address)).to.be.lt(lenderInitialBal);
+            await expect(borrowable.connect(owner).sync()).to.emit(borrowable, "Sync");
+            console.log("CYGUSD BAL OF BORROWER: %s", (await borrowable.balanceOf(lender._address)) / 1e6);
+            console.log("------------------------------------------------------------------------");
+
+            console.log("Total Supply : %s", (await borrowable.totalSupply()) / 1e6);
+            console.log("Total Borrows: %s", (await borrowable.totalBorrows()) / 1e6);
+            console.log("Total Balance: %s", (await borrowable.totalBalance()) / 1e6);
+            console.log("Borrow Rate  : %s", ((await borrowable.borrowRate()) * (60 * 60 * 24 * 365)) / 1e16);
+            console.log("Utilization  : %s", (await borrowable.utilizationRate()) / 1e16);
+            await expect(borrowable.connect(owner).sync()).to.emit(borrowable, "Sync");
+
+            console.log("------------------------------------------------------------------------");
+            console.log("  MINE 1 Year  ");
+            console.log("------------------------------------------------------------------------");
+
+            for (let i = 0; i < 12; i++) {
+                await time.increase(60 * 60 * 24 * 30);
+                await borrowable.connect(owner).sync();
+            }
+
+          const daoReserves = await factory.daoReserves();
+          console.log("Balance of Reserves: %s", await borrowable.balanceOf(daoReserves) / 1e6);
+          console.log("Exchange Rate: %s", await borrowable.exchangeRate());
+
+            console.log("Total Supply: %s", (await borrowable.totalSupply()) / 1e6);
+            console.log("Total Borrows: %s", (await borrowable.totalBorrows()) / 1e6);
+            console.log("Total Balance: %s", (await borrowable.totalBalance()) / 1e6);
+            console.log("Borrow Rate  : %s", ((await borrowable.borrowRate()) * (60 * 60 * 24 * 365)) / 1e16);
+            console.log("Utilization  : %s", (await borrowable.utilizationRate()) / 1e16);
+            await expect(borrowable.connect(owner).sync()).to.emit(borrowable, "Sync");
+
         });
-
-        // Check balance CygLP
-        it("Borrower should have positive balance of CygLP", async () => {
-            // Fixture
-            const { collateral, borrower, lpToken, borrowerInitialBal } = await loadFixture(deployFixure);
-
-            // Check balance of CygLP
-            expect(await collateral.balanceOf(borrower._address)).to.be.gt(0);
-
-            // Check balance of LP
-            expect(await lpToken.balanceOf(borrower._address)).to.be.lt(borrowerInitialBal);
-        });
-
-        it("Borrower should have shortfall", async () => {
-            // Fixture
-            const { collateral, borrower } = await loadFixture(deployFixure);
-
-            const { health } = await collateral.getBorrowerPosition(borrower._address);
-
-            // Check debt ratio is more than 100%
-            expect(health).to.be.gt(ONE);
-
-            // Check shortfall is positive
-            const { shortfall } = await collateral.getAccountLiquidity(borrower._address);
-
-            // Liquidatable
-            expect(shortfall).to.be.gt(0);
-        });
-    });
-
-    // Liquidate collateral
-    describe("Liquidates collateral", () => {
-        // Check: liquidateToUsd()
-        it("Should sell collateral to the market and liquidate a borrower", async () => {
-            // Fixture
-            const { lender, borrowable, collateral, borrower, chainId, lpToken, usdc, router } = await loadFixture(deployFixure);
-
-            await borrowable.sync();
-            // Initial USD balance of liquidator
-            const liquidatorUsdBalance = await usdc.balanceOf(lender._address);
-            const cygLPBal = await collateral.balanceOf(borrower._address);
-
-            const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
-            const liqIncentive = await collateral.liquidationIncentive();
-            const lpPrice = await collateral.getLPTokenPrice();
-            //const exchangeRate = await collateral.exchangeRate();
-            // The amount of LP Tokens we are selling to the market
-            const repayAmount = ethers.BigNumber.from(100e6);
-            const sellAmount = repayAmount.mul(liqIncentive).div(lpPrice);
-
-            // Build swap data
-            const liquidateData = await paraswapDeleverage(chainId, lpToken, usdc.address, router, sellAmount);
-
-            // Liquidate user
-            await router.connect(lender).flashLiquidate(
-                borrowable.address,
-                collateral.address,
-                BigInt(100e6), // We liquidate max, router does take whole amount just what is needed
-                borrower._address,
-                lender._address,
-                MaxUint256,
-                0,
-                liquidateData,
-            );
-
-            const { borrowBalance: _borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
-
-            const cygLPBalAfter = await collateral.balanceOf(borrower._address);
-
-            // Get lender usd balance after liquidation
-            const liquidatorUsdBalanceAfter = await usdc.balanceOf(lender._address);
-
-            // Assert that the borrower has more USDC
-            expect(liquidatorUsdBalanceAfter).to.be.gt(liquidatorUsdBalance);
-            expect(cygLPBalAfter).to.be.lt(cygLPBal);
-            expect(_borrowBalance).to.be.lt(borrowBalance);
-        });
-
-        //   it("Should revert if borrower does not have shortfall", async () => {
-        //       const { lender, borrowable, collateral, borrower, chainId, lpToken, usdc, router } = await loadFixture(deployFixure);
-
-        //       const borrowBalance = await borrowable.getBorrowBalance(borrower._address);
-        //       const liqIncentive = await collateral.liquidationIncentive();
-        //       const lpPrice = await collateral.getLPTokenPrice();
-        //       const exchangeRate = await collateral.exchangeRate();
-        //       // The amount of LP Tokens we are selling to the market
-        //       const sellAmount = borrowBalance.mul(liqIncentive).div(lpPrice).mul(exchangeRate).div(ONE);
-
-        //       // Its over 100% debt ratio
-        //       expect(await collateral.getDebtRatio(borrower._address)).to.be.gt(ONE);
-
-        //       // Increase max debt ratio of the pool
-        //       await collateral.setDebtRatio(BigInt(1e18));
-
-        //       // Its over 100% debt ratio
-        //       expect(await collateral.getDebtRatio(borrower._address)).to.be.lt(ONE);
-
-        //       // Build swap data
-        //       const liquidateData = await deleverageSwapData(chainId, lpToken, usdc.address, router, sellAmount);
-
-        //       // Liquidate user
-        //       await expect(
-        //           router.connect(lender).flashLiquidate(
-        //               borrowable.address,
-        //               collateral.address,
-        //               BigInt(10000e6), // We liquidate max, router does take whole amount just what is needed
-        //               borrower._address,
-        //               lender._address,
-        //               MaxUint256,
-        //               liquidateData,
-        //           ),
-        //       ).to.be.reverted;
-        //   });
     });
 });

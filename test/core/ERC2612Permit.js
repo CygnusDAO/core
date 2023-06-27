@@ -1,22 +1,22 @@
 // JS
-const path = require('path');
+const path = require("path");
 // Hardhat
-const hre = require('hardhat');
+const hre = require("hardhat");
 const ethers = hre.ethers;
 
 // Testers
-const {expect} = require('chai');
-const {describe, it} = require('mocha');
+const { expect } = require("chai");
+const { describe, it } = require("mocha");
 
 // Fixture
-const Make = require(path.resolve(__dirname, '../Make.js'));
-const Users = require(path.resolve(__dirname, '../Users.js'));
-const {loadFixture} = require('@nomicfoundation/hardhat-network-helpers');
+const Make = require(path.resolve(__dirname, "../Make.js"));
+const Users = require(path.resolve(__dirname, "../Users.js"));
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 /**
  *  Simple tests for soladys erc2612
  */
-describe('ERC2612 Tests', function () {
+describe("ERC2612 Tests", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */
@@ -50,23 +50,23 @@ describe('ERC2612 Tests', function () {
     /**
      *  BEGIN TESTS
      */
-    describe('------------------- Begin Test -------------------', () => {
-        it('...begins...', async () => await loadFixture(deployFixure));
+    describe("------------------- Begin Test -------------------", () => {
+        it("...begins...", async () => await loadFixture(deployFixure));
     });
 
-    describe('Checks ERC2616 implementation is correct for Borrowable contracts', () => {
+    describe("Checks ERC2616 implementation is correct for Borrowable contracts", () => {
         // name()
-        it('Should match the name of `Cygnus: Borrowable`', async () => {
+        it("Should match the name of `Cygnus: Borrowable`", async () => {
             // Fixture
-            const {borrowable} = await loadFixture(deployFixure);
+            const { borrowable } = await loadFixture(deployFixure);
 
             expect(await borrowable.name()).to.be.eq(`Cygnus: Borrowable`);
         });
 
         // symbol()
-        it('Should match the name of `CygUSD: USDC`', async () => {
+        it("Should match the name of `CygUSD: USDC`", async () => {
             // Fixture
-            const {borrowable, usdc} = await loadFixture(deployFixure);
+            const { borrowable, usdc } = await loadFixture(deployFixure);
 
             const symbol = await usdc.symbol();
 
@@ -74,9 +74,9 @@ describe('ERC2612 Tests', function () {
         });
 
         // decimals()
-        it('Should match the decimals of the underlying', async () => {
+        it("Should match the decimals of the underlying", async () => {
             // Fixture
-            const {borrowable, usdc} = await loadFixture(deployFixure);
+            const { borrowable, usdc } = await loadFixture(deployFixure);
 
             const decimals = await usdc.decimals();
 
@@ -84,7 +84,7 @@ describe('ERC2612 Tests', function () {
         });
 
         // DOMAIN_SEPARATOR()
-        it('Should match the DOMAIN_SEPARATOR as detailed in https://eips.ethereum.org/EIPS/eip-2612', async () => {
+        it("Should match the DOMAIN_SEPARATOR as detailed in https://eips.ethereum.org/EIPS/eip-2612", async () => {
             //    DOMAIN_SEPARATOR = keccak256(
             //        abi.encode(
             //            keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
@@ -95,14 +95,14 @@ describe('ERC2612 Tests', function () {
             //    ));
 
             // Fixture
-            const {borrowable, owner} = await loadFixture(deployFixure);
+            const { borrowable, owner } = await loadFixture(deployFixure);
 
             // DOMAIN_SEPARATOR from the contract
             const domainSeparator = await borrowable.DOMAIN_SEPARATOR();
 
             // Build domain
             const _name = await borrowable.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await borrowable.address;
 
@@ -121,13 +121,13 @@ describe('ERC2612 Tests', function () {
         });
 
         // permit()
-        it('Should revert when increasing allowance with `permit` if owner is not signer', async () => {
+        it("Should revert when increasing allowance with `permit` if owner is not signer", async () => {
             // Fixture
-            const {borrowable, owner, lender} = await loadFixture(deployFixure);
+            const { borrowable, owner, lender } = await loadFixture(deployFixure);
 
             // Build domain
             const _name = await borrowable.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await borrowable.address;
 
@@ -140,11 +140,11 @@ describe('ERC2612 Tests', function () {
 
             const types = {
                 Permit: [
-                    {name: 'owner', type: 'address'},
-                    {name: 'spender', type: 'address'},
-                    {name: 'value', type: 'uint256'},
-                    {name: 'nonce', type: 'uint256'},
-                    {name: 'deadline', type: 'uint256'},
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "value", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
                 ],
             };
 
@@ -161,7 +161,7 @@ describe('ERC2612 Tests', function () {
 
             const signature = await owner._signTypedData(domain, types, values);
 
-            const {v, r, s} = await ethers.utils.splitSignature(signature);
+            const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Lender is the "vulnerable" account with collateral
             const allowanceBefore = await borrowable.allowance(lender._address, owner.address);
@@ -170,45 +170,21 @@ describe('ERC2612 Tests', function () {
             await expect(
                 borrowable
                     .connect(owner)
-                    .permit(
-                        owner.address,
-                        lender._address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(owner.address, lender._address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Same as signature, expect to revert since ecrecover will not match owner
             await expect(
                 borrowable
                     .connect(owner)
-                    .permit(
-                        lender._address,
-                        owner.address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(lender._address, owner.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Approving themselves with wrong signature
             await expect(
                 borrowable
                     .connect(owner)
-                    .permit(
-                        owner.address,
-                        owner.address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(owner.address, owner.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Expect the same allowance
@@ -216,13 +192,13 @@ describe('ERC2612 Tests', function () {
         });
 
         // permit()
-        it('Should increase allowance with `permit` if owner is the signer', async () => {
+        it("Should increase allowance with `permit` if owner is the signer", async () => {
             // Fixture
-            const {borrowable, owner, router} = await loadFixture(deployFixure);
+            const { borrowable, owner, router } = await loadFixture(deployFixure);
 
             // DOMAIN
             const _name = await borrowable.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await borrowable.address;
 
@@ -236,11 +212,11 @@ describe('ERC2612 Tests', function () {
             // TYPES
             const types = {
                 Permit: [
-                    {name: 'owner', type: 'address'},
-                    {name: 'spender', type: 'address'},
-                    {name: 'value', type: 'uint256'},
-                    {name: 'nonce', type: 'uint256'},
-                    {name: 'deadline', type: 'uint256'},
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "value", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
                 ],
             };
 
@@ -256,40 +232,32 @@ describe('ERC2612 Tests', function () {
 
             const signature = await owner._signTypedData(domain, types, values);
 
-            const {v, r, s} = await ethers.utils.splitSignature(signature);
+            const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Lender is the "vulnerable" account with collateral
             const allowanceBefore = await borrowable.allowance(owner.address, router.address);
 
             await borrowable
                 .connect(owner)
-                .permit(
-                    owner.address,
-                    router.address,
-                    ethers.constants.MaxUint256,
-                    ethers.constants.MaxUint256,
-                    v,
-                    r,
-                    s,
-                );
+                .permit(owner.address, router.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s);
 
             expect(await borrowable.allowance(owner.address, router.address)).to.be.gt(allowanceBefore);
         });
     });
 
-    describe('Checks ERC2616 implementation is correct for Collateral contracts', () => {
+    describe("Checks ERC2616 implementation is correct for Collateral contracts", () => {
         // name()
-        it('Should match the name of `Cygnus: Collateral`', async () => {
+        it("Should match the name of `Cygnus: Collateral`", async () => {
             // Fixture
-            const {collateral} = await loadFixture(deployFixure);
+            const { collateral } = await loadFixture(deployFixure);
 
             expect(await collateral.name()).to.be.eq(`Cygnus: Collateral`);
         });
 
         // symbol()
-        it('Should match the name of `CygLP: {LP Token Symbol}`', async () => {
+        it("Should match the name of `CygLP: {LP Token Symbol}`", async () => {
             // Fixture
-            const {collateral, lpToken} = await loadFixture(deployFixure);
+            const { collateral, lpToken } = await loadFixture(deployFixure);
 
             const symbol = await lpToken.symbol();
 
@@ -297,9 +265,9 @@ describe('ERC2612 Tests', function () {
         });
 
         // decimals()
-        it('Should match the decimals of the underlying', async () => {
+        it("Should match the decimals of the underlying", async () => {
             // Fixture
-            const {collateral, lpToken} = await loadFixture(deployFixure);
+            const { collateral, lpToken } = await loadFixture(deployFixure);
 
             const decimals = await lpToken.decimals();
 
@@ -307,7 +275,7 @@ describe('ERC2612 Tests', function () {
         });
 
         // DOMAIN_SEPARATOR()
-        it('Should match the DOMAIN_SEPARATOR as detailed in https://eips.ethereum.org/EIPS/eip-2612', async () => {
+        it("Should match the DOMAIN_SEPARATOR as detailed in https://eips.ethereum.org/EIPS/eip-2612", async () => {
             //    DOMAIN_SEPARATOR = keccak256(
             //        abi.encode(
             //            keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
@@ -318,14 +286,14 @@ describe('ERC2612 Tests', function () {
             //    ));
 
             // Fixture
-            const {collateral, owner} = await loadFixture(deployFixure);
+            const { collateral, owner } = await loadFixture(deployFixure);
 
             // DOMAIN_SEPARATOR from the contract
             const domainSeparator = await collateral.DOMAIN_SEPARATOR();
 
             // Build domain
             const _name = await collateral.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await collateral.address;
 
@@ -344,13 +312,13 @@ describe('ERC2612 Tests', function () {
         });
 
         // permit()
-        it('Should revert when increasing allowance with `permit` if owner is not signer', async () => {
+        it("Should revert when increasing allowance with `permit` if owner is not signer", async () => {
             // Fixture
-            const {collateral, owner, lender} = await loadFixture(deployFixure);
+            const { collateral, owner, lender } = await loadFixture(deployFixure);
 
             // Build domain
             const _name = await collateral.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await collateral.address;
 
@@ -363,11 +331,11 @@ describe('ERC2612 Tests', function () {
 
             const types = {
                 Permit: [
-                    {name: 'owner', type: 'address'},
-                    {name: 'spender', type: 'address'},
-                    {name: 'value', type: 'uint256'},
-                    {name: 'nonce', type: 'uint256'},
-                    {name: 'deadline', type: 'uint256'},
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "value", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
                 ],
             };
 
@@ -384,7 +352,7 @@ describe('ERC2612 Tests', function () {
 
             const signature = await owner._signTypedData(domain, types, values);
 
-            const {v, r, s} = await ethers.utils.splitSignature(signature);
+            const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Lender is the "vulnerable" account with collateral
             const allowanceBefore = await collateral.allowance(lender._address, owner.address);
@@ -393,45 +361,21 @@ describe('ERC2612 Tests', function () {
             await expect(
                 collateral
                     .connect(owner)
-                    .permit(
-                        owner.address,
-                        lender._address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(owner.address, lender._address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Same as signature, expect to revert since ecrecover will not match owner
             await expect(
                 collateral
                     .connect(owner)
-                    .permit(
-                        lender._address,
-                        owner.address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(lender._address, owner.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Approving themselves with wrong signature
             await expect(
                 collateral
                     .connect(owner)
-                    .permit(
-                        owner.address,
-                        owner.address,
-                        ethers.constants.MaxUint256,
-                        ethers.constants.MaxUint256,
-                        v,
-                        r,
-                        s,
-                    ),
+                    .permit(owner.address, owner.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s),
             ).to.be.reverted;
 
             // Expect the same allowance
@@ -439,13 +383,13 @@ describe('ERC2612 Tests', function () {
         });
 
         // permit()
-        it('Should increase allowance with `permit` if owner is the signer', async () => {
+        it("Should increase allowance with `permit` if owner is the signer", async () => {
             // Fixture
-            const {collateral, owner, router} = await loadFixture(deployFixure);
+            const { collateral, owner, router } = await loadFixture(deployFixure);
 
             // DOMAIN
             const _name = await collateral.name();
-            const _version = '1'; // Solady's erc20 has no version
+            const _version = "1"; // Solady's erc20 has no version
             const _chainId = await owner.getChainId();
             const _verifyingContract = await collateral.address;
 
@@ -459,11 +403,11 @@ describe('ERC2612 Tests', function () {
             // TYPES
             const types = {
                 Permit: [
-                    {name: 'owner', type: 'address'},
-                    {name: 'spender', type: 'address'},
-                    {name: 'value', type: 'uint256'},
-                    {name: 'nonce', type: 'uint256'},
-                    {name: 'deadline', type: 'uint256'},
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "value", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
                 ],
             };
 
@@ -479,22 +423,14 @@ describe('ERC2612 Tests', function () {
 
             const signature = await owner._signTypedData(domain, types, values);
 
-            const {v, r, s} = await ethers.utils.splitSignature(signature);
+            const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Lender is the "vulnerable" account with collateral
             const allowanceBefore = await collateral.allowance(owner.address, router.address);
 
             await collateral
                 .connect(owner)
-                .permit(
-                    owner.address,
-                    router.address,
-                    ethers.constants.MaxUint256,
-                    ethers.constants.MaxUint256,
-                    v,
-                    r,
-                    s,
-                );
+                .permit(owner.address, router.address, ethers.constants.MaxUint256, ethers.constants.MaxUint256, v, r, s);
 
             expect(await collateral.allowance(owner.address, router.address)).to.be.gt(allowanceBefore);
         });

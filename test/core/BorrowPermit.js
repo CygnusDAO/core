@@ -19,12 +19,14 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 
 // Constants
 const { MaxUint256 } = ethers.constants;
-const leverageSwapdata = require(path.resolve(__dirname, "../../scripts/aggregation-router-v5/Leverage.js"));
+const { leverageCalldata } = require(path.resolve(__dirname, "../../scripts/aggregators/Aggregators.js"));
+
+const dexAggregator = 0; // Use paraswap as default, for 1inch switch to 1
 
 /**
  *  Tests borrowing wit hthe borrowPermit both on the router and on core
  */
-describe("Test borrowing with BorrowPermit functions on the router and core", function () {
+describe("Test borrowing with Permit functions on the router and core", function () {
     /**
      *  Deploys the fixture for testing the Cygnus Core contracts.
      */
@@ -200,7 +202,7 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
             // Fixture
             const { router, borrowable, collateral, owner } = await loadFixture(deployFixure);
 
-            await expect(borrowable.connect(owner).borrowApprove(router.address, MaxUint256)).to.emit(borrowable, "BorrowApproval");
+            await expect(borrowable.connect(owner).approve(router.address, MaxUint256)).to.emit(borrowable, "Approval");
 
             const { liquidity } = await collateral.getAccountLiquidity(owner.address);
 
@@ -234,7 +236,7 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
             // TYPES
             //
             const types = {
-                BorrowPermit: [
+                Permit: [
                     { name: "owner", type: "address" },
                     { name: "spender", type: "address" },
                     { name: "value", type: "uint256" },
@@ -259,9 +261,9 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
             const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Call Permit
-            await expect(borrowable.connect(owner).borrowPermit(owner.address, router.address, liquidity, MaxUint256, v, r, s)).to.emit(
+            await expect(borrowable.connect(owner).permit(owner.address, router.address, liquidity, MaxUint256, v, r, s)).to.emit(
                 borrowable,
-                "BorrowApproval",
+                "Approval",
             );
 
             // Borrow
@@ -284,8 +286,8 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
 
             // Assert before test
             await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
-            const borrowAllowance = await borrowable.borrowAllowance(owner.address, router.address);
-            expect(borrowAllowance).to.be.eq(0);
+            const allowance = await borrowable.allowance(owner.address, router.address);
+            expect(allowance).to.be.eq(0);
 
             //
             // DOMAIN
@@ -304,7 +306,7 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
             // TYPES
             //
             const types = {
-                BorrowPermit: [
+                Permit: [
                     { name: "owner", type: "address" },
                     { name: "spender", type: "address" },
                     { name: "value", type: "uint256" },
@@ -353,10 +355,10 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
 
             // Assert before test
             await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
-            const borrowAllowance = await borrowable.borrowAllowance(owner.address, router.address);
-            expect(borrowAllowance).to.be.eq(0);
+            const allowance = await borrowable.allowance(owner.address, router.address);
+            expect(allowance).to.be.eq(0);
 
-            // Leverage x10 USDC 
+            // Leverage x10 USDC
             const amount = BigInt(liquidity) * BigInt(10);
 
             //
@@ -376,7 +378,7 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
             // TYPES
             //
             const types = {
-                BorrowPermit: [
+                Permit: [
                     { name: "owner", type: "address" },
                     { name: "spender", type: "address" },
                     { name: "value", type: "uint256" },
@@ -411,7 +413,7 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
 
             // 2. Build 1inch data
             // prettier-ignore
-            const leverageCalls = await leverageSwapdata(chainId, lpToken, nativeToken, usdc.address, router, amount); // Build 1inch data
+            const leverageCalls = await leverageCalldata(dexAggregator, chainId, lpToken, nativeToken, usdc.address, router, amount);
 
             // Borrow
             await expect(
@@ -422,8 +424,9 @@ describe("Test borrowing with BorrowPermit functions on the router and core", fu
                     amount, // USD Amount to leverage
                     0, // Min LP Token received
                     ethers.constants.MaxUint256, // Deadline
-                    leverageCalls, // Bytes array with 1inch data
                     permitBytes, // Permit data
+                    0, // 1inch
+                    leverageCalls, // Bytes array with 1inch data
                 ),
             ).to.emit(borrowable, "Borrow");
         });

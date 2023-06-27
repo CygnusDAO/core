@@ -281,8 +281,7 @@ describe("Redeem Borrowable (CygUSD) for USDC and Collateral (CygLP) for LP", fu
         it("Reverts if withdrawing shares and msg.sender is not owner of shares and has no allowance", async () => {
             const { owner, collateral, borrower } = await loadFixture(deployFixure);
 
-            await expect(collateral.connect(owner).redeem(BigInt(1e6), owner.address, borrower._address)).to.be
-                .reverted;
+            await expect(collateral.connect(owner).redeem(BigInt(1e6), owner.address, borrower._address)).to.be.reverted;
         });
 
         it("Reverts if withdrawing 0 shares", async () => {

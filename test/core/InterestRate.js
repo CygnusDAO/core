@@ -61,6 +61,9 @@ describe("Cygnus Interest Rate Model", function () {
         // Set BorrowAPR to 0% first
         await borrowable.connect(owner).setInterestRateModel(BigInt(0), BigInt(0), 2, BigInt(0.8e18));
 
+        // Approve borrow
+        await borrowable.connect(borrower).approve(router.address, BigInt(1000000e6));
+
         // Borrow max Liquidity
         await borrowUsd(borrower, borrowable, collateral, router);
 
@@ -215,8 +218,10 @@ describe("Cygnus Interest Rate Model", function () {
             // Load the fixture to get the collateral and borrower objects
             const { collateral, borrower } = await loadFixture(deployFixure);
 
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
+
             // False
-            expect(await collateral.getDebtRatio(borrower._address)).to.equal(BigInt(1e18));
+            expect(health).to.equal(BigInt(1e18));
         });
 
         // Checks `accountLiquidity()`
@@ -297,7 +302,7 @@ describe("Cygnus Interest Rate Model", function () {
         });
 
         // accrueInterest()
-        it("Accrues interest and emits an {AccrueInterest} event but does not accrue", async () => {
+        it("Accrues interest and emits an {AccrueInterest}", async () => {
             // Fixture
             const { borrowable } = await loadFixture(deployFixure);
 
@@ -317,9 +322,7 @@ describe("Cygnus Interest Rate Model", function () {
             const multiplier = BigInt(0.14e18); // 14%;
             const kinkMultiplier = 2;
 
-            await expect(
-                borrowable.connect(owner).setInterestRateModel(baseRate, multiplier, kinkMultiplier, BigInt(0.75e18)),
-            )
+            await expect(borrowable.connect(owner).setInterestRateModel(baseRate, multiplier, kinkMultiplier, BigInt(0.75e18)))
                 .to.emit(borrowable, "NewInterestRateParameters") // Check event log
                 .withArgs(baseRate, multiplier, 2, BigInt(0.75e18)); // Verify event log params with baseRate, multiplier, kinkMultiplier and util
         });
@@ -420,7 +423,9 @@ describe("Cygnus Interest Rate Model", function () {
             await borrowable.sync();
 
             // Borrows before 1 year increase
-            const accountBorrows = await borrowable.getBorrowBalance(borrower._address);
+            const { borrowBalance: accountBorrows } = await borrowable.getBorrowBalance(borrower._address);
+
+            console.log("Borrows Before 1 year: %s", accountBorrows);
 
             // Increase time by 1 year
             await time.increase(24 * 60 * 60 * 365);
@@ -428,20 +433,21 @@ describe("Cygnus Interest Rate Model", function () {
             // Accrue interest
             await expect(borrowable.accrueInterest()).to.emit(borrowable, "AccrueInterest");
 
-            const accountBorrowsAfter = await borrowable.getBorrowBalance(borrower._address);
+            const { borrowBalance: accountBorrowsAfter } = await borrowable.getBorrowBalance(borrower._address);
 
             const borrowRate = await borrowable.borrowRate(); // Why this doesn't work O.o ???????
+            console.log("BORROW RATE: %s", borrowRate);
+
             const borrowRateBN = ethers.BigNumber.from(borrowRate); // Make BN for some reason
             const oneYear = ethers.BigNumber.from(24 * 60 * 60 * 365);
+
+            console.log("Borrows After 1 year: %s", accountBorrowsAfter);
 
             // Expect new borrow balance to be gt before
             expect(accountBorrowsAfter).to.be.gt(accountBorrows);
 
             // Expect the new borrow balance to be equal to prior borrow balance * (1 + borrowAPR)
-            expect(accountBorrowsAfter).to.be.closeTo(
-                accountBorrows.mul(ONE.add(borrowRateBN.mul(oneYear))).div(ONE),
-                BigInt(1),
-            );
+            expect(accountBorrowsAfter).to.be.closeTo(accountBorrows.mul(ONE.add(borrowRateBN.mul(oneYear))).div(ONE), BigInt(1));
         });
     });
 });

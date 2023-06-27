@@ -44,7 +44,7 @@ describe("Repay loans", function () {
     // Deploy fixture
     const deployFixure = async () => {
         // Make lending pool and collateral
-        const [, factory, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+        const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
 
         // Create users: owner (admin), lender, and borrower
         const [owner, daoReserves, , lender, borrower] = await Users();

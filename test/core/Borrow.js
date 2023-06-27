@@ -22,10 +22,8 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 const { MaxUint256 } = ethers.constants;
 const ONE = ethers.utils.parseUnits("1", 18);
 
-// TODO: `canRedeem` can suffer from tiny amounts of unlocked tokens due to losing decimal precision
-//       since usdc having 6 decimanls and lps have 18. This is only the case when we max borrow our liquidity.
-//       The loss in precision is less than $0.000001 but its still annoying
-//
+// TODO: `canRedeem` can suffer from small amounts of unlocked tokens due to losing decimal precision
+//       since usdc having 6 decimanls and lps 18. By "small amount" we mean less than $0.000001 cents
 /**
  *  @notice Borrower does a simple borrow
  *  @notice As described in `ModelCollateral.js`
@@ -75,7 +73,8 @@ describe("Borrow Integration Tests", function () {
         // Deposit 2 LP tokens into the collateral pool
         await borrowerDeposit(owner, lpToken, borrower, collateral, permit2);
 
-        await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
+        // Approve borrow
+        await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
         // Return an object containing the various contracts, users, and initial balances for testing
         return {
@@ -300,8 +299,8 @@ describe("Borrow Integration Tests", function () {
             expect(_shortfall).to.be.equal(0);
 
             // Check that borrowable is storing borrower's borrow correctly
-            const borrowBal = await borrowable.getBorrowBalance(borrower._address);
-            expect(borrowBal).to.be.equal(liquidity);
+            const { borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+            expect(borrowBalance).to.be.equal(liquidity);
         });
 
         // Checks `debtRatio()`
@@ -317,8 +316,10 @@ describe("Borrow Integration Tests", function () {
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0); // No repay amount
 
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
+
             // False
-            expect(await collateral.getDebtRatio(borrower._address)).to.equal(BigInt(1e18));
+            expect(health).to.equal(BigInt(1e18));
         });
     });
 
@@ -354,13 +355,13 @@ describe("Borrow Integration Tests", function () {
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0); // No repay amount
 
-            const borrowBal = await borrowable.getBorrowBalance(borrower._address);
-            expect(borrowBal).to.be.equal(liquidity);
+            const { borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+            expect(borrowBalance).to.be.equal(liquidity);
 
             // False
-            expect(await collateral.canBorrow(borrower._address, borrowBal.add(BigInt(1)))).to.be.equal(false);
-            expect(await collateral.canBorrow(borrower._address, borrowBal.add(BigInt(2)))).to.be.equal(false);
-            expect(await collateral.canBorrow(borrower._address, borrowBal.add(BigInt(100e18)))).to.be.equal(false);
+            expect(await collateral.canBorrow(borrower._address, borrowBalance.add(BigInt(1)))).to.be.equal(false);
+            expect(await collateral.canBorrow(borrower._address, borrowBalance.add(BigInt(2)))).to.be.equal(false);
+            expect(await collateral.canBorrow(borrower._address, borrowBalance.add(BigInt(100e18)))).to.be.equal(false);
         });
 
         // Check: `borrow()`
@@ -393,8 +394,8 @@ describe("Borrow Integration Tests", function () {
             expect(_shortfall).to.be.equal(0);
 
             // Check that borrowable is storing borrower's borrow correctly
-            const borrowBal = await borrowable.getBorrowBalance(borrower._address);
-            expect(borrowBal).to.be.equal(liquidity);
+            const { borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+            expect(borrowBalance).to.be.equal(liquidity);
 
             //
             // Second borrow
@@ -420,9 +421,8 @@ describe("Borrow Integration Tests", function () {
                 .to.emit(borrowable, "Borrow")
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
-            // Get debt ratio, should be 100%
-            const debtRatio = await collateral.getDebtRatio(borrower._address);
-            expect(debtRatio).to.be.equal(BigInt(1e18));
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
+            expect(health).to.be.equal(BigInt(1e18));
 
             await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(0.1e18))).to.be.reverted;
             await expect(collateral.connect(borrower).transfer(safeAddress1.address, BigInt(1e18))).to.be.reverted;
@@ -441,7 +441,7 @@ describe("Borrow Integration Tests", function () {
             await expect(collateral.connect(borrower).transfer(safeAddress1.address, liquidity)).to.emit(collateral, "Transfer");
         });
 
-      //Transfer test: transferFrom()
+        //Transfer test: transferFrom()
         it("Should be able to give allowance to another address and use `transferFrom` when they have 0 borrows", async () => {
             // Load the fixture to get the collateral and borrower objects
             const { collateral, borrower, safeAddress1 } = await loadFixture(deployFixure);
@@ -476,8 +476,8 @@ describe("Borrow Integration Tests", function () {
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
             // Get debt ratio, should be 100%
-            const debtRatio = await collateral.getDebtRatio(borrower._address);
-            expect(debtRatio).to.be.equal(BigInt(1e18));
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
+            expect(health).to.be.equal(BigInt(1e18));
 
             // Should not be able to do this
             await expect(collateral.connect(safeAddress1).transferFrom(borrower._address, safeAddress1.address, BigInt(0.1e18))).to.be
@@ -498,8 +498,8 @@ describe("Borrow Integration Tests", function () {
                 .withArgs(router.address, borrower._address, borrower._address, liquidity, 0);
 
             // Get debt ratio, should be 100%
-            const debtRatio = await collateral.getDebtRatio(borrower._address);
-            expect(debtRatio).to.be.equal(BigInt(1e18));
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
+            expect(health).to.be.equal(BigInt(1e18));
 
             await expect(collateral.connect(borrower).redeem(BigInt(0.0000001e18), borrower._address, borrower._address)).to.be.reverted;
             await expect(collateral.connect(borrower).redeem(BigInt(1e18), borrower._address, borrower._address)).to.be.reverted;

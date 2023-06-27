@@ -256,10 +256,10 @@ describe("Cygnus Collateral Model", function () {
             const { collateral, borrower } = await loadFixture(deployFixure);
 
             // Get the debt ratio of the borrower's account
-            const borrowersDebtRatio = await collateral.getDebtRatio(borrower._address);
+            const { health } = await collateral.getBorrowerPosition(borrower._address);
 
             // Check that the debt ratio is 0
-            expect(borrowersDebtRatio).to.equal(0);
+            expect(health).to.equal(0);
         });
 
         // Max Redeem amount with no borrows
