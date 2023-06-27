@@ -44,12 +44,12 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /**
      *  @dev Logs when a new contract is set that rewards users in CYG
      *
-     *  @param oldBorrowRewarder The address of the borrow rewarder up until this point used for CYG distribution
-     *  @param newBorrowRewarder The address of the new borrow rewarder
+     *  @param oldRewarder The address of the rewarder up until this point used for CYG distribution
+     *  @param newRewarder The address of the new rewarder
      *
      *  @custom:event NewCygnusBorrowRewarder
      */
-    event NewCygnusBorrowRewarder(address oldBorrowRewarder, address newBorrowRewarder);
+    event NewCygnusIndustialComplex(address oldRewarder, address newRewarder);
 
     /**
      *  @dev Logs when a new reserve factory is set by admin
@@ -92,9 +92,9 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     function collateral() external view returns (address);
 
     /**
-     *  @return cygnusBorrowRewarder Address of the contract that rewards borrowers in CYG (or other)
+     *  @return cygnusIndustialComplex Address of the contract that rewards both borrowers and lenders in CYG
      */
-    function cygnusBorrowRewarder() external view returns (address);
+    function cygnusIndustialComplex() external view returns (address);
 
     // ───────────────────────────── Current pool rates
 
@@ -136,26 +136,6 @@ interface ICygnusBorrowControl is ICygnusTerminal {
 
     /**
      *  @notice Admin 👽
-     *  @notice Updates the borrow rewarder contract
-     *
-     *  @param newBorrowRewarder The address of the new CYG Borrow rewarder
-     *
-     *  @custom:security only-admin
-     */
-    function setCygnusBorrowRewarder(address newBorrowRewarder) external;
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Updates the reserve factor
-     *
-     *  @param newReserveFactor The new reserve factor for this shuttle
-     *
-     *  @custom:security only-admin
-     */
-    function setReserveFactor(uint256 newReserveFactor) external;
-
-    /**
-     *  @notice Admin 👽
      *  @notice Internal function to update the parameters of the interest rate model
      *
      *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
@@ -171,4 +151,24 @@ interface ICygnusBorrowControl is ICygnusTerminal {
         uint256 kinkMultiplier_,
         uint256 kinkUtilizationRate_
     ) external;
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Updates the reserve factor
+     *
+     *  @param newReserveFactor The new reserve factor for this shuttle
+     *
+     *  @custom:security only-admin
+     */
+    function setReserveFactor(uint256 newReserveFactor) external;
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Updates the borrow rewarder contract
+     *
+     *  @param newBorrowRewarder The address of the new CYG Borrow rewarder
+     *
+     *  @custom:security only-admin
+     */
+    function setCygnusIndustrialComplex(address newBorrowRewarder) external;
 }

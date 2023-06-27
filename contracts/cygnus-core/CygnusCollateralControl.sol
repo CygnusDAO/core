@@ -151,7 +151,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
-        return "Cygnus: Collateral";
+        return "Cygnus-Deneb: Collateral";
     }
 
     /**

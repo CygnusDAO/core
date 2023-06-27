@@ -35,7 +35,7 @@
         BORROWABLE - https://cygnusdao.finance                                                          .                     .
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-     Smart contracts to lend to liquidity providers.
+     Smart contracts to lend stablecoins to liquidity providers.
 
      Deposit USD, earn USD.
 
@@ -77,9 +77,11 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
 import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
+import {ICygnusIndustrialComplex} from "./interfaces/ICygnusIndustrialComplex.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
+import {ERC20} from "./ERC20.sol";
 
 /**
  *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
@@ -136,6 +138,23 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
          6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice ERC20 Override
+     *  @notice Tracks lender rewards after any transfer/mint/burn. After each interaction we pass the balance of
+     *          cygUsd of `from` and `to`. We update the shares at the rewarder for both, the rewarder will simply
+     *          return and escape if they are the zero address (ie during a `mint` or a `burn`)
+     */
+    function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
+        // Adjustment factor for lenders is always one
+        // Track the latest balance of `from`
+        _trackRewards(from, balanceOf(from), 1e18, ICygnusIndustrialComplex.Position.LENDER);
+
+        // Track the latest balance of `to`
+        _trackRewards(to, balanceOf(to), 1e18, ICygnusIndustrialComplex.Position.LENDER);
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -143,12 +162,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function borrow(
-        address borrower,
-        address receiver,
-        uint256 borrowAmount,
-        bytes calldata data
-    ) external override nonReentrant update {
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update {
         // Check if msg.sender can borrow on behalf of borrower
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 

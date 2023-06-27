@@ -103,7 +103,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    address public override cygnusBorrowRewarder;
+    address public override cygnusIndustialComplex;
 
     // ───────────────────────────── Current pool rates
 
@@ -176,7 +176,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
-        return "Cygnus: Borrowable";
+        return "Cygnus-Albireo: Borrowable";
     }
 
     /**
@@ -237,9 +237,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
         kinkUtilizationRate = kinkUtilizationRate_;
 
         // Calculate the Jump Multiplier per second and update to storage
-        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(
-            kinkUtilizationRate_
-        );
+        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(kinkUtilizationRate_);
 
         /// @custom:event NewInterestParameter
         emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
@@ -283,15 +281,15 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security only-admin 👽
      */
-    function setCygnusBorrowRewarder(address newBorrowRewarder) external override cygnusAdmin {
+    function setCygnusIndustrialComplex(address newIndustrialComplex) external override cygnusAdmin {
         // Need the option of setting to address(0) as child contract checks for 0 address in case it's inactive
-        // Old borrow tracker
-        address oldBorrowRewarder = cygnusBorrowRewarder;
+        // Old CYG rewarder
+        address oldIndustrialComplex = cygnusIndustialComplex;
 
-        // Checks admin before, assign borrow tracker
-        cygnusBorrowRewarder = newBorrowRewarder;
+        // Assign new rewarder
+        cygnusIndustialComplex = newIndustrialComplex;
 
-        /// @custom:event NewCygnusBorrowRewarder
-        emit NewCygnusBorrowRewarder(oldBorrowRewarder, newBorrowRewarder);
+        /// @custom:event NewCygnusIndustialComplex
+        emit NewCygnusIndustialComplex(oldIndustrialComplex, newIndustrialComplex);
     }
 }

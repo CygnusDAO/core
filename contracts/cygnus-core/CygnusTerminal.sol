@@ -32,7 +32,7 @@
                        ░░░░░░    ░░░░░░                                               🛸  ⠀
            .                            .       .             🛰️         .                          
     
-        CygUSD / CygLP - https://cygnusdao.finance                                                          .                     .
+        POOL TOKEN (CygUSD/CygLP) - https://cygnusdao.finance                                                          .                     .
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 pragma solidity >=0.8.17;
 
@@ -49,7 +49,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 // Interfaces
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 import {IHangar18} from "./interfaces/IHangar18.sol";
-import {ICygnusNebulaOracle} from "./interfaces/ICygnusNebulaOracle.sol";
+import {ICygnusNebula} from "./interfaces/ICygnusNebula.sol";
 import {IAllowanceTransfer} from "./interfaces/IAllowanceTransfer.sol";
 
 /**
@@ -82,8 +82,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    IAllowanceTransfer public constant override PERMIT2 =
-        IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+    IAllowanceTransfer public constant override PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -93,7 +92,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    ICygnusNebulaOracle public immutable override cygnusNebulaOracle;
+    ICygnusNebula public immutable override cygnusNebulaOracle;
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -227,13 +226,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     function _beforeWithdraw(uint256 assets) internal virtual {}
 
-    /**
-     *  @notice Tracks USD deposits for lender rewards
-     *  @param lender The address of the lender
-     *  @param amount The amount of USD deposited
-     */
-    function _trackLender(address lender, uint256 amount) internal virtual {}
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -293,9 +285,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         // Mint shares and emit Transfer event
         _mint(recipient, shares);
 
-        // Track lender for CygUSD
-        _trackLender(recipient, shares);
-
         /// @custom:event Deposit
         emit Deposit(msg.sender, recipient, assets, shares);
     }
@@ -303,11 +292,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    function redeem(
-        uint256 shares,
-        address recipient,
-        address owner
-    ) external override nonReentrant update returns (uint256 assets) {
+    function redeem(uint256 shares, address recipient, address owner) external override nonReentrant update returns (uint256 assets) {
         // Withdraw flow
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 
@@ -325,9 +310,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
         // Transfer assets to recipient
         underlying.safeTransfer(recipient, assets);
-
-        // Track lender for CygUSD
-        _trackLender(recipient, shares);
 
         /// @custom:event Withdraw
         emit Withdraw(msg.sender, recipient, owner, assets, shares);

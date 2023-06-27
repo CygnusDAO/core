@@ -170,8 +170,14 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Assign cToken
         markets[0] = address(SONNE_USDC);
 
-        // 1. Claim Sonne from Comptroller
-        REWARDER.claimComp(address(this), markets);
+        // Make holders array for gas savings (claim only supply side)
+        address[] memory holders = new address[](1);
+
+        // Assign holder
+        holders[0] = address(this);
+
+        // 1. Claim Sonne from Comptroller only for supply positions
+        REWARDER.claimComp(holders, markets, false, true);
 
         // 2. Claim Sonne from Distributor
         uint256[] memory _amounts = DISTRIBUTOR.claimAll();

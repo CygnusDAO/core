@@ -19,7 +19,7 @@
 
 /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════  
     .              .            .               .      🛰️     .           .                .           .
-           █████████           ---======*.                                                 .           ⠀
+           █████████     🛰️      ---======*.                                                 .           ⠀
           ███░░░░░███                                               📡                🌔                      . 
          ███     ░░░  █████ ████  ███████ ████████   █████ ████  █████        ⠀
         ░███         ░░███ ░███  ███░░███░░███░░███ ░░███ ░███  ███░░      .     .⠀           .           .
@@ -27,8 +27,8 @@
         ░░███     ███ ░███ ░███ ░███ ░███ ░███ ░███  ░███ ░███  ░░░░███              .             .⠀
          ░░█████████  ░░███████ ░░███████ ████ █████ ░░████████ ██████     .----===*  ⠀
           ░░░░░░░░░    ░░░░░███  ░░░░░███░░░░ ░░░░░   ░░░░░░░░ ░░░░░░            .                           .⠀
-                       ███ ░███  ███ ░███                .                 .               🌔  .⠀
-        .             ░░██████  ░░██████                                             .                 .     
+                       ███ ░███  ███ ░███                .                 .                 .⠀
+        .             ░░██████  ░░██████        🛰️                        🛰️             .                 .     
                        ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
            .                            .       .          .            .                        .             .⠀
         
@@ -118,7 +118,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice ERC20 Overrides transfer, transferFrom & burn
+     *  @notice ERC20 Overrides transfers of CygLP
      *  @notice Before any token transfer we check whether the user has sufficient liquidity (no debt) to transfer
      *  @inheritdoc ERC20
      */
@@ -126,7 +126,8 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Escape in case of `flashRedeemAltair()`
         // 1. This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
         // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem`.
-        if (from == address(this)) return;
+        // 2. From address(0) only occurs during minting, so no need to check for `canRedeem`
+        if (from == address(this) || from == address(0)) return;
 
         /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();
@@ -139,11 +140,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @notice Not marked as non-reentrant since only the borrowable may call it through the non-reentrant `liquidate()`
      *  @inheritdoc ICygnusCollateral
      */
-    function seizeCygLP(
-        address liquidator,
-        address borrower,
-        uint256 repayAmount
-    ) external override returns (uint256 cygLPAmount) {
+    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         if (msg.sender != borrowable) {
             revert CygnusCollateral__MsgSenderNotBorrowable();
@@ -194,11 +191,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(
-        address redeemer,
-        uint256 assets,
-        bytes calldata data
-    ) external override nonReentrant update {
+    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
 

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-// Dependencies
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 
-/// IMPORTANT: We removed the before/after hooks from the `_transfer` and `_mint` functions
+// IMPORTANT: Removed the `_beforeTokenTransfer` and `_afterTokenTransfer` hooks from the internal `_transfer` function
 
 /// @notice Simple ERC20 + EIP-2612 implementation.
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/tokens/ERC20.sol)
 /// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
-/// Note:
+///
+/// @dev Note:
 /// The ERC20 standard allows minting and transferring to and from the zero address,
 /// minting and transferring zero tokens, as well as self-approvals.
 /// For performance, this implementation WILL NOT revert for such actions.
@@ -129,7 +129,12 @@ abstract contract ERC20 is IERC20Permit {
     }
 
     /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(address owner, address spender) public view virtual returns (uint256 result) {
+    function allowance(address owner, address spender)
+        public
+        view
+        virtual
+        returns (uint256 result)
+    {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x20, spender)
@@ -251,7 +256,7 @@ abstract contract ERC20 is IERC20Permit {
 
     /// @dev Transfers `amount` tokens from `from` to `to`.
     ///
-    /// Note: does not update the allowance if it is the maximum uint256 value.
+    /// Note: Does not update the allowance if it is the maximum uint256 value.
     ///
     /// Requirements:
     /// - `from` must at least have `amount`.
@@ -424,6 +429,7 @@ abstract contract ERC20 is IERC20Permit {
     ///
     /// Emits a {Transfer} event.
     function _mint(address to, uint256 amount) internal virtual {
+        _beforeTokenTransfer(address(0), to, amount);
         /// @solidity memory-safe-assembly
         assembly {
             let totalSupplyBefore := sload(_TOTAL_SUPPLY_SLOT)
@@ -445,6 +451,7 @@ abstract contract ERC20 is IERC20Permit {
             mstore(0x20, amount)
             log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, 0, shr(96, mload(0x0c)))
         }
+        _afterTokenTransfer(address(0), to, amount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

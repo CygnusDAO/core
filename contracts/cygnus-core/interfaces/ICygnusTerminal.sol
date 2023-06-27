@@ -24,7 +24,7 @@ import {IERC20Permit} from "./IERC20Permit.sol";
 // Interfaces
 import {IHangar18} from "./IHangar18.sol";
 import {IAllowanceTransfer} from "./IAllowanceTransfer.sol";
-import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
+import {ICygnusNebula} from "./ICygnusNebula.sol";
 
 /**
  *  @title ICygnusTerminal
@@ -132,7 +132,7 @@ interface ICygnusTerminal is IERC20Permit {
     /**
      *  @return cygnusNebulaOracle The address of the oracle for this lending pool
      */
-    function cygnusNebulaOracle() external view returns (ICygnusNebulaOracle);
+    function cygnusNebulaOracle() external view returns (ICygnusNebula);
 
     /**
      *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)

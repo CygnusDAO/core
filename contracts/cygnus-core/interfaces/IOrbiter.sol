@@ -20,7 +20,7 @@
 pragma solidity >=0.8.17;
 
 import {IHangar18} from "./IHangar18.sol";
-import {ICygnusNebulaOracle} from "./ICygnusNebulaOracle.sol";
+import {ICygnusNebula} from "./ICygnusNebula.sol";
 
 /**
  *  @notice Interface used by core contracts to read variables from the deployers (AlbireoOrbiter.sol and
@@ -44,7 +44,7 @@ interface IOrbiter {
             IHangar18 factory,
             address underlying,
             address twinstar,
-            ICygnusNebulaOracle oracle,
+            ICygnusNebula oracle,
             uint256 shuttleId
         );
 }

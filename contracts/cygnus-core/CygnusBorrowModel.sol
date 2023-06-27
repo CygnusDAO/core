@@ -27,7 +27,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
-import {ICygnusComplexRewarder} from "./interfaces/ICygnusComplexRewarder.sol";
+import {ICygnusIndustrialComplex} from "./interfaces/ICygnusIndustrialComplex.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
@@ -118,7 +118,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param cash Total current balance of assets this contract holds
      *  @param borrows Total amount of borrowed funds
      */
-    function _borrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
+    function _latestBorrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
         // Utilization rate = borrows / (cash + borrows)
         // We don't take into account reserves since we mint CygUSD
         uint256 util = borrows.divWad(cash + borrows);
@@ -142,9 +142,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @dev It is used by CygnusCollateral contract to check a borrower's position
      *  @inheritdoc ICygnusBorrowModel
      */
-    function getBorrowBalance(
-        address borrower
-    ) public view override returns (uint256 principal, uint256 borrowBalance) {
+    function getBorrowBalance(address borrower) public view override returns (uint256 principal, uint256 borrowBalance) {
         // Load user struct to memory
         BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
@@ -216,40 +214,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
     }
 
-    /**
-     *  @notice Track borrows for borrow rewards (if any)
-     *  @param borrower The address of the borrower after updating the borrow snapshot
-     *  @param accountBorrows Record of this borrower's total borrows up to this point
-     *  @param borrowIndexStored Borrow index stored up to this point
-     */
-    function trackBorrowerPrivate(address borrower, uint256 accountBorrows, uint256 borrowIndexStored) private {
-        // Rewarder address (if any)
-        address rewarder = cygnusBorrowRewarder;
-
-        // If not initialized return
-        if (rewarder == address(0)) return;
-
-        // Pass borrow to this chain's CYG rewarder
-        ICygnusComplexRewarder(rewarder).trackBorrower(borrower, accountBorrows, borrowIndexStored);
-    }
-
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
-
-    /**
-     *  @notice Track lenders for lend rewards (if any)
-     *  @param lender The address of the lender
-     *  @param amount The amount of USD deposited
-     */
-    function _trackLender(address lender, uint256 amount) internal override {
-        // Rewarder address (if any)
-        address rewarder = cygnusBorrowRewarder;
-
-        // If not initialized return
-        if (rewarder == address(0)) return;
-
-        // Pass borrow to this chain's CYG rewarder
-        ICygnusComplexRewarder(rewarder).trackLender(lender, amount);
-    }
 
     /**
      *  @notice Applies accrued interest to total borrows and reserves
@@ -282,7 +247,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // ──────────────────────────────────────────────────────────────────────
 
         // 1. Get per-second BorrowRate
-        uint256 borrowRateStored = _borrowRate(cashStored, totalBorrowsStored);
+        uint256 borrowRateStored = _latestBorrowRate(cashStored, totalBorrowsStored);
 
         // 2. BorrowRate by the time elapsed
         uint256 interestFactor = borrowRateStored * timeElapsed;
@@ -327,11 +292,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      * @param repayAmount The amount of tokens being repaid by the borrower.
      * @return accountBorrows The borrower's updated borrow balance
      */
-    function _updateBorrow(
-        address borrower,
-        uint256 borrowAmount,
-        uint256 repayAmount
-    ) internal returns (uint256 accountBorrows) {
+    function _updateBorrow(address borrower, uint256 borrowAmount, uint256 repayAmount) internal returns (uint256 accountBorrows) {
         // Get the borrower's current borrow balance
         // prettier-ignore
         (/* principal */, uint256 borrowBalance) = getBorrowBalance(borrower);
@@ -397,9 +358,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             // Never underflows
             unchecked {
                 // Condition check to update protocols total borrows
-                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount
-                    ? totalBorrowsStored - actualDecreaseAmount
-                    : 0;
+                totalBorrowsStored = totalBorrowsStored > actualDecreaseAmount ? totalBorrowsStored - actualDecreaseAmount : 0;
             }
 
             // Update total protocol borrows
@@ -407,7 +366,25 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // Track borrower
-        trackBorrowerPrivate(borrower, accountBorrows, borrowIndexStored);
+        _trackRewards(borrower, accountBorrows, borrowIndexStored, ICygnusIndustrialComplex.Position.BORROWER);
+    }
+
+    /**
+     *  @notice Track borrows and lending rewards
+     *  @param account The address of the lender or borrower
+     *  @param balance Record of this borrower's total borrows up to this point
+     *  @param adjustmentFactor Borrow index stored up to this point for borrowers or one mantissa for lenders
+     *  @param position Whether the position is a lend or borrow position
+     */
+    function _trackRewards(address account, uint256 balance, uint256 adjustmentFactor, ICygnusIndustrialComplex.Position position) internal {
+        // Rewarder address (if any)
+        address rewarder = cygnusIndustialComplex;
+
+        // If not initialized return
+        if (rewarder == address(0)) return;
+
+        // Pass borrow to this chain's CYG rewarder
+        ICygnusIndustrialComplex(rewarder).trackRewards(account, balance, adjustmentFactor, position);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -428,17 +405,17 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         (/* principal */, uint256 borrowBalance) = getBorrowBalance(borrower);
 
         // Pass borrower info to the Rewarder (if any)
-        trackBorrowerPrivate(borrower, borrowBalance, borrowIndex);
+        _trackRewards(borrower, borrowBalance, borrowIndex, ICygnusIndustrialComplex.Position.BORROWER);
     }
 
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
     function trackLender(address lender) external override {
-        // Get the amount of CygUSD the lender owns
-        uint256 cygUsdBalance = balanceOf(lender);
+        // Latest balance of `lender`
+        uint256 balance = balanceOf(lender);
 
-        // Pass lender info to the rewarder (if any)
-        _trackLender(lender, cygUsdBalance);
+        // Pass borrower info to the Rewarder (if any)
+        _trackRewards(lender, balance, 1e18, ICygnusIndustrialComplex.Position.LENDER);
     }
 }

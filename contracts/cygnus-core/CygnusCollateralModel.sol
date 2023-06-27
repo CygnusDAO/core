@@ -71,10 +71,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @param amountCollateral The collateral amount the borrower has deposited (CygLP * exchangeRate)
      *  @param borrowedAmount The total amount of stablecoins the user has borrowed (can be 0)
      */
-    function _collateralNeeded(
-        uint256 amountCollateral,
-        uint256 borrowedAmount
-    ) internal view returns (uint256, uint256) {
+    function _collateralNeeded(uint256 amountCollateral, uint256 borrowedAmount) internal view returns (uint256, uint256) {
         // Collateral Deposited * LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
@@ -108,11 +105,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @return shortfall The user's current LP shortfall priced in USD (if positive they can be liquidated)
      */
     function _accountLiquidity(address borrower, uint256 borrowBalance) internal view returns (uint256, uint256) {
+        // Borrower can never be address zero or Collateral. When doing a `borrow` from the borrowable contract, this function
+        // gets called to check for account liquidity. If the borrower passed is either, we revert the tx.
         /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
-        if (borrower == address(0)) {
-            // Not sure if necessary but check just in case to avoid calculating collateral from zero address (burnt LPs?)
-            revert CygnusCollateralModel__BorrowerCantBeAddressZero();
-        }
+        if (borrower == address(0)) revert CygnusCollateralModel__BorrowerCantBeAddressZero();
         /// @custom:error BorrowerCantBeCollateral Avoid borrower collateral
         else if (borrower == address(this)) revert CygnusCollateralModel__BorrowerCantBeCollateral();
 
@@ -167,7 +163,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Get the LP price and calculate the needed collateral
         // prettier-ignore
-        (/* liquidity */ , uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
+        (/* liquidity */, uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
 
         // If user has no shortfall after redeeming return true
         return shortfall == 0;
@@ -178,9 +174,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getAccountLiquidity(
-        address borrower
-    ) external view override returns (uint256 liquidity, uint256 shortfall) {
+    function getAccountLiquidity(address borrower) external view override returns (uint256 liquidity, uint256 shortfall) {
         // Calculate if `borrower` has liquidity or shortfall
         return _accountLiquidity(borrower, type(uint256).max);
     }
@@ -194,14 +188,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         external
         view
         override
-        returns (
-            uint256 cygLPBalance,
-            uint256 principal,
-            uint256 borrowBalance,
-            uint256 price,
-            uint256 positionUsd,
-            uint256 health
-        )
+        returns (uint256 cygLPBalance, uint256 principal, uint256 borrowBalance, uint256 price, uint256 positionUsd, uint256 health)
     {
         // Collateral balance of the borrower (CygLP)
         cygLPBalance = balanceOf(borrower);
@@ -213,11 +200,11 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         price = getLPTokenPrice();
 
         // LP Tokens balance = balance of CygLP Tokens * current exchange Rate
-        // Position in USD = LP Tokens balance * price
+        // Position in USD = LP Tokens balance * LP Token Price
         positionUsd = cygLPBalance.mulWad(exchangeRate()).mulWad(price);
 
         // Health = (Borrow Balance * Liquidation Penalty) / (Collateral in USD * Debt Ratio)
-        // Adjust borrowed admount with liquidation incentive, rounding up
+        // Adjust borrowed admount with liquidation penalty, rounding up
         uint256 collateralNeededInUsd = borrowBalance.mulWadUp(liquidationIncentive + liquidationFee);
 
         // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
@@ -229,7 +216,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
         // prettier-ignore
-        ( /* liquidity */ , uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
+        ( /* liquidity */, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
 
         // User has no shortfall and can borrow
         return shortfall == 0;
