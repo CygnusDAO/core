@@ -24,6 +24,7 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 // Libraries
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
+import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -72,14 +73,14 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     uint256 private constant RESERVE_FACTOR_MAX = 0.20e18;
 
     /**
-     *  @notice Minimum kink utilization point allowed (50%)
+     *  @notice Minimum kink utilization point allowed (70%)
      */
-    uint256 private constant KINK_UTILIZATION_RATE_MIN = 0.50e18;
+    uint256 private constant KINK_UTILIZATION_RATE_MIN = 0.70e18;
 
     /**
-     *  @notice Maximum Kink point allowed (95%)
+     *  @notice Maximum Kink point allowed (99%)
      */
-    uint256 private constant KINK_UTILIZATION_RATE_MAX = 0.95e18;
+    uint256 private constant KINK_UTILIZATION_RATE_MAX = 0.99e18;
 
     /**
      *  @notice Maximum Kink multiplier
@@ -98,59 +99,19 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    address public override collateral;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    address public override cygnusIndustialComplex;
+    address public override pillarsOfCreation;
 
     // ───────────────────────────── Current pool rates
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override baseRatePerSecond;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override multiplierPerSecond;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override jumpMultiplierPerSecond;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override kinkUtilizationRate = 0.85e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    uint256 public override kinkMultiplier = 2;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
     uint256 public override reserveFactor = 0.1e18;
 
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            3. CONSTRUCTOR
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
     /**
-     *  @notice Constructs the Borrowable arm of the pool and assigns the Collateral contract.
+     *  @inheritdoc ICygnusBorrowControl
      */
-    constructor() {
-        // Get underlying and collateral from deployer contract to get collateral contract
-        (, , address _collateral, , ) = IOrbiter(msg.sender).shuttleParameters();
-
-        // Assign the collateral arm of the lending pool
-        collateral = _collateral;
-    }
+    InterestRateModel public override interestRateModel;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
@@ -176,6 +137,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
+        // Name of the borrowable arm
         return "Cygnus-Albireo: Borrowable";
     }
 
@@ -184,6 +146,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
+        // Symbol of the Borrowable (ie `CygUSD: USDC`)
         return string(abi.encodePacked("CygUSD: ", IERC20(underlying).symbol()));
     }
 
@@ -192,7 +155,18 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function decimals() public view override(ERC20, IERC20) returns (uint8) {
+        // Override decimals since USDC uses 6
         return IERC20(underlying).decimals();
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    function collateral() external view returns (address) {
+        // Read the stored internal variable from terminal
+        return twinstar;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -224,40 +198,25 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
         // Internal parameter check for kink multiplier
         _validRange(1, KINK_MULTIPLIER_MAX, kinkMultiplier_);
 
-        // Calculate the Base Rate per second and update to storage
-        baseRatePerSecond = baseRatePerYear_ / SECONDS_PER_YEAR;
-
-        // Calculate the Farm Multiplier per second and update to storage
-        multiplierPerSecond = multiplierPerYear_.divWad(SECONDS_PER_YEAR * kinkUtilizationRate_);
-
-        // Update kink multiplier
-        kinkMultiplier = kinkMultiplier_;
-
-        // update kink utilization rate
-        kinkUtilizationRate = kinkUtilizationRate_;
-
-        // Calculate the Jump Multiplier per second and update to storage
-        jumpMultiplierPerSecond = multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(kinkUtilizationRate_);
+        // Update the interest rate model
+        interestRateModel = InterestRateModel({
+            // Calculate the Base Rate per second and update to storage
+            baseRatePerSecond: SafeCastLib.toUint64(baseRatePerYear_ / SECONDS_PER_YEAR),
+            // Calculate the Multiplier per second and update to storage
+            multiplierPerSecond: SafeCastLib.toUint64(multiplierPerYear_.divWad(SECONDS_PER_YEAR * kinkUtilizationRate_)),
+            // Calculate the Jump Multiplier per second and update to storage
+            jumpMultiplierPerSecond: SafeCastLib.toUint64(
+                multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(kinkUtilizationRate_)
+            ),
+            // Update kink utilization rate
+            kink: SafeCastLib.toUint64(kinkUtilizationRate_)
+        });
 
         /// @custom:event NewInterestParameter
         emit NewInterestRateParameters(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security only-admin 👽
-     */
-    function setInterestRateModel(
-        uint256 baseRatePerYear_,
-        uint256 multiplierPerYear_,
-        uint256 kinkMultiplier_,
-        uint256 kinkUtilizationRate_
-    ) external override cygnusAdmin {
-        // Update interest rate model with per second rates
-        _interestRateModel(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kinkUtilizationRate_);
-    }
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -281,15 +240,29 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security only-admin 👽
      */
-    function setCygnusIndustrialComplex(address newIndustrialComplex) external override cygnusAdmin {
+    function setInterestRateModel(
+        uint256 baseRatePerYear_,
+        uint256 multiplierPerYear_,
+        uint256 kinkMultiplier_,
+        uint256 kink_
+    ) external override cygnusAdmin {
+        // Update interest rate model with per second rates
+        _interestRateModel(baseRatePerYear_, multiplierPerYear_, kinkMultiplier_, kink_);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     *  @custom:security only-admin 👽
+     */
+    function setPillarsOfCreation(address newPillars) external override cygnusAdmin {
         // Need the option of setting to address(0) as child contract checks for 0 address in case it's inactive
         // Old CYG rewarder
-        address oldIndustrialComplex = cygnusIndustialComplex;
+        address oldPillars = pillarsOfCreation;
 
         // Assign new rewarder
-        cygnusIndustialComplex = newIndustrialComplex;
+        pillarsOfCreation = newPillars;
 
         /// @custom:event NewCygnusIndustialComplex
-        emit NewCygnusIndustialComplex(oldIndustrialComplex, newIndustrialComplex);
+        emit NewPillarsOfCreation(oldPillars, newPillars);
     }
 }

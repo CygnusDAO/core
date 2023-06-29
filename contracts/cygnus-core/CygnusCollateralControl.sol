@@ -88,13 +88,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // ──────────────────────────── Important Addresses
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    address public immutable override borrowable;
-
     // ───────────────────────────── Current pool rates
 
     /**
@@ -111,21 +104,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ICygnusCollateralControl
      */
     uint256 public override liquidationFee = 0.01e18;
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-            3. CONSTRUCTOR
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @notice Constructs the Collateral arm of the pool and assigns the Borrow contract.
-     */
-    constructor() {
-        // Get underlying and borrowable from deployer contract to get borrowable contract
-        (, , address _borrowable, , ) = IOrbiter(msg.sender).shuttleParameters();
-
-        // Assign the borrowable arm of the lending pool
-        borrowable = _borrowable;
-    }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
@@ -151,6 +129,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
+        // Name of the collateral arm
         return "Cygnus-Deneb: Collateral";
     }
 
@@ -159,6 +138,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
+        // Symbol of the Collateral (ie `CygLP: ETH/OP`)
         return string(abi.encodePacked("CygLP: ", IERC20(underlying).symbol()));
     }
 
@@ -167,7 +147,18 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function decimals() public view override(ERC20, IERC20) returns (uint8) {
+        // Override decimals in case LPs use a different denom
         return IERC20(underlying).decimals();
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusCollateralControl
+     */
+    function borrowable() external view returns (address) {
+        // Read the stored internal variable from terminal
+        return twinstar;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

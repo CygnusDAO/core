@@ -21,6 +21,7 @@ pragma solidity >=0.8.17;
 // Orbiters
 import {IDenebOrbiter} from "./IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./IAlbireoOrbiter.sol";
+import {ICygnusNebulaRegistry} from "./ICygnusNebulaRegistry.sol";
 
 // Oracles
 
@@ -371,34 +372,6 @@ interface IHangar18 {
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
 
     /**
-     *  @notice Mapping of structs containing all orbiters deployed
-     *  @param _orbiterId The ID of the orbiter pair
-     *  @return status Whether or not these orbiters are active and usable
-     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
-     *  @return albireoOrbiter The address of the borrow deployer contract
-     *  @return denebOrbiter The address of the collateral deployer contract
-     *  @return borrowableInitCodeHash The init code hash of the borrowable
-     *  @return collateralInitCodeHash The init code hash of the collateral
-     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash and oracle address
-     *  @return orbiterName The name of the dex
-     */
-    function getOrbiters(
-        uint256 _orbiterId
-    )
-        external
-        view
-        returns (
-            bool status,
-            uint88 orbiterId,
-            IAlbireoOrbiter albireoOrbiter,
-            IDenebOrbiter denebOrbiter,
-            bytes32 borrowableInitCodeHash,
-            bytes32 collateralInitCodeHash,
-            bytes32 uniqueHash,
-            string memory orbiterName
-        );
-
-    /**
      *  @notice Official record of all lending pools deployed
      *  @param _lpTokenPair The address of the LP Token
      *  @param _orbiterId The ID of the orbiter for this LP Token
@@ -412,6 +385,31 @@ interface IHangar18 {
         address _lpTokenPair,
         uint256 _orbiterId
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
+
+    /**
+     *  @return Human friendly name for this contract
+     */
+    function name() external view returns (string memory);
+
+    /**
+     *  @return The version of this contract
+     */
+    function version() external view returns (string memory);
+
+    /**
+     *  @return usd The address of the borrowable token (stablecoin)
+     */
+    function usd() external view returns (address);
+
+    /**
+     *  @return nativeToken The address of the chain's native token
+     */
+    function nativeToken() external view returns (address);
+
+    /**
+     *  @notice The address of the nebula registry on this chain
+     */
+    function nebulaRegistry() external view returns (ICygnusNebulaRegistry);
 
     /**
      *  @return admin The address of the Cygnus Admin which grants special permissions in collateral/borrow contracts
@@ -447,16 +445,6 @@ interface IHangar18 {
      *  @return shuttlesDeployed The total number of shuttles deployed
      */
     function shuttlesDeployed() external view returns (uint256);
-
-    /**
-     *  @return usd The address of the borrowable token (stablecoin)
-     */
-    function usd() external view returns (address);
-
-    /**
-     *  @return nativeToken The address of the chain's native token
-     */
-    function nativeToken() external view returns (address);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

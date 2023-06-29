@@ -121,6 +121,11 @@ module.exports = async function Make() {
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Factory     | %s", chalk.green(factory.address));
 
+    const DAOReserves = await ethers.getContractFactory("CygnusDAOReserves");
+    const reserves = await DAOReserves.deploy(factory.address, daoReserves.address, BigInt(0.5e18));
+    await factory.setPendingDaoReserves(reserves.address);
+    await factory.setNewDaoReserves();
+
     // ═══════════════════ 5. SHUTTLE ══════════════════════════════════════════════════════════
 
     // Deploy lending pool
@@ -161,10 +166,10 @@ module.exports = async function Make() {
     // ═══════════════════ 8. CYG REWARDER ═════════════════════════════════════════════════════
 
     // CYG Rewarder
-    const CygRewarder = await ethers.getContractFactory("CygnusIndustrialComplex");
+    const CygRewarder = await ethers.getContractFactory("PillarsOfCreation");
 
-    // 3_000_000 Tokens as an example
-    const totalCygRewards = "2000000000000000000000000";
+    // 2_000_000 Tokens as an example
+    const totalCygRewards = BigInt(2_000_000e18);
 
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
     const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards);
@@ -173,7 +178,7 @@ module.exports = async function Make() {
     await cygRewarder.initializeShuttleRewards(0, 1000);
 
     // Set rewarder in borrowable
-    await borrowable.setCygnusIndustrialComplex(cygRewarder.address);
+    await borrowable.setPillarsOfCreation(cygRewarder.address);
 
     await cygToken.connect(owner).transferOwnership(cygRewarder.address);
 
@@ -193,10 +198,6 @@ module.exports = async function Make() {
 
     // ═══════════════════ 10. DAO Reserves ═════════════════════════════════════════════════════
 
-    const DAOReserves = await ethers.getContractFactory("CygnusDAOReserves");
-    const reserves = await DAOReserves.deploy(factory.address, daoReserves.address, BigInt(0.5e18));
-    await factory.setPendingDaoReserves(reserves.address);
-    await factory.setNewDaoReserves();
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus USD Reserve | %s", chalk.whiteBright(reserves.address));
     console.log("\t-----------------------------------------------------------------------------");

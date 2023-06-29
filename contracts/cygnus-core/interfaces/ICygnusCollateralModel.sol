@@ -97,6 +97,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
      *  @return borrowBalance The original loaned USDC amount plus interest (ie. what the user must pay back)
      *  @return price The current LP price
      *  @return positionUsd The borrower's position in USD. position = CygLP Balance * Exchange Rate * LP Price
+     *  @return rate The current exchange rate between CygLP and LP
      *  @return health The user's current loan health (once it reaches 100% the user becomes liquidatable)
      */
     function getBorrowerPosition(
@@ -110,6 +111,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
             uint256 borrowBalance,
             uint256 price,
             uint256 positionUsd,
+            uint256 rate,
             uint256 health
         );
 

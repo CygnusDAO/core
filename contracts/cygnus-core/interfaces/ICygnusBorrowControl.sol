@@ -49,7 +49,7 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *
      *  @custom:event NewCygnusBorrowRewarder
      */
-    event NewCygnusIndustialComplex(address oldRewarder, address newRewarder);
+    event NewPillarsOfCreation(address oldRewarder, address newRewarder);
 
     /**
      *  @dev Logs when a new reserve factory is set by admin
@@ -70,21 +70,30 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @param kinkUtilizationRate_ The rate at which the jump interest rate takes effect
      *
      *  custom:event NewInterestRateParameters
-     */
-    event NewInterestRateParameters(
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear,
-        uint256 kinkMultiplier_,
-        uint256 kinkUtilizationRate_
-    );
+     */ // prettier-ignore
+    event NewInterestRateParameters( uint256 baseRatePerYear, uint256 multiplierPerYear, uint256 kinkMultiplier_, uint256 kinkUtilizationRate_);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
-    // ──────────────────────────── Important Addresses
+    /**
+     *  @custom:struct InterestRateModel The structwith the interest rate params for this pool
+     *  @custom:member baseRatePerSecond The base interest rate which is the y-intercept when utilization rate is 0
+     *  @custom:member multiplierPerSecond The multiplier of utilization rate that gives the slope of the interest rate
+     *  @custom:member jumpMultiplierPerSecond The multiplierPerSecond after hitting a specified utilization point
+     *  @custom:member kink The utilization point at which the jump multiplier is applied
+     */
+    struct InterestRateModel {
+        uint64 baseRatePerSecond;
+        uint64 multiplierPerSecond;
+        uint64 jumpMultiplierPerSecond;
+        uint64 kink;
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @return collateral Address of the collateral contract
@@ -92,36 +101,21 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     function collateral() external view returns (address);
 
     /**
-     *  @return cygnusIndustialComplex Address of the contract that rewards both borrowers and lenders in CYG
+     *  @return pillarsOfCreation Address of the contract that rewards both borrowers and lenders in CYG
      */
-    function cygnusIndustialComplex() external view returns (address);
+    function pillarsOfCreation() external view returns (address);
 
-    // ───────────────────────────── Current pool rates
-
-    /**
-     *  @return baseRatePerSecond The interest rate for this pool when utilization is 0 divided by seconds in a year
-     */
-    function baseRatePerSecond() external view returns (uint256);
+    // ────────────── Current Pool Rates ──────────────
 
     /**
-     *  @return baseRatePerSecond The mulitplier for this pool divided by seconds in a year
+     *  @notice The current interest rate params set for this pool
+     *  @return baseRatePerSecond The base interest rate which is the y-intercept when utilization rate is 0
+     *  @return multiplierPerSecond The multiplier of utilization rate that gives the slope of the interest rate
+     *  @return jumpMultiplierPerSecond The multiplierPerSecond after hitting a specified utilization point
+     *  @return kink The utilization point at which the jump multiplier is applied
      */
-    function multiplierPerSecond() external view returns (uint256);
-
-    /**
-     *  @return jumpMultiplierPerSecond The Jump multiplier for this pool divided by seconds in a year
-     */
-    function jumpMultiplierPerSecond() external view returns (uint256);
-
-    /**
-     *  @return kinkUtilizationRate Current utilization point at which the jump multiplier is applied
-     */
-    function kinkUtilizationRate() external view returns (uint256);
-
-    /**
-     *  @return kinkMultiplier The multiplier that is applied to the interest rate once util > kink
-     */
-    function kinkMultiplier() external view returns (uint256);
+    // prettier-ignore
+    function interestRateModel() external view returns (uint64 baseRatePerSecond, uint64 multiplierPerSecond, uint64 jumpMultiplierPerSecond, uint64 kink);
 
     /**
      *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
@@ -133,6 +127,16 @@ interface ICygnusBorrowControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Updates the reserve factor
+     *
+     *  @param newReserveFactor The new reserve factor for this shuttle
+     *
+     *  @custom:security only-admin
+     */
+    function setReserveFactor(uint256 newReserveFactor) external;
 
     /**
      *  @notice Admin 👽
@@ -154,21 +158,12 @@ interface ICygnusBorrowControl is ICygnusTerminal {
 
     /**
      *  @notice Admin 👽
-     *  @notice Updates the reserve factor
+     *  @notice Updates the pillars of creation contract. This can be updated to the zero address in case we need
+     *          to remove rewards from pools saving us gas instead of calling the contract.
      *
-     *  @param newReserveFactor The new reserve factor for this shuttle
-     *
-     *  @custom:security only-admin
-     */
-    function setReserveFactor(uint256 newReserveFactor) external;
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Updates the borrow rewarder contract
-     *
-     *  @param newBorrowRewarder The address of the new CYG Borrow rewarder
+     *  @param newPillars The address of the new CYG rewarder
      *
      *  @custom:security only-admin
      */
-    function setCygnusIndustrialComplex(address newBorrowRewarder) external;
+    function setPillarsOfCreation(address newPillars) external;
 }

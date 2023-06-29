@@ -77,6 +77,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice The address of this contract`s opposite arm. For collateral pools, this is the borrowable address.
+     *          For borrowable pools, this is the collateral address.
+     */
+    address internal immutable twinstar;
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
@@ -92,7 +100,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    ICygnusNebula public immutable override cygnusNebulaOracle;
+    ICygnusNebula public immutable override nebula;
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -120,7 +128,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     constructor() {
         // Get immutables from deployer contract who is msg.sender of deployments
         // Factory, asset, borrow/collateral, oracle, lending pool ID
-        (hangar18, underlying, , cygnusNebulaOracle, shuttleId) = IOrbiter(msg.sender).shuttleParameters();
+        (hangar18, underlying, twinstar, nebula, shuttleId) = IOrbiter(msg.sender).shuttleParameters();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -136,7 +144,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     }
 
     /**
-     *  @notice We mark as virtual in case need we need to also update before interaction (ie yield bearing tokens)
+     *  @notice We mark as virtual in case need we need to also update before interaction (ie interest bearing tokens)
      *  @custom:modifier update Updates the total balance var in terms of its underlying
      */
     modifier update() virtual {

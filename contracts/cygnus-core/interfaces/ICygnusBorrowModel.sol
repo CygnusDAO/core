@@ -40,12 +40,7 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *
      *  @custom:event AccrueInterest
      */
-    event AccrueInterest(
-        uint256 cashStored,
-        uint256 totalBorrowsStored,
-        uint256 interestAccumulated,
-        uint256 reservesAdded
-    );
+    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated, uint256 reservesAdded);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -86,12 +81,12 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @return utilizationRate The current utilization rate for this shuttle
+     *  @return utilizationRate The total amount of borrowed funds divided by the total cash the pool has available
      */
     function utilizationRate() external view returns (uint256);
 
     /**
-     *  @return supplyRate The current supply rate for this shuttle
+     *  @return supplyRate The current APR for lenders
      */
     function supplyRate() external view returns (uint256);
 

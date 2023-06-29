@@ -130,9 +130,9 @@ interface ICygnusTerminal is IERC20Permit {
     function underlying() external view returns (address);
 
     /**
-     *  @return cygnusNebulaOracle The address of the oracle for this lending pool
+     *  @return nebula The address of the oracle for this lending pool
      */
-    function cygnusNebulaOracle() external view returns (ICygnusNebula);
+    function nebula() external view returns (ICygnusNebula);
 
     /**
      *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)

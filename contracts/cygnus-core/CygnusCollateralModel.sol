@@ -90,10 +90,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
             if (adjustedCollateralInUsd >= collateralNeededInUsd) {
                 return (adjustedCollateralInUsd - collateralNeededInUsd, 0);
             }
-            // else, return 0 liquidity and the account's shortfall
-            else {
-                return (0, collateralNeededInUsd - adjustedCollateralInUsd);
-            }
+            // else, return 0 liquidity and the account's shortfall, position can be liquidated
+            else return (0, collateralNeededInUsd - adjustedCollateralInUsd);
         }
     }
 
@@ -114,7 +112,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Check if called externally or from borrowable. If called externally then borrowedAmount is always MaxUint256
         // prettier-ignore
-        if (borrowBalance == type(uint256).max) (/* principal */, borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        if (borrowBalance == type(uint256).max) (/* principal */, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
         uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
@@ -132,7 +130,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Get the price of 1 amount of the underlying, denominated in the borrowable's underlying (a stablecoin).
         // It returns the price in the borrowable`s decimals. ie If USDC, price in 6 deicmals, if DAI/BUSD in 18.
         // Note that price returned can be unexpectedly high depending on the liquidity token's assets decimals.
-        price = cygnusNebulaOracle.lpTokenPriceUsd(underlying);
+        price = nebula.lpTokenPriceUsd(underlying);
 
         // The oracle is already initialized or else the deployment of the lending pool would have failed.
         // We check for invalid price in case something goes wrong with the oracle's price feeds, reverting
@@ -159,7 +157,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Get borrower's borrow balance from borrowable contract
         // prettier-ignore
-        (/* principal */, uint256 borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        (/* principal */, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the LP price and calculate the needed collateral
         // prettier-ignore
@@ -182,26 +180,48 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
+    function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
+        // prettier-ignore
+        ( /* liquidity */, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
+
+        // User has no shortfall and can borrow
+        return shortfall == 0;
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralModel
+     */
     function getBorrowerPosition(
         address borrower
     )
         external
         view
         override
-        returns (uint256 cygLPBalance, uint256 principal, uint256 borrowBalance, uint256 price, uint256 positionUsd, uint256 health)
+        returns (
+            uint256 cygLPBalance,
+            uint256 principal,
+            uint256 borrowBalance,
+            uint256 price,
+            uint256 rate,
+            uint256 positionUsd,
+            uint256 health
+        )
     {
         // Collateral balance of the borrower (CygLP)
         cygLPBalance = balanceOf(borrower);
 
-        // The original borrowed amount without interest
-        (principal, borrowBalance) = ICygnusBorrow(borrowable).getBorrowBalance(borrower);
+        // The original borrowed amount without interest and the current owed amount
+        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // The LP Token price
         price = getLPTokenPrice();
 
+        // Current CygLP to LP exchange rate
+        rate = exchangeRate();
+
         // LP Tokens balance = balance of CygLP Tokens * current exchange Rate
         // Position in USD = LP Tokens balance * LP Token Price
-        positionUsd = cygLPBalance.mulWad(exchangeRate()).mulWad(price);
+        positionUsd = cygLPBalance.mulWad(rate).mulWad(price);
 
         // Health = (Borrow Balance * Liquidation Penalty) / (Collateral in USD * Debt Ratio)
         // Adjust borrowed admount with liquidation penalty, rounding up
@@ -209,16 +229,5 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
         health = positionUsd == 0 ? 0 : collateralNeededInUsd.divWad(positionUsd.mulWad(debtRatio));
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralModel
-     */
-    function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
-        // prettier-ignore
-        ( /* liquidity */, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
-
-        // User has no shortfall and can borrow
-        return shortfall == 0;
     }
 }

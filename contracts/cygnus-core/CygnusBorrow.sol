@@ -77,7 +77,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
 import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
-import {ICygnusIndustrialComplex} from "./interfaces/ICygnusIndustrialComplex.sol";
+import {IPillarsOfCreation} from "./interfaces/IPillarsOfCreation.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -116,25 +116,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     using FixedPointMathLib for uint256;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-         5. CONSTANT FUNCTIONS
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
-    /**
-     *  @notice Overrides the previous exchange rate from CygnusTerminal
-     *  @inheritdoc CygnusTerminal
-     */
-    function exchangeRate() public view override(ICygnusTerminal, CygnusTerminal) returns (uint256) {
-        // Gas savings if non-zero
-        uint256 _totalSupply = totalSupply();
-
-        // Compute the exchange rate as the total balance plus the total borrows of the underlying asset
-        // Unlike cTokens we don't take into account totalReserves since our reserves are minted CygUSD instead
-        return _totalSupply == 0 ? 1e18 : (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
-    }
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
          6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
@@ -142,17 +123,16 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
     /**
      *  @notice ERC20 Override
-     *  @notice Tracks lender rewards after any transfer/mint/burn. After each interaction we pass the balance of
-     *          cygUsd of `from` and `to`. We update the shares at the rewarder for both, the rewarder will simply
-     *          return and escape if they are the zero address (ie during a `mint` or a `burn`)
+     *  @notice Tracks lender rewards after any transfer/mint/burn/etc. CygUSD is the lender token and should always
+     *          be tracked at core and updated on any interaction.
      */
     function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
         // Adjustment factor for lenders is always one
         // Track the latest balance of `from`
-        _trackRewards(from, balanceOf(from), 1e18, ICygnusIndustrialComplex.Position.LENDER);
+        if (from != address(0)) _trackRewards(from, balanceOf(from), 1e18, IPillarsOfCreation.Position.LENDER);
 
-        // Track the latest balance of `to`
-        _trackRewards(to, balanceOf(to), 1e18, ICygnusIndustrialComplex.Position.LENDER);
+        // Check for zero address (in case of burns)
+        if (to != address(0)) _trackRewards(to, balanceOf(to), 1e18, IPillarsOfCreation.Position.LENDER);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -163,7 +143,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @custom:security non-reentrant
      */
     function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update {
-        // Check if msg.sender can borrow on behalf of borrower
+        // Check if msg.sender can borrow on behalf of borrower, we use the same spend allowance as redeem
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
         // ────────── 1. Optimistically send `borrowAmount` to `receiver`
@@ -202,7 +182,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // passing `accountBorrows` to the collateral contract
         if (borrowAmount > repayAmount) {
             // Check borrower's current liquidity/shortfall
-            bool userCanBorrow = ICygnusCollateral(collateral).canBorrow(borrower, accountBorrows);
+            bool userCanBorrow = ICygnusCollateral(twinstar).canBorrow(borrower, accountBorrows);
 
             /// @custom:error InsufficientLiquidity Avoid if borrower has insufficient liquidity for this amount
             if (!userCanBorrow) revert CygnusBorrow__InsufficientLiquidity();
@@ -243,7 +223,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // CygLP = (actualRepayAmount * liq. incentive). Reverts at Collateral if:
         // - `actualRepayAmount` is 0.
         // - `borrower`'s position is not in liquidatable state
-        uint256 cygLPAmount = ICygnusCollateral(collateral).seizeCygLP(receiver, borrower, actualRepayAmount);
+        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, actualRepayAmount);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
         // Pass call to router

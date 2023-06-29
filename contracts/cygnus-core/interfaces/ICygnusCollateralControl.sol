@@ -75,9 +75,7 @@ interface ICygnusCollateralControl is ICygnusTerminal {
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
-    // ────────────── Important Addresses ─────────────
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @return borrowable The address of the Cygnus borrow contract for this collateral which holds USDC
@@ -100,8 +98,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      *  @return liquidationFee The current liquidation fee the protocol keeps from each liquidation
      */
     function liquidationFee() external view returns (uint256);
-
-    // ──────────── Min/Max rates allowed ─────────────
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. NON-CONSTANT FUNCTIONS

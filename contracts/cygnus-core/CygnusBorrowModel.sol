@@ -15,7 +15,7 @@
 //  GNU Affero General Public License for more details.
 //
 //  You should have received a copy of the GNU Affero General Public License
-//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//  along with this prograinterestRateModel.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity >=0.8.17;
 
 // Dependencies
@@ -27,15 +27,18 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
-import {ICygnusIndustrialComplex} from "./interfaces/ICygnusIndustrialComplex.sol";
+import {IPillarsOfCreation} from "./interfaces/IPillarsOfCreation.sol";
+
+// Overrides
+import {CygnusTerminal, ICygnusTerminal} from "./CygnusTerminal.sol";
 
 /**
  *  @title  CygnusBorrowModel Contract that accrues interest and stores borrow data of each user
  *  @author CygnusDAO
  *  @notice Contract that accrues interest and tracks borrows for this shuttle. It accrues interest on any borrow,
- *          liquidation or repay. The Accrue function uses 1 memory slot per accrual. This contract is also also
- *          used by CygnusCollateral contracts to get the latest borrow balance of a borrower to calculate current
- *          debt ratio, liquidity or shortfall.
+ *          liquidation or repay. The Accrue function uses 1 memory slot per accrual. This contract is also used
+ *          by CygnusCollateral contracts to get the latest borrow balance of a borrower to calculate current debt
+ *          ratio, liquidity or shortfall.
  */
 contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -124,26 +127,43 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 util = borrows.divWad(cash + borrows);
 
         // If utilization <= kink return normal rate
-        if (util <= kinkUtilizationRate) return util.mulWad(multiplierPerSecond) + baseRatePerSecond;
+        if (util <= interestRateModel.kink) {
+            // Normal rate = slope + base
+            return util.mulWad(interestRateModel.multiplierPerSecond) + interestRateModel.baseRatePerSecond;
+        }
 
         // else return normal rate + kink rate
-        uint256 normalRate = kinkUtilizationRate.mulWad(multiplierPerSecond) + baseRatePerSecond;
+        uint256 normalRate = uint256(interestRateModel.kink).mulWad(interestRateModel.multiplierPerSecond) +
+            interestRateModel.baseRatePerSecond;
 
         // Get the excess utilization rate
-        uint256 excessUtil = util - kinkUtilizationRate;
+        uint256 excessUtil = util - interestRateModel.kink;
 
         // Return per second borrow rate
-        return excessUtil.mulWad(jumpMultiplierPerSecond) + normalRate;
+        return excessUtil.mulWad(interestRateModel.jumpMultiplierPerSecond) + normalRate;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @notice Overrides the previous exchange rate from CygnusTerminal
+     *  @inheritdoc CygnusTerminal
+     */
+    function exchangeRate() public view override(ICygnusTerminal, CygnusTerminal) returns (uint256) {
+        // Gas savings if non-zero
+        uint256 _totalSupply = totalSupply();
+
+        // Compute the exchange rate as the total balance plus the total borrows of the underlying asset
+        // Unlike cTokens we don't take into account totalReserves since our reserves are minted CygUSD
+        return _totalSupply == 0 ? 1e18 : (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
+    }
 
     /**
      *  @dev It is used by CygnusCollateral contract to check a borrower's position
      *  @inheritdoc ICygnusBorrowModel
      */
     function getBorrowBalance(address borrower) public view override returns (uint256 principal, uint256 borrowBalance) {
-        // Load user struct to memory
+        // Load user struct to storage (gas savings when called from Collateral.sol)
         BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
         // If interestIndex = 0 then borrowBalance is 0
@@ -366,7 +386,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // Track borrower
-        _trackRewards(borrower, accountBorrows, borrowIndexStored, ICygnusIndustrialComplex.Position.BORROWER);
+        _trackRewards(borrower, accountBorrows, borrowIndexStored, IPillarsOfCreation.Position.BORROWER);
     }
 
     /**
@@ -376,15 +396,15 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param adjustmentFactor Borrow index stored up to this point for borrowers or one mantissa for lenders
      *  @param position Whether the position is a lend or borrow position
      */
-    function _trackRewards(address account, uint256 balance, uint256 adjustmentFactor, ICygnusIndustrialComplex.Position position) internal {
+    function _trackRewards(address account, uint256 balance, uint256 adjustmentFactor, IPillarsOfCreation.Position position) internal {
         // Rewarder address (if any)
-        address rewarder = cygnusIndustialComplex;
+        address rewarder = pillarsOfCreation;
 
         // If not initialized return
         if (rewarder == address(0)) return;
 
         // Pass borrow to this chain's CYG rewarder
-        ICygnusIndustrialComplex(rewarder).trackRewards(account, balance, adjustmentFactor, position);
+        IPillarsOfCreation(rewarder).trackRewards(account, balance, adjustmentFactor, position);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -405,7 +425,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         (/* principal */, uint256 borrowBalance) = getBorrowBalance(borrower);
 
         // Pass borrower info to the Rewarder (if any)
-        _trackRewards(borrower, borrowBalance, borrowIndex, ICygnusIndustrialComplex.Position.BORROWER);
+        _trackRewards(borrower, borrowBalance, borrowIndex, IPillarsOfCreation.Position.BORROWER);
     }
 
     /**
@@ -416,6 +436,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 balance = balanceOf(lender);
 
         // Pass borrower info to the Rewarder (if any)
-        _trackRewards(lender, balance, 1e18, ICygnusIndustrialComplex.Position.LENDER);
+        _trackRewards(lender, balance, 1e18, IPillarsOfCreation.Position.LENDER);
     }
 }

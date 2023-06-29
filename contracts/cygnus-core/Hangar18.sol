@@ -94,12 +94,32 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    mapping(uint256 => Orbiter) public override getOrbiters;
+    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles; // LP Address => Orbiter ID = Lending Pool
 
     /**
      *  @inheritdoc IHangar18
      */
-    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles;
+    string public override name = string(abi.encodePacked("Hangar18: Lending Pools Deployer #", block.chainid));
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    string public constant override version = "1.0.0";
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    address public immutable override usd;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    address public immutable override nativeToken;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    ICygnusNebulaRegistry public immutable nebulaRegistry;
 
     /**
      *  @inheritdoc IHangar18
@@ -120,19 +140,6 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      */
     address public override pendingDaoReserves;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    address public immutable override usd;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    address public immutable override nativeToken;
-
-    // Registry of oracles
-    ICygnusNebulaRegistry public immutable cygnusNebulaRegistry;
 
     /**
      *  @inheritdoc IHangar18
@@ -164,7 +171,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         usd = _usd;
 
         // Oracle registry
-        cygnusNebulaRegistry = _registry;
+        nebulaRegistry = _registry;
 
         /// @custom:event NewCygnusAdmin
         emit NewCygnusAdmin(address(0), _admin);
@@ -291,7 +298,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     ) external override cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
         // Load orbiter to storage for gas savings (orbiter should already set and we are not overwriting)
-        Orbiter storage orbiter = getOrbiters[orbiterId];
+        Orbiter storage orbiter = allOrbiters[orbiterId];
 
         /// @custom:error OrbitersAreInactive
         if (!orbiter.status) revert Hangar18__OrbitersAreInactive();
@@ -303,7 +310,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
         // Check that oracle has been initialized in the registry and get the nebula address
-        address nebula = cygnusNebulaRegistry.getLPTokenNebulaAddress(lpTokenPair);
+        address nebula = nebulaRegistry.getLPTokenNebulaAddress(lpTokenPair);
 
         /// @custom:error LiquidityTokenNotSupported
         if (nebula == address(0)) revert Hangar18__LiquidityTokenNotSupported();
@@ -357,41 +364,25 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Collateral init code hash
         bytes32 collateralInitCodeHash = deneb.collateralInitCodeHash();
 
-        // Unique hash of both orbiters and oracle
+        // Unique hash of both orbiters by hashing their respective init code hash
         bytes32 uniqueHash = keccak256(abi.encode(borrowableInitCodeHash, collateralInitCodeHash));
 
         // Check if we already initialized these orbiter pair, reverts if we have
         checkOrbitersPrivate(uniqueHash, totalOrbiters);
 
-        // Create storage for orbiters with this ID
-        Orbiter storage orbiter = getOrbiters[totalOrbiters];
-
-        // ID for this group of collateral and borrow orbiters
-        orbiter.orbiterId = uint88(totalOrbiters);
-
-        // Name of the dex/strategy these orbiters are for or human readable identifier
-        orbiter.orbiterName = _name;
-
-        // Borrow orbiter address
-        orbiter.albireoOrbiter = albireo;
-
-        // Collateral orbiter address
-        orbiter.denebOrbiter = deneb;
-
-        // Borrowable init code hash
-        orbiter.borrowableInitCodeHash = borrowableInitCodeHash;
-
-        // Collateral init code hash
-        orbiter.collateralInitCodeHash = collateralInitCodeHash;
-
-        // Unique hash
-        orbiter.uniqueHash = uniqueHash;
-
-        // ID for this group of collateral/borrow orbiters
-        orbiter.status = true;
-
-        // Push struct to array
-        allOrbiters.push(orbiter);
+        // Has not been initialized yet, create struct and push to orbiter array
+        allOrbiters.push(
+            Orbiter({
+                orbiterId: uint88(totalOrbiters), // Orbiter ID
+                orbiterName: _name, // Friendly name
+                albireoOrbiter: albireo, // Borrowable deployer
+                denebOrbiter: deneb, // Collateral deployer
+                borrowableInitCodeHash: borrowableInitCodeHash, // Borrowable code hash
+                collateralInitCodeHash: collateralInitCodeHash, // Collateral code hash
+                uniqueHash: uniqueHash, // Unique bytes32 orbiter id
+                status: true // Mark as true
+            })
+        );
 
         /// @custom:event InitializeOrbiters
         emit InitializeOrbiters(true, totalOrbiters, albireo, deneb, uniqueHash, _name);
