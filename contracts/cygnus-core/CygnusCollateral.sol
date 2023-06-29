@@ -136,15 +136,12 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This function should only be called from this collateral's `borrowable` contracts only
-     *  @notice Not marked as non-reentrant since only the borrowable may call it through the non-reentrant `liquidate()`
+     *  @notice Not marked as non-reentrant since only the borrowable cann call it through the non-reentrant `liquidate()`
      *  @inheritdoc ICygnusCollateral
      */
     function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
-        if (msg.sender != twinstar) {
-            revert CygnusCollateral__MsgSenderNotBorrowable();
-        }
+        if (msg.sender != twinstar) revert CygnusCollateral__MsgSenderNotBorrowable();
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
         else if (repayAmount == 0) revert CygnusCollateral__CantLiquidateZero();
 
@@ -187,7 +184,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     }
 
     /**
-     *  @dev This low level function should only be called from periphery contract only
+     *  @dev This low level function should be called from a periphery contract only
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */

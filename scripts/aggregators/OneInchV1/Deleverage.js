@@ -11,7 +11,6 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
     const protocols =
         "OPTIMISM_UNISWAP_V3,OPTIMISM_SYNTHETIX,OPTIMISM_SYNTHETIX_WRAPPER,OPTIMISM_ONE_INCH_LIMIT_ORDER,OPTIMISM_ONE_INCH_LIMIT_ORDER_V2,OPTIMISM_ONE_INCH_LIMIT_ORDER_V3,OPTIMISM_CURVE,OPTIMISM_BALANCER_V2,OPTIMISM_VELODROME,OPTIMISM_KYBERSWAP_ELASTIC,OPTIMISM_CLIPPER_COVES,OPTIMISM_KYBER_DMM_STATIC,OPTIMISM_AAVE_V3,OPTIMISM_ELK,OPTIMISM_TRIDENT,OPTIMISM_MUMMY_FINANCE,OPTIMISM_NOMISWAPEPCS";
 
-
     /**
      *  @notice 1inch swagger API call
      *  @param {Number} chainId - The id of this chain
@@ -22,13 +21,13 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
      */
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api url
-        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&compatibilityMode=true&slippage=0.5&protocols=${protocols}`;
+        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&compatibilityMode=true&slippage=1&protocols=${protocols}`;
 
         // Swap data
         const swapdata = await fetch(apiUrl).then((response) => response.json());
 
         // Return response
-        return swapdata;
+        return swapdata.tx.data.toString().replace("0x12aa3caf", "0x");
     };
 
     // 1Inch call array to pass to periphery
@@ -42,7 +41,7 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
             const swap = await oneInch(chainId, tokens[i], usdc, amounts[i], router.address);
 
             // Add to calls array
-            calls = [...calls, swap.tx.data.toString().replace("0x12aa3caf", "0x")];
+            calls = [...calls, swap];
         } else {
             // If usdc pass empty bytes
             calls = [...calls, "0x"];

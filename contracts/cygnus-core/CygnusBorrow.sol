@@ -138,7 +138,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev This low level function should only be called from `Altair` contract only
+     *  @dev This low level function should be called from a periphery contract only
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
@@ -202,7 +202,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     }
 
     /**
-     *  @dev This low level function should only be called from `Altair` contract only
+     *  @dev This low level function should be called from a periphery contract only
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */

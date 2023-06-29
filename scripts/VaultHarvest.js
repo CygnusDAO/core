@@ -14,6 +14,16 @@ const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
 const Users = require(path.resolve(__dirname, "../test/Users.js"));
 
+// Reinvest
+//const { reinvestCalldata } = require(path.resolve(__dirname, "./reinvestors/Reinvestoors.js"));
+//
+// enum DexAggregator {
+//    PARASWAP,
+//    ONE_INCH_LEGACY,
+//    ONE_INCH_V2
+// }
+//const dexAggregator = 0; // Use 1inch
+
 // Simple Borrow
 const x1VaultHarvest = async () => {
     // CONFIG
@@ -28,9 +38,9 @@ const x1VaultHarvest = async () => {
     await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.13e18), 2, BigInt(0.8e18));
 
     // Deploy harvester
-    const Harvester = await ethers.getContractFactory("CollateralHarvester");
+    const Harvester = await ethers.getContractFactory("VeloHarvester");
     const harvester = await Harvester.deploy(hangar18.address);
-    await harvester.initializeHarvester(collateral.address);
+    await harvester.initializeHarvester(collateral.address, "0x4200000000000000000000000000000000000006", harvester.address);
     await collateral.setHarvester(harvester.address);
 
     /***********************************************************************************************************
@@ -135,17 +145,17 @@ const x1VaultHarvest = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { health: health_v1 } = await collateral.getBorrowerPosition(borrower._address);
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    console.log("Borrower`s Debt Ratio before borrow            | %s%", health_v1 / 1e16);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
     // Approve borrow
-    await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
+    await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
     await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
@@ -155,13 +165,13 @@ const x1VaultHarvest = async () => {
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { health: health_v2 } = await collateral.getBorrowerPosition(borrower._address);
     const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    console.log("Borrower`s Debt Ratio after borrow            | %s%", health_v2 / 1e16);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);
@@ -178,8 +188,8 @@ const x1VaultHarvest = async () => {
     // Mine 100k blocks
     await mine(400000);
 
-    const userInfo = await rewarder.getUserInfo(borrowable.address, borrower._address);
-    const pendingCyg = await rewarder.pendingCyg(borrowable.address, borrower._address);
+    const userInfo = await rewarder.getUserInfo(borrowable.address, 1, borrower._address);
+    const pendingCyg = await rewarder.pendingCyg(borrowable.address, 1, borrower._address);
     const cygBalance = await cygToken.balanceOf(borrower._address);
 
     console.log("User Info: Shares before harvest              | %s Shares", userInfo.shares / 1e18);
@@ -187,12 +197,12 @@ const x1VaultHarvest = async () => {
     console.log("Pending CYG before harvest                    | %s CYG", pendingCyg / 1e18);
     console.log("Cyg Balance before harvest                    | %s CYG", cygBalance / 1e18);
 
-    await rewarder.connect(borrower).collect(borrowable.address, borrower._address);
+    await rewarder.connect(borrower).collect(borrowable.address, 1, borrower._address);
 
     console.log("----------------------------------------------------------------------------------------------");
 
-    const _userInfo = await rewarder.getUserInfo(borrowable.address, borrower._address);
-    const _pendingCyg = await rewarder.pendingCyg(borrowable.address, borrower._address);
+    const _userInfo = await rewarder.getUserInfo(borrowable.address, 1, borrower._address);
+    const _pendingCyg = await rewarder.pendingCyg(borrowable.address, 1, borrower._address);
     const _cygBalance = await cygToken.balanceOf(borrower._address);
     const pacing = await rewarder.epochRewardsPacing();
     const progress = await rewarder.epochProgression();
@@ -268,9 +278,9 @@ const x1VaultHarvest = async () => {
     console.log("...Harvester harvests VELO and sends to vault...");
 
     // First set the x1 reward to 100%
-    await harvester.newX1VaultReward(BigInt(1e18));
+    await harvester.updateX1VaultWeight(BigInt(1e18));
     // Harvest VELO to vault
-    await harvester.harvestToVault(collateral.address);
+    await harvester.harvestToX1Vault(collateral.address);
     // Send some 40 OP to vault as a test
     await rewardsToken2.connect(borrower).transfer(vault.address, BigInt(40e18));
 
@@ -321,7 +331,7 @@ const x1VaultHarvest = async () => {
     const cygUsdBefore = await borrowable.balanceOf(daoReserves.address);
 
     console.log("Balance of DAO Reserves before mine           | %s CygUSD", chalk.yellowBright(cygUsdBefore / 1e6));
-    console.log("Total Borrows Before                          | %s USD", await borrowable.totalBorrows() / 1e6);
+    console.log("Total Borrows Before                          | %s USD", (await borrowable.totalBorrows()) / 1e6);
     await mine(8000000);
     console.log("----------------------------------------------------------------------------------------------");
     // Mint CygUSD
@@ -329,7 +339,7 @@ const x1VaultHarvest = async () => {
     const cygUsdAfter = await borrowable.balanceOf(daoReserves.address);
 
     console.log("Balance of DAO Reserves after mine            | %s CygUSD", chalk.yellowBright(cygUsdAfter / 1e6));
-    console.log("Total Borrows after                           | %s USD", await borrowable.totalBorrows() / 1e6);
+    console.log("Total Borrows after                           | %s USD", (await borrowable.totalBorrows()) / 1e6);
     await vault.addRewardToken(usdc.address);
     console.log("Add USDC to the X1 Vault");
 

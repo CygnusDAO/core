@@ -99,7 +99,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    string public override name = string(abi.encodePacked("Hangar18: Lending Pools Deployer #", block.chainid));
+    string public override name = string(abi.encodePacked("Hangar18: Cygnus Pool Deployer #", block.chainid));
 
     /**
      *  @inheritdoc IHangar18
@@ -156,6 +156,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @param _daoReserves Address of the contract that handles weighted forwarding of Erc20 tokens
      *  @param _usd Address of the borrowable`s underlying (stablecoins USDC, DAI, BUSD, etc.).
      *  @param _nativeToken The address of this chain's native token
+     *  @param _registry The Cygnus oracle registry which keeps track of all initialized LP oracles
      */
     constructor(address _admin, address _daoReserves, address _usd, address _nativeToken, ICygnusNebulaRegistry _registry) {
         // Assign cygnus admin, has access to special functions

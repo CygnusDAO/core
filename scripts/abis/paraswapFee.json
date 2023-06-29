@@ -1,0 +1,112 @@
+[
+    {
+        "inputs": [{ "internalType": "address payable", "name": "_augustusAddress", "type": "address" }],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [{ "internalType": "contract IERC20", "name": "", "type": "address" }],
+        "name": "allocatedFees",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "augustusSwapper",
+        "outputs": [{ "internalType": "address payable", "name": "", "type": "address" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20[]", "name": "_tokens", "type": "address[]" },
+            { "internalType": "address", "name": "_partner", "type": "address" }
+        ],
+        "name": "batchGetBalance",
+        "outputs": [{ "internalType": "uint256[]", "name": "_fees", "type": "uint256[]" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20[]", "name": "_tokens", "type": "address[]" },
+            { "internalType": "address", "name": "_recipient", "type": "address" }
+        ],
+        "name": "batchWithdrawAllERC20",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20[]", "name": "_tokens", "type": "address[]" },
+            { "internalType": "uint256[]", "name": "_tokenAmounts", "type": "uint256[]" },
+            { "internalType": "address", "name": "_recipient", "type": "address" }
+        ],
+        "name": "batchWithdrawSomeERC20",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "address", "name": "", "type": "address" },
+            { "internalType": "contract IERC20", "name": "", "type": "address" }
+        ],
+        "name": "fees",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20", "name": "_token", "type": "address" },
+            { "internalType": "address", "name": "_partner", "type": "address" }
+        ],
+        "name": "getBalance",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{ "internalType": "contract IERC20", "name": "_token", "type": "address" }],
+        "name": "getUnallocatedFees",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "address", "name": "_account", "type": "address" },
+            { "internalType": "contract IERC20", "name": "_token", "type": "address" },
+            { "internalType": "uint256", "name": "_fee", "type": "uint256" }
+        ],
+        "name": "registerFee",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20", "name": "_token", "type": "address" },
+            { "internalType": "address", "name": "_recipient", "type": "address" }
+        ],
+        "name": "withdrawAllERC20",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "contract IERC20", "name": "_token", "type": "address" },
+            { "internalType": "uint256", "name": "_tokenAmount", "type": "uint256" },
+            { "internalType": "address", "name": "_recipient", "type": "address" }
+        ],
+        "name": "withdrawSomeERC20",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    { "stateMutability": "payable", "type": "receive" }
+]

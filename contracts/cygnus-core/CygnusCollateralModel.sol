@@ -87,9 +87,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Never underflows
         unchecked {
             // If account has collateral available to borrow against, return liquidity and 0 shortfall
-            if (adjustedCollateralInUsd >= collateralNeededInUsd) {
-                return (adjustedCollateralInUsd - collateralNeededInUsd, 0);
-            }
+            if (adjustedCollateralInUsd >= collateralNeededInUsd) return (adjustedCollateralInUsd - collateralNeededInUsd, 0);
             // else, return 0 liquidity and the account's shortfall, position can be liquidated
             else return (0, collateralNeededInUsd - adjustedCollateralInUsd);
         }

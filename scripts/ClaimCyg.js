@@ -8,18 +8,20 @@ const ethers = hre.ethers;
 const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Permit2
-const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { PERMIT2_ADDRESS, SignatureTransfer, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
 const Users = require(path.resolve(__dirname, "../test/Users.js"));
 
-const HarvesterC = require(path.resolve(__dirname, "./aggregation-router-v5/ReinvestCollateral.js"));
+// Swapdata
+const LENDER = 0;
+const BORROWER = 1;
 
-// Harvesters
-const harvestCollateral = async () => {
+// Simple Borrow
+const cygnusBorrow = async () => {
     // CONFIG
-    const [, hangar18, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+    const [, , router, borrowable, collateral, usdc, lpToken, , rewarder, , , cygToken] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Charge allowances
@@ -28,13 +30,6 @@ const harvestCollateral = async () => {
 
     // Set interest rate to 1% base rate and 10% slope
     await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.1e18), 2, BigInt(0.8e18));
-
-    // Deploy harvester
-    const BHarvester = await ethers.getContractFactory("BorrowableHarvester");
-    const harvester = await BHarvester.deploy(hangar18.address);
-
-    await harvester.initializeHarvester(borrowable.address);
-    await collateral.setHarvester(harvester.address);
 
     /***********************************************************************************************************
                                                  START FLASH LIQUIDATE
@@ -138,33 +133,33 @@ const harvestCollateral = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    //const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    //console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
-    // Approve borrow
-    await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
+    // Approve Borrow
+    await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
-    // prettier-ignore
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
+    // Borrow
+    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
 
     console.log("----------------------------------------------------------------------------------------------");
 
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    //console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);
@@ -174,22 +169,88 @@ const harvestCollateral = async () => {
     console.log("----------------------------------------------------------------------------------------------");
     console.log("Borrower's Loan                               | %s USD", chalk.cyan("+" + loan));
     console.log("----------------------------------------------------------------------------------------------");
-    console.log(" ");
+
     console.log("----------------------------------------------------------------------------------------------");
-    console.log("                                      HARVEST REWARDS                                         ");
+    console.log("                                       CYG REWARDS                                            ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    const _lpBalance = await collateral.totalBalance();
-    await mine(200000);
-    const reinvestData = await HarvesterC(chainId, collateral, harvester);
+    console.log("Current Epoch: %s", await rewarder.getCurrentEpoch());
+    await mine(100_000)
+    console.log("---- mine 100,000 blocks ----");
+    console.log("Current Epoch: %s", await rewarder.getCurrentEpoch());
 
-    await harvester.harvestRewards(collateral.address, reinvestData);
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    console.log("Lender`s Pending CYG                          | %s CYG", await rewarder.pendingCyg(borrowable.address, LENDER, lender._address) / 1e18);
+    console.log("Lender`s balance of CYG                       | %s CYG", await cygToken.balanceOf(lender._address) / 1e18);
 
-    const lpBalance = await collateral.totalBalance();
+    await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
+    await rewarder.connect(lender).collect(borrowable.address, LENDER, lender._address);
 
-    console.log("Collateral`s Total Balance before reinvest    | %s LP Tokens", _lpBalance);
-    console.log("Borrowable`s Total Balance ater reinvest      | %s LP Tokens", lpBalance);
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    console.log("Lender`s Pending CYG                          | %s CYG", await rewarder.pendingCyg(borrowable.address, LENDER, lender._address) / 1e18);
+    console.log("Lender`s balance of CYG                       | %s CYG", await cygToken.balanceOf(lender._address) / 1e18);
 
+  console.log("Pacing: %s", await rewarder.epochRewardsPacing() / 1e16);
+
+    await mine(100_000)
+    console.log("---- mine 100,000 blocks ----");
+    console.log("Current Epoch: %s", await rewarder.getCurrentEpoch());
+
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    console.log("Lender`s Pending CYG                          | %s CYG", await rewarder.pendingCyg(borrowable.address, LENDER, lender._address) / 1e18);
+    console.log("Lender`s balance of CYG                       | %s CYG", await cygToken.balanceOf(lender._address) / 1e18);
+
+    await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
+    await rewarder.connect(lender).collect(borrowable.address, LENDER, lender._address);
+
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    console.log("Lender`s Pending CYG                          | %s CYG", await rewarder.pendingCyg(borrowable.address, LENDER, lender._address) / 1e18);
+    console.log("Lender`s balance of CYG                       | %s CYG", await cygToken.balanceOf(lender._address) / 1e18);
+
+    console.log("----------------------------------------------------------------------------------------------");
+    console.log("                                        REMOVE LIQ                                            ");
+    console.log("----------------------------------------------------------------------------------------------");
+
+    await usdc.connect(lender).transfer(owner.address, BigInt(500e6));
+
+    // Repays full amount of 4k but not whole is used
+    const repayAmount = BigInt(4000e6);
+
+    // 2. Build permit
+    const _permit = {
+        permitted: {
+            token: usdc.address,
+            amount: repayAmount,
+        },
+        spender: router.address,
+        nonce: 0,
+        deadline: ethers.constants.MaxUint256,
+    };
+
+    // 3. Sign the permit
+    const _permitData = SignatureTransfer.getPermitData(_permit, PERMIT2_ADDRESS, _chainId); // Get the permit data
+    const _signature = await owner._signTypedData(_permitData.domain, _permitData.types, _permitData.values); // Sign the permit
+
+    // 4. Repay with permit
+    await router.connect(owner) .repayPermit2Signature(borrowable.address, repayAmount, borrower._address, ethers.constants.MaxUint256, _permit, _signature);
+
+    // Check the borrower's new borrow balance
+    const { borrowBalance: borrowBal } = await borrowable.getBorrowBalance(borrower._address);
+
+    console.log("Borrow balance                                | %s USD", borrowBal / 1e6);
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
+    await mine(100_000);
+    await rewarder.accelerateTheUniverse();
+    console.log("Borrower`s Pending CYG                        | %s CYG", await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address) / 1e18);
+    console.log("Borrower`s balance of CYG                     | %s CYG", await cygToken.balanceOf(borrower._address) / 1e18);
 };
 
-harvestCollateral();
+cygnusBorrow();
