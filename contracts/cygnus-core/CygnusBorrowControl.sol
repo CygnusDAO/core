@@ -253,15 +253,15 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security only-admin 👽
      */
-    function setPillarsOfCreation(address newPillars) external override cygnusAdmin {
+    function setPillarsOfCreation(address newCygRewarder) external override cygnusAdmin {
         // Need the option of setting to address(0) as child contract checks for 0 address in case it's inactive
         // Old CYG rewarder
-        address oldPillars = pillarsOfCreation;
+        address oldCygRewarder = pillarsOfCreation;
 
         // Assign new rewarder
-        pillarsOfCreation = newPillars;
+        pillarsOfCreation = newCygRewarder;
 
-        /// @custom:event NewCygnusIndustialComplex
-        emit NewPillarsOfCreation(oldPillars, newPillars);
+        /// @custom:event NewPillarsOfCreation
+        emit NewPillarsOfCreation(oldCygRewarder, newCygRewarder);
     }
 }
