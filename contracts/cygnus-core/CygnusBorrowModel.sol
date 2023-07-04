@@ -114,14 +114,14 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice We keep this internal as our borrowRate state variable gets stored during accruals
      *  @param cash Total current balance of assets this contract holds
      *  @param borrows Total amount of borrowed funds
      */
-    function _latestBorrowRate(uint256 cash, uint256 borrows) internal view returns (uint256) {
+    function _latestBorrowRate(uint256 cash, uint256 borrows) private view returns (uint256) {
         // Utilization rate = borrows / (cash + borrows)
         // We don't take into account reserves since we mint CygUSD
         uint256 util = borrows.divWad(cash + borrows);
@@ -185,7 +185,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Gas savings
         uint256 _totalBorrows = totalBorrows;
 
-        // Return the current pool utilization rate
+        // Return the current pool utilization rate - we don't take into account reserves since we mint CygUSD
         return _totalBorrows == 0 ? 0 : _totalBorrows.divWad(totalBalance + _totalBorrows);
     }
 
@@ -251,7 +251,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 timeElapsed = currentTimestamp - accrualTimestampStored;
 
         // ──────────────────── Load values from storage ────────────────────────
-
         // Total borrows stored
         uint256 totalBorrowsStored = totalBorrows;
 
@@ -265,7 +264,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         if (currentTimestamp == accrualTimestampStored || totalBorrowsStored == 0) return;
 
         // ──────────────────────────────────────────────────────────────────────
-
         // 1. Get per-second BorrowRate
         uint256 borrowRateStored = _latestBorrowRate(cashStored, totalBorrowsStored);
 
@@ -282,7 +280,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         borrowIndexStored += interestFactor.mulWad(borrowIndexStored);
 
         // ──────────────────── Store values: 1 memory slot ─────────────────────
-
         // Store total borrows
         totalBorrows = SafeCastLib.toUint96(totalBorrowsStored);
 
@@ -296,7 +293,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         lastAccrualTimestamp = SafeCastLib.toUint32(currentTimestamp);
 
         // ──────────────────────────────────────────────────────────────────────
-
         // New minted reserves (if any)
         uint256 newReserves = mintReservesPrivate(interestAccumulated);
 
@@ -397,14 +393,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param position Whether the position is a lend or borrow position
      */
     function _trackRewards(address account, uint256 balance, uint256 adjustmentFactor, IPillarsOfCreation.Position position) internal {
-        // Rewarder address (if any)
+        // Latest pillars of creation address
         address rewarder = pillarsOfCreation;
 
-        // If not initialized return
-        if (rewarder == address(0)) return;
-
-        // Pass borrow to this chain's CYG rewarder
-        IPillarsOfCreation(rewarder).trackRewards(account, balance, adjustmentFactor, position);
+        // If pillars of creation is set then track reward
+        if (rewarder != address(0)) IPillarsOfCreation(rewarder).trackRewards(account, balance, adjustmentFactor, position);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -421,6 +414,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @inheritdoc ICygnusBorrowModel
      */
     function trackBorrower(address borrower) external override {
+        // Latest borrow balance (with interest)
         // prettier-ignore
         (/* principal */, uint256 borrowBalance) = getBorrowBalance(borrower);
 

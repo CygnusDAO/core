@@ -32,7 +32,7 @@
                        ░░░░░░    ░░░░░░                                                 ⠀
            .                            .       .         ------======*             .                          
     
-        BORROWABLE - https://cygnusdao.finance                                                          .                     .
+        BORROWABLE (CygUSD) - https://cygnusdao.finance                                                          .                     .
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
      Smart contracts to lend stablecoins to liquidity providers.
@@ -127,8 +127,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *          be tracked at core and updated on any interaction.
      */
     function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
-        // Adjustment factor for lenders is always one
-        // Track the latest balance of `from`
+        // Check for zero address (in case of mints)
         if (from != address(0)) _trackRewards(from, balanceOf(from), 1e18, IPillarsOfCreation.Position.LENDER);
 
         // Check for zero address (in case of burns)
@@ -142,7 +141,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update {
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update returns (uint256 liquidity) {
         // Check if msg.sender can borrow on behalf of borrower, we use the same spend allowance as redeem
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
@@ -162,7 +161,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // If it's a simple borrow tx then data should be empty
         if (data.length > 0) {
             // Pass data to router
-            ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
+            liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
         }
 
         // ────────── 3. Get the repay amount (if any)

@@ -122,6 +122,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
      *
      *  @param borrower The address of the borrower to check.
      *  @param borrowAmount The amount the borrower wishes to borrow.
+     *
      *  @return A boolean indicating whether the borrower can borrow the specified amount.
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view returns (bool);

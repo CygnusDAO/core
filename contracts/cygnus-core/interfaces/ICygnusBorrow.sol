@@ -144,7 +144,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external;
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external returns (uint256);
 
     /**
      *  @notice This low level function should only be called from `CygnusAltair` contract only

@@ -32,7 +32,7 @@
                        ░░░░░░    ░░░░░░      -------=========*                      .                     ⠀
            .                            .       .          .            .                        .             .⠀
         
-        COLLATERAL - https://cygnusdao.finance                                                          .                     .
+        COLLATERAL (CygLP) - https://cygnusdao.finance                                                          .                     .
     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
      Smart contracts to `go long` on your liquidity.
@@ -188,7 +188,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update {
+    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update returns (uint256 usdAmount){
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
 
@@ -200,7 +200,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // Pass data to router
         if (data.length > 0) {
-            ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
+            usdAmount = ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
         }
 
         // CygLP tokens received by thsi contract

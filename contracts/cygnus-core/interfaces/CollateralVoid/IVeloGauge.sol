@@ -2,11 +2,11 @@
 pragma solidity >=0.8.17;
 
 interface IVeloGauge {
-    function getReward(address, address[] memory) external;
+    function getReward(address) external;
 
     function balanceOf(address) external view returns (uint256);
 
-    function deposit(uint256, uint256) external;
+    function deposit(uint256) external;
 
     function withdraw(uint256) external;
 

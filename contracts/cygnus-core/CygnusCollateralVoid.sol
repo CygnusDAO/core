@@ -62,7 +62,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Velodrome voter to get gauge
      */
-    IVeloVoter private constant VOTER = IVeloVoter(0x09236cfF45047DBee6B921e00704bed6D6B8Cf7e);
+    IVeloVoter private constant VOTER = IVeloVoter(0x41C914ee0c7E1A5edCD0295623e6dC557B5aBf3C);
 
     /**
      *  @notice Address of the Rewarder contract
@@ -70,9 +70,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     IVeloGauge private immutable gauge;
 
     /**
-     *  @notice Rewards token - gas savings since the other tokens in `rewards(i)` do not earn rewards
+     *  @notice Rewards token
      */
-    address private constant VELO = 0x3c8B650257cFb5f272f799F5e2b4e65093a11a05;
+    address private constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -158,7 +158,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         tokens[0] = VELO;
 
         // Harvest VELO rewards
-        gauge.getReward(address(this), tokens);
+        gauge.getReward(address(this));
 
         // Get our balance
         amounts[0] = _checkBalance(VELO);
@@ -183,7 +183,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
         // Deposit assets into the strategy with no tokenId
-        gauge.deposit(assets, 0);
+        gauge.deposit(assets);
     }
 
     /**
@@ -253,7 +253,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying) {
                 // Remove allowance for old harvester
-                if (oldHarvester != address(0)) approveTokenPrivate(tokens[i], oldHarvester, 0);
+                approveTokenPrivate(tokens[i], oldHarvester, 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], _harvester, type(uint256).max);

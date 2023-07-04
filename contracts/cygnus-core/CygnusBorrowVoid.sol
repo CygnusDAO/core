@@ -306,7 +306,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying && tokens[i] != address(SONNE_USDC)) {
                 // Remove allowance for old harvester
-                if (oldHarvester != address(0)) approveTokenPrivate(tokens[i], oldHarvester, 0);
+                approveTokenPrivate(tokens[i], oldHarvester, 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], _harvester, type(uint256).max);

@@ -37,7 +37,7 @@ interface ICygnusAltairCall {
      *  @param borrowAmount The amount to leverage
      *  @param data The encoded byte data passed from the CygnusBorrow contract to the router
      */
-    function altairBorrow_O9E(address sender, uint256 borrowAmount, bytes calldata data) external;
+    function altairBorrow_O9E(address sender, uint256 borrowAmount, bytes calldata data) external returns (uint256);
 
     /**
      *  @notice Function that is called by the CygnusCollateral contract and decodes data to carry out the deleverage
@@ -47,7 +47,7 @@ interface ICygnusAltairCall {
      *  @param redeemAmount The amount to deleverage
      *  @param data The encoded byte data passed from the CygnusCollateral contract to the router
      */
-    function altairRedeem_u91A(address sender, uint256 redeemAmount, bytes calldata data) external;
+    function altairRedeem_u91A(address sender, uint256 redeemAmount, bytes calldata data) external returns (uint256);
 
     /**
      *  @notice Function that is called by the CygnusBorrow contract and decodes data to carry out the liquidation

@@ -94,8 +94,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // ──────────────────────────── Important Addresses
-
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
@@ -155,7 +153,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function decimals() public view override(ERC20, IERC20) returns (uint8) {
-        // Override decimals since USDC uses 6
+        // Override decimals for stablecoin
         return IERC20(underlying).decimals();
     }
 
@@ -196,18 +194,19 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
         _validRange(KINK_UTILIZATION_RATE_MIN, KINK_UTILIZATION_RATE_MAX, kinkUtilizationRate_);
 
         // Internal parameter check for kink multiplier
-        _validRange(1, KINK_MULTIPLIER_MAX, kinkMultiplier_);
+        _validRange(2, KINK_MULTIPLIER_MAX, kinkMultiplier_);
+
+        // Slope of the interest rate curve in seconds
+        uint256 slope = multiplierPerYear_.divWad(SECONDS_PER_YEAR * kinkUtilizationRate_);
 
         // Update the interest rate model
         interestRateModel = InterestRateModel({
             // Calculate the Base Rate per second and update to storage
             baseRatePerSecond: SafeCastLib.toUint64(baseRatePerYear_ / SECONDS_PER_YEAR),
             // Calculate the Multiplier per second and update to storage
-            multiplierPerSecond: SafeCastLib.toUint64(multiplierPerYear_.divWad(SECONDS_PER_YEAR * kinkUtilizationRate_)),
+            multiplierPerSecond: SafeCastLib.toUint64(slope),
             // Calculate the Jump Multiplier per second and update to storage
-            jumpMultiplierPerSecond: SafeCastLib.toUint64(
-                multiplierPerYear_.fullMulDiv(kinkMultiplier_, SECONDS_PER_YEAR).divWad(kinkUtilizationRate_)
-            ),
+            jumpMultiplierPerSecond: SafeCastLib.toUint64(slope * kinkMultiplier_),
             // Update kink utilization rate
             kink: SafeCastLib.toUint64(kinkUtilizationRate_)
         });

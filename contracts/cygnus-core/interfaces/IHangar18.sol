@@ -446,6 +446,31 @@ interface IHangar18 {
      */
     function shuttlesDeployed() external view returns (uint256);
 
+    /**
+     *  @return collateralTvlUsd The TVL of all collateral pools deployed, in USD
+     */
+    function collateralTvlUsd() external view returns (uint256);
+
+    /**
+     *  @return borrowableTvlUsd The TVL of all borrowable pools deployed, in USD
+     */
+    function borrowableTvlUsd() external view returns (uint256);
+
+    /**
+     *  @return cygnusTotalBorrowsUsd The total Borrows of Cygnus on this chain, in USD
+     */
+    function cygnusTotalBorrowsUsd() external view returns (uint256);
+
+    /**
+     *  @return cygnusTvlUsd The TVL of Cygnus on this chain, in USD
+     */
+    function cygnusTvlUsd() external view returns (uint256);
+
+    /**
+     *  @return totalDAOReservesUsd The CygUSD reserves of the DAO, in USD
+     */
+    function cygnusDAOReservesUsd() external view returns (uint256);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */

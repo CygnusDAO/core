@@ -42,11 +42,14 @@ import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 // Libraries
 import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
+import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {ICygnusNebulaRegistry} from "./interfaces/ICygnusNebulaRegistry.sol";
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
+import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
 
 /**
  *  @title  Hangar18
@@ -76,6 +79,15 @@ import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
  */
 contract Hangar18 is IHangar18, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
+            1. LIBRARIES
+        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @custom:library FixedPointMathLib Arithmetic library with operations for fixed-point numbers.
+     */
+    using FixedPointMathLib for uint256;
+
+    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
@@ -99,7 +111,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    string public override name = string(abi.encodePacked("Hangar18: Cygnus Pool Deployer #", block.chainid));
+    string public override name = string(abi.encodePacked("Hangar18: Lending Pool Deployer #", block.chainid));
 
     /**
      *  @inheritdoc IHangar18
@@ -222,6 +234,114 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         for (uint256 i = 0; i < orbitersLength; i++) {
             /// @custom:error OrbiterAlreadySet
             if (uniqueHash == orbiter[i].uniqueHash) revert Hangar18__OrbiterAlreadySet();
+        }
+    }
+
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function collateralTvlUsd() public view override returns (uint256 totalUsd) {
+        // Array of pools deployed
+        Shuttle[] memory shuttles = allShuttles;
+
+        // Total pools deployed
+        uint256 poolsDeployed = allShuttles.length;
+
+        // Loop through each pool deployed, get collateral and add to total TVL
+        for (uint256 i = 0; i < poolsDeployed; i++) {
+            // This pool`s collateral
+            address collateral = shuttles[i].collateral;
+
+            // LP Price
+            uint256 price = ICygnusCollateral(collateral).getLPTokenPrice();
+
+            // Total LP assets
+            uint256 totalBalance = ICygnusCollateral(collateral).totalBalance();
+
+            // TVL = Price of LP * Balance of LP
+            totalUsd += totalBalance.mulWad(price); // Denom in USDC
+        }
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function borrowableTvlUsd() public view override returns (uint256 totalUsd) {
+        // Array of pools deployed
+        Shuttle[] memory shuttles = allShuttles;
+
+        // Total pools deployed
+        uint256 poolsDeployed = allShuttles.length;
+
+        // Loop through each pool deployed, get borrowable and add to total TVL
+        for (uint256 i = 0; i < poolsDeployed; i++) {
+            // This pool`s borrowable
+            address borrowable = shuttles[i].borrowable;
+
+            // Total stablecoin assets in pool
+            uint256 totalBalance = ICygnusBorrow(borrowable).totalBalance();
+
+            // Total stablecoin borrows
+            uint256 totalBorrows = ICygnusBorrow(borrowable).totalBorrows();
+
+            // TVL = total borrows + total balance (they are both USDC)
+            totalUsd += totalBalance + totalBorrows;
+        }
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function cygnusTotalBorrowsUsd() public view override returns (uint256 totalBorrows) {
+        // Array of pools deployed
+        Shuttle[] memory shuttles = allShuttles;
+
+        // Total pools deployed
+        uint256 poolsDeployed = allShuttles.length;
+
+        // Loop through each pool deployed, get borrowable and add to total TVL
+        for (uint256 i = 0; i < poolsDeployed; i++) {
+            // This pool`s borrowable
+            address borrowable = shuttles[i].borrowable;
+
+            // Total stablecoin borrows
+            totalBorrows += ICygnusBorrow(borrowable).totalBorrows();
+        }
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function cygnusTvlUsd() public view override returns (uint256) {
+        // Return the total cygnus protocol TVL on this chain
+        return borrowableTvlUsd() + collateralTvlUsd();
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function cygnusDAOReservesUsd() public view override returns (uint256 reserves) {
+        // Array of pools deployed
+        Shuttle[] memory shuttles = allShuttles;
+
+        // Total pools deployed
+        uint256 poolsDeployed = allShuttles.length;
+
+        // Loop through each pool deployed, get borrowable and add to total TVL
+        for (uint256 i = 0; i < poolsDeployed; i++) {
+            // This pool`s borrowable
+            address borrowable = shuttles[i].borrowable;
+
+            // Total reserves owned by the DAO
+            uint256 cygUsdBalance = ICygnusBorrow(borrowable).balanceOf(daoReserves);
+
+            // current exchange rate of CygUSD to USD
+            uint256 exchangeRate = ICygnusBorrow(borrowable).exchangeRate();
+
+            // Current reserves in USD
+            reserves += cygUsdBalance.mulWad(exchangeRate);
         }
     }
 
