@@ -34,7 +34,7 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
         }
 
         // 0xProject Api call
-        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.1&skipValidation=true&takerAddress=${router}`;
+        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.0025&skipValidation=true&takerAddress=${router}`;
 
         // Fetch from 0xProject api
         const swapdata = await fetch(apiUrl).then((response) => response.json());

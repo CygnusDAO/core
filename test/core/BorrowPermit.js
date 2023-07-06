@@ -19,7 +19,7 @@ const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.j
 
 // Constants
 const { MaxUint256 } = ethers.constants;
-const { leverageCalldata } = require(path.resolve(__dirname, "../../scripts/aggregators/Aggregators.js"));
+const { leverageCalldata } = require(path.resolve(__dirname, "../../scripts/aggregators/Aggregatoors.js"));
 
 const dexAggregator = 0; // Use paraswap as default, for 1inch switch to 1
 
@@ -332,10 +332,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Encode Permit data to pass to router
-            const permitBytes = await ethers.utils.defaultAbiCoder.encode(
-                ["bool", "uint8", "bytes32", "bytes32"],
-                [values.value == MaxUint256, v, r, s],
-            );
+            const permitBytes = await ethers.utils.defaultAbiCoder.encode(["uint256", "uint8", "bytes32", "bytes32"], [liquidity, v, r, s]);
 
             // Borrow
             await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, permitBytes)).to.emit(
@@ -404,10 +401,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             const { v, r, s } = await ethers.utils.splitSignature(signature);
 
             // Encode Permit data to pass to router
-            const permitBytes = await ethers.utils.defaultAbiCoder.encode(
-                ["bool", "uint8", "bytes32", "bytes32"],
-                [values.value == MaxUint256, v, r, s],
-            );
+            const permitBytes = await ethers.utils.defaultAbiCoder.encode(["uint256", "uint8", "bytes32", "bytes32"], [amount, v, r, s]);
 
             const nativeToken = await router.nativeToken();
 

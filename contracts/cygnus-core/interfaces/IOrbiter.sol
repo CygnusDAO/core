@@ -39,11 +39,5 @@ interface IOrbiter {
      */
     function shuttleParameters()
         external
-        returns (
-            IHangar18 factory,
-            address underlying,
-            address twinstar,
-            ICygnusNebula oracle,
-            uint256 shuttleId
-        );
+        returns (IHangar18 factory, address underlying, address twinstar, ICygnusNebula oracle, uint256 shuttleId);
 }

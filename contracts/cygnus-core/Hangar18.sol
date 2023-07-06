@@ -111,7 +111,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    string public override name = string(abi.encodePacked("Hangar18: Lending Pool Deployer #", block.chainid));
+    string public override name = string(abi.encodePacked("Cygnus: Hangar18 - Shuttle Deployer #", block.chainid));
 
     /**
      *  @inheritdoc IHangar18
@@ -314,7 +314,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function cygnusTvlUsd() public view override returns (uint256) {
+    function cygnusTotalValueLockedUsd() public view override returns (uint256) {
         // Return the total cygnus protocol TVL on this chain
         return borrowableTvlUsd() + collateralTvlUsd();
     }
@@ -322,7 +322,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function cygnusDAOReservesUsd() public view override returns (uint256 reserves) {
+    function daoBorrowableReservesUsd() public view override returns (uint256 reserves) {
         // Array of pools deployed
         Shuttle[] memory shuttles = allShuttles;
 
@@ -345,6 +345,39 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         }
     }
 
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function daoCollateralReservesUsd() public view override returns (uint256 reserves) {
+        // Array of pools deployed
+        Shuttle[] memory shuttles = allShuttles;
+
+        // Total pools deployed
+        uint256 poolsDeployed = allShuttles.length;
+
+        // Loop through each pool deployed, get collateral and query the DAo's positionUsd:
+        //  positionUsd = LP Balance * LP Price
+        //              = (CygLP * Exchange Rate) * LP Price
+        for (uint256 i = 0; i < poolsDeployed; i++) {
+            // This pool`s collateral
+            address collateral = shuttles[i].collateral;
+
+            // Position in USD
+            (, , , , , uint256 positionUsd, ) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
+
+            // Add to reserves
+            reserves += positionUsd;
+        }
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function cygnusTotalReservesUsd() external view override returns (uint256) {
+        // Total reserves USD
+        return daoBorrowableReservesUsd() + daoCollateralReservesUsd();
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -361,6 +394,14 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     function shuttlesDeployed() external view override returns (uint256) {
         // Return how many shuttles this contract has launched
         return allShuttles.length;
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function nebulasDeployed() external view override returns (uint256) {
+        // Return unique nebulas
+        return nebulaRegistry.totalNebulas();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

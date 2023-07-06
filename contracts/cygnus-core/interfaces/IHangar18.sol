@@ -447,6 +447,11 @@ interface IHangar18 {
     function shuttlesDeployed() external view returns (uint256);
 
     /**
+     *  @return nebulasDeployed The total amount of unique oracle logic (ie Balancer oracle, Univ2 oracle, Univ3, etc.)
+     */
+    function nebulasDeployed() external view returns (uint256);
+
+    /**
      *  @return collateralTvlUsd The TVL of all collateral pools deployed, in USD
      */
     function collateralTvlUsd() external view returns (uint256);
@@ -457,19 +462,29 @@ interface IHangar18 {
     function borrowableTvlUsd() external view returns (uint256);
 
     /**
+     *  @return cygnusTvlUsd The TVL of Cygnus on this chain, in USD
+     */
+    function cygnusTotalValueLockedUsd() external view returns (uint256);
+
+    /**
      *  @return cygnusTotalBorrowsUsd The total Borrows of Cygnus on this chain, in USD
      */
     function cygnusTotalBorrowsUsd() external view returns (uint256);
 
     /**
-     *  @return cygnusTvlUsd The TVL of Cygnus on this chain, in USD
+     *  @return daoBorrowableReservesUsd The USD value of the total CygUSD owned by the DAO 
      */
-    function cygnusTvlUsd() external view returns (uint256);
+    function daoBorrowableReservesUsd() external view returns (uint256);
 
     /**
-     *  @return totalDAOReservesUsd The CygUSD reserves of the DAO, in USD
+     *  @return daoCollateralReservesUsd The USD value of the total CygLP owned by the DAO 
      */
-    function cygnusDAOReservesUsd() external view returns (uint256);
+    function daoCollateralReservesUsd() external view returns (uint256);
+
+    /**
+     *  @return cygnusTotalReservesUsd The USD value of the DAO's total reserves (borrowable + collateral)
+     */
+    function cygnusTotalReservesUsd() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS

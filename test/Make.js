@@ -48,7 +48,7 @@ module.exports = async function Make() {
     const chainId = 10; // For 1inch
 
     // Set the LP Token address
-    const lpTokenAddress = "0xcdd41009E74bD1AE4F7B2EeCF892e4bC718b9302";
+    const lpTokenAddress = "0xd25711edfbf747efce181442cc1d8f5f8fc8a0d3";
 
     // Set the USDC address on this chain
     const usdcAddress = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607";
@@ -82,7 +82,7 @@ module.exports = async function Make() {
     // Deploy registry first
     const Registry = await ethers.getContractFactory("CygnusNebulaRegistry");
     const registry = await Registry.deploy();
-    
+
     // Deploy nebula
     const Nebula = await ethers.getContractFactory("CygnusNebula");
     const nebula = await Nebula.deploy(usdcAddress, usdcAggregator, registry.address);
@@ -91,6 +91,8 @@ module.exports = async function Make() {
     await registry.createNebula(nebula.address);
     // Initialize LP Oracle
     await registry.initializeOracleInNebula(0, lpTokenAddress, aggregators);
+
+    await nebula.lpTokenPriceUsd(lpTokenAddress);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus LP Registry | %s", chalk.yellowBright(registry.address));
@@ -122,7 +124,7 @@ module.exports = async function Make() {
     console.log("\tCygnus Factory     | %s", chalk.green(factory.address));
 
     const DAOReserves = await ethers.getContractFactory("CygnusDAOReserves");
-    const reserves = await DAOReserves.deploy(factory.address, daoReserves.address, BigInt(0.5e18));
+    const reserves = await DAOReserves.deploy(factory.address, BigInt(0.5e18));
     await factory.setPendingDaoReserves(reserves.address);
     await factory.setNewDaoReserves();
 
@@ -148,8 +150,12 @@ module.exports = async function Make() {
     // ═══════════════════ 6. ROUTER ═══════════════════════════════════════════════════════════
 
     // Deploy the CygnusAltairX router to do borrows, liquidations, leverage, deleverage, repays, etc.
-    const Router = await ethers.getContractFactory("CygnusAltairX");
-    const router = await Router.deploy(factory.address, orbiterName);
+    const Router = await ethers.getContractFactory("CygnusAltair");
+    const router = await Router.deploy(factory.address);
+
+    const RouterX = await ethers.getContractFactory("CygnusAltairX");
+    const routerX = await RouterX.deploy(factory.address, orbiterName);
+    await router.setAltairExtension(0, routerX.address);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Router      | %s", chalk.magentaBright(router.address));
@@ -157,7 +163,7 @@ module.exports = async function Make() {
     // ═══════════════════ 7. CYG TOKEN ════════════════════════════════════════════════════════
 
     // CYG token
-    const CygToken = await ethers.getContractFactory("CygnusERC20");
+    const CygToken = await ethers.getContractFactory("CygnusDAO");
     const cygToken = await CygToken.deploy();
 
     console.log("\t-----------------------------------------------------------------------------");
@@ -170,9 +176,10 @@ module.exports = async function Make() {
 
     // 2_000_000 Tokens as an example
     const totalCygRewards = BigInt(2_000_000e18);
+    const totalCygRewardsDAO = BigInt(1_000_000e18);
 
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
-    const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards);
+    const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards, totalCygRewardsDAO);
 
     // Initialize rewarder
     await cygRewarder.initializeShuttleRewards(0, 1000);
@@ -199,8 +206,11 @@ module.exports = async function Make() {
     // ═══════════════════ 10. DAO Reserves ═════════════════════════════════════════════════════
 
     console.log("\t-----------------------------------------------------------------------------");
-    console.log("\tCygnus USD Reserve | %s", chalk.whiteBright(reserves.address));
+    console.log("\tCygnusDAO Reserves | %s", chalk.whiteBright(reserves.address));
     console.log("\t-----------------------------------------------------------------------------");
+
+    // Needed
+    await reserves.setCYGToken(cygToken.address);
 
     // ═════════════════════════════════════════════════════════════════════════════════════════
 

@@ -97,7 +97,7 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Applies interest accruals to borrows and reserves (uses 1 memory slot per accrual)
+     *  @notice Applies interest accruals to borrows and reserves
      */
     function accrueInterest() external;
 

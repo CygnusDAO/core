@@ -118,19 +118,11 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:event Borrow
      */
-    event Borrow(
-        address indexed sender,
-        address indexed borrower,
-        address indexed receiver,
-        uint256 borrowAmount,
-        uint256 repayAmount
-    );
+    event Borrow(address indexed sender, address indexed borrower, address indexed receiver, uint256 borrowAmount, uint256 repayAmount);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -157,12 +149,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function liquidate(
-        address borrower,
-        address receiver,
-        uint256 repayAmount,
-        bytes calldata data
-    ) external returns (uint256 usdAmount);
+    function liquidate(address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
 
     /**
      *  @notice Syncs internal balance with totalBalance

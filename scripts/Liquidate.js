@@ -17,7 +17,7 @@ const Users = require(path.resolve(__dirname, "../test/Users.js"));
 // We use the lender as liquidator for simplicity since they already have USDC
 const cygnusLiquidate = async () => {
     // CONFIG
-    const [, hangar18, router, borrowable, collateral, usdc, lpToken] = await Make();
+    const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Charge allowances

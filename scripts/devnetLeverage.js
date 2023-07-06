@@ -7,7 +7,7 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 // Permit2
-const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { PERMIT2_ADDRESS, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
@@ -15,15 +15,16 @@ const Users = require(path.resolve(__dirname, "../test/Users.js"));
 
 // Constants
 const ONE = ethers.utils.parseUnits("1", 18);
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Router calldata
 const { leverageCalldata, deleverageCalldata } = require(path.resolve(__dirname, "./aggregators/Aggregatoors.js"));
+const permit2Abi = require(path.resolve(__dirname, "./abis/permit2.json"));
 
 // enum DexAggregator {
 //    PARASWAP,
 //    ONE_INCH_V1, // legacy
-//    ONE_INCH_V2,  // Optimized routers
-//    0xPROJECT
+//    ONE_INCH_V2  // Optimized routers
 // }
 const dexAggregator = 0;
 
@@ -61,7 +62,7 @@ const cygnusLeverage = async () => {
     console.log("                                          DEPOSIT                                             ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    const _chainId = await owner.getChainId();
+    //const _chainId = await owner.getChainId();
 
     // Borrower//
 
@@ -88,14 +89,16 @@ const cygnusLeverage = async () => {
 
     //---------- 3. Sign Permit -----------//
     // Permit data
-    const permitDataA = AllowanceTransfer.getPermitData(permit, PERMIT2_ADDRESS, _chainId);
-    // Signature
-    const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
+
+    const permit2 = new ethers.Contract(PERMIT2_ADDRESS, permit2Abi, ethers.provider);
+
     // Transfer LP from borrower to Owner
     await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
 
+    await permit2.connect(owner).approve(lpToken.address, collateral.address, BigInt(1000000e18), "28147497671");
+
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, "0x");
 
     // Lender //
 
@@ -117,15 +120,13 @@ const cygnusLeverage = async () => {
     };
 
     //---------- 3. Sign Permit -----------//
-    // Permit data
-    const permitDataB = AllowanceTransfer.getPermitData(permitB, PERMIT2_ADDRESS, _chainId);
-    // Signature
-    const signatureB = await owner._signTypedData(permitDataB.domain, permitDataB.types, permitDataB.values);
+    await permit2.connect(owner).approve(usdc.address, borrowable.address, BigInt(1000000e18), "28147497671");
+
     // Transfer USD to owner
     await usdc.connect(lender).transfer(owner.address, BigInt(10000e6));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await borrowable.connect(owner).deposit(BigInt(10000e6), lender._address, permitB, signatureB);
+    await borrowable.connect(owner).deposit(BigInt(10000e6), lender._address, permitB, "0x");
 
     // Balance of vault tokens
 
@@ -134,14 +135,13 @@ const cygnusLeverage = async () => {
 
     console.log("Borrower's CygLP Balance                       | %s CygLP", cygLPBal);
     console.log("Lenders' CygUSD Balance                        | %s CygUSD", cygUsdBal);
-
     console.log("----------------------------------------------------------------------------------------------");
     console.log("                                          LEVERAGE                                            ");
     console.log("----------------------------------------------------------------------------------------------");
 
     //// Leverage amount is max liquidity * xLeverage
     const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
-    const leverageAmount = liquidity * 12;
+    const leverageAmount = liquidity * 8;
     console.log("Leverage Amount                                | %s USD", leverageAmount / 1e6);
 
     // 1. Approve borrow
@@ -171,23 +171,6 @@ const cygnusLeverage = async () => {
     // 2. Build swapdata with aggregator
     const leverageCalls = await leverageCalldata(dexAggregator, chainId, lpToken, nativeToken, usdc.address, router, leverageAmount);
 
-    const receivedLP = await router.connect(borrower).callStatic.leverage(
-        lpToken.address, // LP Address
-        collateral.address, // Collateral
-        borrowable.address, // Borrowable
-        leverageAmount, // USD Amount to leverage
-        0, // Min LP Token received
-        ethers.constants.MaxUint256, // Deadline
-        "0x", // Permit data
-        dexAggregator, // Enum  for dex aggregators
-        leverageCalls, // Bytes array with 1inch data
-        { gasLimit: 3000000 },
-    );
-
-    console.log("----------------------------------------");
-    console.log("Estimated received LP: %s", receivedLP / 1e18);
-    console.log("----------------------------------------");
-
     // 3. Leverage
     await router.connect(borrower).leverage(
         lpToken.address, // LP Address
@@ -199,7 +182,6 @@ const cygnusLeverage = async () => {
         "0x", // Permit data
         dexAggregator, // Enum  for dex aggregators
         leverageCalls, // Bytes array with 1inch data
-        { gasLimit: 3000000 },
     );
 
     console.log("----------------------------------------------------------------------------------------------");
@@ -224,6 +206,8 @@ const cygnusLeverage = async () => {
     console.log("Borrower`s CygLP Balance                       | %s", cygLPBalanceAfter);
     console.log("Borrower`s borrow balance                      | %s", borrowBalance / 1e6);
     console.log("Utilization Rate                               | %s%", util);
+
+    await mine(100000);
 
     console.log("----------------------------------------------------------------------------------------------");
     console.log("                                        DELEVERAGE                                            ");
@@ -257,23 +241,6 @@ const cygnusLeverage = async () => {
     // 1. Build swapdata with aggregator
     const deleverageCalls = await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount);
 
-    const receivedUsd = await router.connect(borrower).callStatic.deleverage(
-        lpToken.address, // LP address
-        collateral.address, // Collateral
-        borrowable.address, // Borrowable
-        deleverageCygLPAmount, // CygLP Amount deleveraging
-        0, // Min USD received
-        ethers.constants.MaxUint256, // Deadline
-        "0x", // No permit
-        dexAggregator, // Enum
-        deleverageCalls, // 1 inch bytes data
-        { gasLimit: 5000000 },
-    );
-
-    console.log("----------------------------------------");
-    console.log("Estimated received USD: %s", receivedUsd / 1e6);
-    console.log("----------------------------------------");
-
     // 2. Deleverage
     await router.connect(borrower).deleverage(
         lpToken.address, // LP address
@@ -285,7 +252,6 @@ const cygnusLeverage = async () => {
         "0x", // No permit
         dexAggregator, // Enum
         deleverageCalls, // 1 inch bytes data
-        { gasLimit: 5000000 },
     );
 
     const borrowerInfo_ = await collateral.getBorrowerPosition(borrower._address);

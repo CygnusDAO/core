@@ -223,13 +223,7 @@ library FixedPointMathLib {
 
                 // forgefmt: disable-next-item
                 k := sub(
-                    or(
-                        k,
-                        byte(
-                            shr(251, mul(v, shl(224, 0x07c4acdd))),
-                            0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f
-                        )
-                    ),
+                    or(k, byte(shr(251, mul(v, shl(224, 0x07c4acdd))), 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f)),
                     96
                 )
             }
@@ -519,10 +513,7 @@ library FixedPointMathLib {
             } {
                 if iszero(lt(10, x)) {
                     // forgefmt: disable-next-item
-                    result := and(
-                        shr(mul(22, x), 0x375f0016260009d80004ec0002d00001e0000180000180000200000400001),
-                        0x3fffff
-                    )
+                    result := and(shr(mul(22, x), 0x375f0016260009d80004ec0002d00001e0000180000180000200000400001), 0x3fffff)
                     break
                 }
                 if iszero(lt(57, x)) {
@@ -579,13 +570,7 @@ library FixedPointMathLib {
             x := or(x, shr(16, x))
 
             // forgefmt: disable-next-item
-            r := or(
-                r,
-                byte(
-                    shr(251, mul(x, shl(224, 0x07c4acdd))),
-                    0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f
-                )
-            )
+            r := or(r, byte(shr(251, mul(x, shl(224, 0x07c4acdd))), 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f))
         }
     }
 

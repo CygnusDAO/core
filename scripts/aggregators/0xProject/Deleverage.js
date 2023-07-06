@@ -39,13 +39,13 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
         }
 
         // 1inch Api call
-        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.1&skipValidation=true&takerAddress=${router}`;
+        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.0025&skipValidation=true&takerAddress=${router}`;
 
         // Swap data
         const swapdata = await fetch(apiUrl).then((response) => response.json());
 
         // Return response
-        return swapdata.data.toString();
+        return swapdata.data;
     };
 
     // 1Inch call array to pass to periphery
@@ -56,7 +56,7 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
         // Check if token received is already usdc
         if (tokens[i].toLowerCase() != usdc.toLowerCase()) {
             // Call 1inch api
-            const swap = await _0xProjectSwap(chainId, tokens[i], usdc, amounts[i], router.address);
+            const swap = await _0xProjectSwap(chainId, tokens[i], usdc, amounts[i].toString(), router.address);
 
             // Add to calls array
             calls = [...calls, swap];

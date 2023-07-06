@@ -81,7 +81,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
     /**
      *  @notice The address of this contract`s opposite arm. For collateral pools, this is the borrowable address.
-     *          For borrowable pools, this is the collateral address.
+     *          For borrowable pools, this is the collateral address. Getters in child contract.
      */
     address internal immutable twinstar;
 
@@ -100,12 +100,12 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    ICygnusNebula public immutable override nebula;
+    address public immutable override underlying;
 
     /**
      *  @inheritdoc ICygnusTerminal
      */
-    address public immutable override underlying;
+    ICygnusNebula public immutable override nebula;
 
     /**
      *  @inheritdoc ICygnusTerminal

@@ -21,7 +21,7 @@ const { deleverageCalldata } = require(path.resolve(__dirname, "./aggregators/Ag
 //    PARASWAP,
 //    ONE_INCH
 // }
-const dexAggregator = 1; // Use paraswap as default, for 1inch switch to 1
+const dexAggregator = 0; // Use paraswap as default, for 1inch switch to 1
 
 // We use the lender as liquidator for simplicity since they already have USDC
 const flashLiquidate = async () => {
@@ -219,6 +219,7 @@ const flashLiquidate = async () => {
             ethers.constants.MaxUint256,
             dexAggregator,
             deleverageCalls,
+            { gasLimit: 5000000 }
         );
 
     console.log("----------------------------------------------------------------------------------------------");

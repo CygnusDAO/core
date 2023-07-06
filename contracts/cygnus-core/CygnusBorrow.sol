@@ -141,7 +141,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @inheritdoc ICygnusBorrow
      *  @custom:security non-reentrant
      */
-    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external override nonReentrant update returns (uint256 liquidity) {
+    function borrow(
+        address borrower,
+        address receiver,
+        uint256 borrowAmount,
+        bytes calldata data
+    ) external override nonReentrant update returns (uint256 liquidity) {
         // Check if msg.sender can borrow on behalf of borrower, we use the same spend allowance as redeem
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 

@@ -58,10 +58,5 @@ interface ICygnusAltairCall {
      *  @param actualRepayAmount The usd amount the contract must have for the liquidate function to finish
      *  @param data The encoded byte data passed from the CygnusBorrow contract to the router
      */
-    function altairLiquidate_f2x(
-        address sender,
-        uint256 cygLPAmount,
-        uint256 actualRepayAmount,
-        bytes calldata data
-    ) external;
+    function altairLiquidate_f2x(address sender, uint256 cygLPAmount, uint256 actualRepayAmount, bytes calldata data) external;
 }

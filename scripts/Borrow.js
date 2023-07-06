@@ -8,6 +8,7 @@ const ethers = hre.ethers;
 
 // Permit2
 const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
@@ -142,8 +143,10 @@ const cygnusBorrow = async () => {
     // Approve Borrow
     await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
+    const firstDeposit = BigInt(liquidity) / BigInt(3);
+
     // Borrow
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
+    await router.connect(borrower).borrow(borrowable.address, firstDeposit, borrower._address, ethers.constants.MaxUint256, "0x");
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -166,6 +169,24 @@ const cygnusBorrow = async () => {
     console.log("----------------------------------------------------------------------------------------------");
     console.log("Borrower's Loan                               | %s USD", chalk.cyan("+" + loan));
     console.log("----------------------------------------------------------------------------------------------");
+
+    console.log("SECOND BORROW");
+    await mine(10000);
+    await router.connect(borrower).borrow(borrowable.address, firstDeposit, borrower._address, ethers.constants.MaxUint256, "0x");
+
+    // Get liquidity
+    const { liquidity: liquidity_ } = await collateral.getAccountLiquidity(borrower._address);
+    const usdBalAfter_ = (await usdc.balanceOf(borrower._address)) / 1e6;
+    //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const borrowBal_ = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
+    const tbAfter_ = (await borrowable.totalBalance()) / 1e6;
+
+    console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter_);
+    console.log("Borrower`s USD debt after borrow              | %s USD", borrowBal_);
+    //console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    console.log("Borrower`s Liquidity after borrow             | %s USD", liquidity_ / 1e6);
+    console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter_);
+
 };
 
 cygnusBorrow();

@@ -150,12 +150,12 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         ( /* liquidity */ , uint256 shortfall) = _accountLiquidity(borrower, type(uint256).max);
 
         // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state
-        if (shortfall <= 0) revert CygnusCollateral__NotLiquidatable();
+        if (shortfall == 0) revert CygnusCollateral__NotLiquidatable();
 
         // Get price from oracle
         uint256 lpTokenPrice = getLPTokenPrice();
 
-        // Factor in liquidation incentive and current exchange rate to get the equivalent of the USDC repaid amount in CygLP
+        // Factor in liquidation incentive and current exchange rate to get the equivalent of the USDC repaid + profit in CygLP
         cygLPAmount = (repayAmount.divWad(lpTokenPrice)).fullMulDiv(liquidationIncentive, exchangeRate());
 
         // Transfer the repaid amount + liq. incentive to the liquidator, escapes canRedeem
@@ -188,7 +188,11 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @inheritdoc ICygnusCollateral
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external override nonReentrant update returns (uint256 usdAmount){
+    function flashRedeemAltair(
+        address redeemer,
+        uint256 assets,
+        bytes calldata data
+    ) external override nonReentrant update returns (uint256 usdAmount) {
         /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
         if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
 
