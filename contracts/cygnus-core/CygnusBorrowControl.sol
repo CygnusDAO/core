@@ -97,6 +97,16 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
+    mapping(address => bool) public isCollateral;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    address[] public override allCollaterals;
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
     address public override pillarsOfCreation;
 
     // ───────────────────────────── Current pool rates
@@ -162,9 +172,25 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    function collateral() external view returns (address) {
-        // Read the stored internal variable from terminal
-        return twinstar;
+    function stationId() external view override returns (uint256) {
+        // The same station id from the factory to get further info on this borrowable
+        return poolId;
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    function collaterals() external view override returns (address[] memory) {
+        // Return the whole array
+        return allCollaterals;
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    function totalCollaterals() external view override returns (uint256) {
+        // Return how many collaterals this borrowable currently supports
+        return allCollaterals.length;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -216,6 +242,27 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     *  @custom:security only-hangar
+     */
+    function setCollateral(address collateral) external override {
+        /// @custom:error MsgSenderNotHangar
+        if (msg.sender != address(hangar18)) revert CygnusBorrowControl__MsgSenderNotHangar();
+
+        /// @custom;error CollateralAlreadySet
+        if (isCollateral[collateral] == true) revert CygnusBorrowControl__CollateralAlreadySet();
+
+        // Set to true, this collateral can borrow
+        isCollateral[collateral] = true;
+
+        // Push to collateral list
+        allCollaterals.push(collateral);
+
+        /// @custom:event NewCollateralAdded
+        emit NewCollateralAdded(msg.sender, collateral, allCollaterals.length);
+    }
 
     /**
      *  @inheritdoc ICygnusBorrowControl

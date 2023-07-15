@@ -14,7 +14,7 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
     /// @param {String} router - The address of the owner of the USDC (router)
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api call
-        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.01`;
+        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.005`;
 
         // Fetch from 1inch api
         const swapdata = await fetch(apiUrl).then((response) => response.json());

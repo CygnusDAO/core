@@ -11,6 +11,11 @@ module.exports = async function reinvest(chainId, terminalToken, harvester) {
     // 3. do a static call to the cygnuscollateral contract get the tokens and amounts harvested
     const { tokens, amounts } = await terminalToken.callStatic.getRewards();
 
+  console.log("TOKENS");
+  console.log("AMOUNTS:");
+  console.log(tokens);
+  console.log(amounts);
+
     /// @notice make a 1inch api call
     /// @param {string} fromToken - the address of the token being swapped
     /// @param {string} toToken - the address of the token being received
@@ -19,6 +24,8 @@ module.exports = async function reinvest(chainId, terminalToken, harvester) {
     const oneInchSwap = async (fromToken, toToken, amount) => {
         // api call
         const apiurl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${harvester.address}&slippage=1&destReceiver=${harvesterInfo.receiver}&disableEstimate=true&compatibilityMode=true`;
+
+      console.log(apiurl);
 
         // fetch data
         const swapdata = await fetch(apiurl).then((response) => response.json());
@@ -35,7 +42,7 @@ module.exports = async function reinvest(chainId, terminalToken, harvester) {
         // if amount harvester is greater than 0 and token is not wanttoken
         if (amounts[i].gt(0) && tokens[i] !== wantToken) {
             // call 1inch api
-            const swapdata = await oneInchSwap(tokens[i], wantToken, amounts[i]);
+            const swapdata = await oneInchSwap(tokens[i], wantToken, amounts[i].toString());
 
             // push to the `calls` array and remove selector of the 1inch swap function
             calls.push(swapdata);

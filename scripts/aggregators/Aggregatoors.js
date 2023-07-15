@@ -40,22 +40,22 @@ async function leverageCalldata(dexAggregator, chainId, lpToken, nativeToken, us
     return leverageCalls;
 }
 
-async function deleverageCalldata(dexAggregator, chainId, lpToken, usdcAddress, router, deleverageLPAmount) {
+async function deleverageCalldata(dexAggregator, chainId, lpToken, usdcAddress, router, deleverageLPAmount, difference) {
     let deleverageCalldata;
 
     switch (dexAggregator) {
         // Paraswap
         case 0:
-            deleverageCalldata = await paraswapDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount);
+            deleverageCalldata = await paraswapDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount, difference);
             break;
         case 1:
-            deleverageCalldata = await oneInchDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount);
+            deleverageCalldata = await oneInchDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount, difference);
             break;
         case 2:
-            deleverageCalldata = await oneInchDeleverageV2(chainId, lpToken, usdcAddress, router, deleverageLPAmount);
+            deleverageCalldata = await oneInchDeleverageV2(chainId, lpToken, usdcAddress, router, deleverageLPAmount, difference);
             break;
         case 3:
-            deleverageCalldata = await oxProjectDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount);
+            deleverageCalldata = await oxProjectDeleverage(chainId, lpToken, usdcAddress, router, deleverageLPAmount, difference);
             break;
     }
 

@@ -136,7 +136,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Not marked as non-reentrant since only the borrowable cann call it through the non-reentrant `liquidate()`
+     *  @notice Not marked as non-reentrant since only the borrowable can call it through the non-reentrant `liquidate()`
      *  @inheritdoc ICygnusCollateral
      */
     function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
@@ -146,8 +146,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         else if (repayAmount == 0) revert CygnusCollateral__CantLiquidateZero();
 
         // Get user's shortfall (if any)
-        // prettier-ignore
-        ( /* liquidity */ , uint256 shortfall) = _accountLiquidity(borrower, type(uint256).max);
+        (, uint256 shortfall) = _accountLiquidity(borrower, type(uint256).max);
 
         // @custom:error NotLiquidatable Avoid unless borrower's loan is in liquidatable state
         if (shortfall == 0) revert CygnusCollateral__NotLiquidatable();
@@ -210,7 +209,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // CygLP tokens received by thsi contract
         uint256 cygLPTokens = balanceOf(address(this));
 
-        // Calculate the equivalent of the flash-redeemed assets in shares
+        // Calculate the equivalent of the flash-redeemed assets in shares, rounding up
         uint256 shares = assets.divWadUp(exchangeRate());
 
         /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared

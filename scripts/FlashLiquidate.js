@@ -19,9 +19,14 @@ const { deleverageCalldata } = require(path.resolve(__dirname, "./aggregators/Ag
 
 // enum DexAggregator {
 //    PARASWAP,
-//    ONE_INCH
+//    ONE_INCH_V1,
+//    ONE_INCH_V2,
+//    0xPROJECT
 // }
-const dexAggregator = 0; // Use paraswap as default, for 1inch switch to 1
+const dexAggregator = 0;
+
+// Slipp
+const difference = BigInt(10000);
 
 // We use the lender as liquidator for simplicity since they already have USDC
 const flashLiquidate = async () => {
@@ -151,7 +156,7 @@ const flashLiquidate = async () => {
     await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
-    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
+    await router.connect(borrower).borrow(collateral.address, borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -159,7 +164,7 @@ const flashLiquidate = async () => {
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
     const { health: _health } = await collateral.getBorrowerPosition(borrower._address);
-    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
@@ -174,11 +179,11 @@ const flashLiquidate = async () => {
     console.log("----------------------------------------------------------------------------------------------");
 
     await mine(200000);
-    await borrowable.accrueInterest();
+    await borrowable.sync();
 
     // Get liquidity
     const { liquidity: liquidity_, shortfall: shortfall_ } = await collateral.getAccountLiquidity(borrower._address);
-    const { borrowBalance: borrowbal_ } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowbal_ } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const { health: health_ } = await collateral.getBorrowerPosition(borrower._address);
     console.log("Borrower`s USD debt after accrue              | %s USD", borrowbal_ / 1e6);
     console.log("Borrower`s Debt Ratio after accrue            | %s%", health_ / 1e16);
@@ -203,10 +208,8 @@ const flashLiquidate = async () => {
     console.log("Liquidator's USD Balance before liq.           | %s USD", liqBalBefore / 1e6);
     console.log("Borrowable's Total Balance before liq.         | %s USD", borrowableBalBefore / 1e6);
 
-    // 1. Build 1inch Data
-    // prettier-ignore
-    // 1. Build swapdata with aggregator
-    const deleverageCalls =await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount)
+    await borrowable.sync();
+    const deleverageCalls = await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount, difference);
 
     await router
         .connect(lender)
@@ -215,11 +218,10 @@ const flashLiquidate = async () => {
             collateral.address,
             BigInt(100e6),
             borrower._address,
-            lender._address,
             ethers.constants.MaxUint256,
             dexAggregator,
             deleverageCalls,
-            { gasLimit: 5000000 }
+            { gasLimit: 5000000 },
         );
 
     console.log("----------------------------------------------------------------------------------------------");
@@ -227,7 +229,7 @@ const flashLiquidate = async () => {
     const liqBalAfter = (await usdc.balanceOf(lender._address)) / 1e6;
     const borrowerBalanceCollAfterLiq = (await collateral.balanceOf(borrower._address)) / 1e18;
     const lenderBalanceCollAfterLiq = (await collateral.balanceOf(lender._address)) / 1e18;
-    const { borrowBalance: borrowBalanceAfterLiq } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowBalanceAfterLiq } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const borrowableBalAfter = await borrowable.totalBalance();
 
     console.log("USD Balance of liquidator after                | %s USD", liqBalAfter);

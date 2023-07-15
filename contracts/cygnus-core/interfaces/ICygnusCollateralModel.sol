@@ -69,7 +69,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
     /**
      *  @notice Get the price of 1 amount of the underlying in stablecoins. Note: It returns the price in the borrowable`s
      *          decimals. ie If USDC, returns price in 6 deicmals, if DAI/BUSD in 18
-     *  @notice Calls the oracle to return the price of the underlying LP Token of this shuttle
+     *  @notice Calls the oracle to return the price of 1 unit of the underlying LP Token of this shuttle
      *
      *  @return lpTokenPrice The price of 1 LP Token in USDC
      */
@@ -87,17 +87,17 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
     function getAccountLiquidity(address borrower) external view returns (uint256 liquidity, uint256 shortfall);
 
     /**
-     *  @notice Gets the account's total position value in USD (LPs owned multiplied by LP price). It uses the oracle to get the
-     *          price of the LP and uses the current exchange rate.
+     *  @notice Gets the account's total position value in USD (LP Tokens owned multiplied by LP price). It uses the oracle to get the
+     *          price of the LP Token and uses the current exchange rate.
      *
      *  @param borrower The address of the borrower
      *
      *  @return cygLPBalance The user's balance of collateral (CygLP)
      *  @return principal The original loaned USDC amount (without interest)
      *  @return borrowBalance The original loaned USDC amount plus interest (ie. what the user must pay back)
-     *  @return price The current LP price
-     *  @return positionUsd The borrower's position in USD. position = CygLP Balance * Exchange Rate * LP Price
-     *  @return rate The current exchange rate between CygLP and LP
+     *  @return price The current liquidity token price
+     *  @return positionUsd The borrower's position in USD. position = CygLP Balance * Exchange Rate * LP Token Price
+     *  @return rate The current exchange rate between CygLP and LP Token
      *  @return health The user's current loan health (once it reaches 100% the user becomes liquidatable)
      */
     function getBorrowerPosition(

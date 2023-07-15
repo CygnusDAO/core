@@ -17,12 +17,12 @@ const ethers = hre.ethers;
 /// @param {String} usdc - The address of USDC on this chain
 /// @param {EthersContract} router - The contract object for the Cygnus Router
 /// @param {BigNumber} deleverageLpAmount - The amount of CygLP being deleveraged
-module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount) {
+module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount, difference) {
     // Construct minimal SDK with fetcher only
     const paraSwapMin = constructSimpleSDK({ chainId: chainId, axios });
 
     // Get tokens and amounts out given an LP token and amount
-    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount);
+    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
     /// @notice Paraswap API call
     /// @param {String} fromToken - The address of the token we are swapping
@@ -57,7 +57,7 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
             srcDecimals: _srcDecimals,
             destDecimals: _dstDecimals,
             srcAmount: amount,
-            slippage: "10",
+            slippage: "20",
             priceRoute,
             userAddress: router,
             ignoreChecks: "true",

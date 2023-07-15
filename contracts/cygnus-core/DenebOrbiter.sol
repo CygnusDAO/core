@@ -62,7 +62,7 @@ contract DenebOrbiter is IDenebOrbiter {
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
      *  @custom:member borrowable The address of the Cygnus borrow contract for this collateral
-     *  @custom:member shuttleId The unique id of this lending pool (shared by borrowable)
+     *  @custom:member shuttleId The unique id of this lending pool
      */
     struct CollateralParameters {
         address factory;
@@ -109,7 +109,7 @@ contract DenebOrbiter is IDenebOrbiter {
         });
 
         // Create Collateral contract
-        collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, msg.sender))}());
+        collateral = address(new CygnusCollateral{salt: keccak256(abi.encode(underlying, msg.sender, shuttleId))}());
 
         // Delete and refund some gas
         delete shuttleParameters;

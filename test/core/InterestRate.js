@@ -446,6 +446,8 @@ describe("Cygnus Interest Rate Model", function () {
             // Expect new borrow balance to be gt before
             expect(accountBorrowsAfter).to.be.gt(accountBorrows);
 
+          /// Borrows WIth Interest Rate= borrows * (1 + (BorrowRatePS * 1 year))
+          //
             // Expect the new borrow balance to be equal to prior borrow balance * (1 + borrowAPR)
             expect(accountBorrowsAfter).to.be.closeTo(accountBorrows.mul(ONE.add(borrowRateBN.mul(oneYear))).div(ONE), BigInt(1));
         });

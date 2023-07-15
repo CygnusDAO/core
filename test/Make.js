@@ -63,7 +63,8 @@ module.exports = async function Make() {
     const aggregators = ["0x13e3Ee699D1909E989722E753853AE30b17e08c5", "0x0D276FC14719f9292D5C1eA2198673d1f4269246"];
 
     // Set a friendly name for the orbiter
-    const orbiterName = "Velodrome Volatile LP";
+    const denebName = "Velodrome: Volatile LP";
+    const albireoName = "Sonne: Staked Distributor";
 
     // You can create your own below or just leave as it is
 
@@ -90,7 +91,7 @@ module.exports = async function Make() {
     // Add nebula to registry
     await registry.createNebula(nebula.address);
     // Initialize LP Oracle
-    await registry.initializeOracleInNebula(0, lpTokenAddress, aggregators);
+    await registry.createNebulaOracle(0, lpTokenAddress, aggregators);
 
     await nebula.lpTokenPriceUsd(lpTokenAddress);
 
@@ -118,7 +119,8 @@ module.exports = async function Make() {
     const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, registry.address);
 
     // Initialize the factory with the Albireo and Deneb orbiter instances, and the CygnusNebulaOracle instance
-    await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
+    await factory.setDenebOrbiter(denebName, deneb.address);
+    await factory.setAlbireoOrbiter(albireoName, albireo.address);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Factory     | %s", chalk.green(factory.address));
@@ -130,8 +132,12 @@ module.exports = async function Make() {
 
     // ═══════════════════ 5. SHUTTLE ══════════════════════════════════════════════════════════
 
+    // LiquidityType = 1 = semiVolatile
+    //
+    await factory.deployStation(1, 0);
+
     // Deploy lending pool
-    await factory.deployShuttle(lpToken.address, 0);
+    await factory.deployShuttle(lpToken.address, 0, 0);
 
     // Get shuttle
     const shuttle = await factory.getShuttles(lpToken.address, 0);
@@ -154,7 +160,7 @@ module.exports = async function Make() {
     const router = await Router.deploy(factory.address);
 
     const RouterX = await ethers.getContractFactory("CygnusAltairX");
-    const routerX = await RouterX.deploy(factory.address, orbiterName);
+    const routerX = await RouterX.deploy(factory.address, denebName);
     await router.setAltairExtension(0, routerX.address);
 
     console.log("\t-----------------------------------------------------------------------------");
@@ -163,7 +169,7 @@ module.exports = async function Make() {
     // ═══════════════════ 7. CYG TOKEN ════════════════════════════════════════════════════════
 
     // CYG token
-    const CygToken = await ethers.getContractFactory("CygnusDAO");
+    const CygToken = await ethers.getContractFactory("Cygnus");
     const cygToken = await CygToken.deploy();
 
     console.log("\t-----------------------------------------------------------------------------");
@@ -181,13 +187,15 @@ module.exports = async function Make() {
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
     const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards, totalCygRewardsDAO);
 
-    // Initialize rewarder
-    await cygRewarder.initializeShuttleRewards(0, 1000);
-
     // Set rewarder in borrowable
     await borrowable.setPillarsOfCreation(cygRewarder.address);
 
+    // Transfer ownership
     await cygToken.connect(owner).transferOwnership(cygRewarder.address);
+
+    // Initialize rewarder for shuttle ID 0 with 1000 alloc points
+    await cygRewarder.setLendingRewards(borrowable.address, 1000);
+    await cygRewarder.setBorrowRewards(borrowable.address, collateral.address, 1000);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Rewarder    | %s", chalk.cyanBright(cygRewarder.address));

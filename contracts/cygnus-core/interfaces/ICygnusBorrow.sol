@@ -33,6 +33,8 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    error CygnusBorrow__InvalidCollateral();
+
     /**
      *  @dev Reverts when the borrow amount is higher than total balance
      *
@@ -75,16 +77,22 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      */
     error CygnusBorrow__InvalidRepayAmount();
 
-    /**
-     *  @dev Reverts if msg.sender is not allowed to borrow on behalf of `borrower`
-     *
-     *  @custom:error MasterApprovalDisabled
-     */
-    error CygnusBorrow__MasterApprovalDisabled();
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /**
+     *  @dev Logs when a borrower takes out a loan
+     *
+     *  @param sender Indexed address of msg.sender (should be `Altair` address)
+     *  @param borrower Indexed address of the borrower
+     *  @param receiver Indexed address of receiver
+     *  @param borrowAmount The amount of USD borrowed
+     *  @param repayAmount The amount of USD repaid
+     *
+     *  @custom:event Borrow
+     */
+    event Borrow(address indexed sender, address indexed borrower, address indexed receiver, uint256 borrowAmount, uint256 repayAmount);
 
     /**
      *  @dev Logs when a liquidator repays and seizes collateral
@@ -107,19 +115,6 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
         uint256 usdAmount
     );
 
-    /**
-     *  @dev Logs when a borrower takes out a loan
-     *
-     *  @param sender Indexed address of msg.sender (should be `Altair` address)
-     *  @param borrower Indexed address of the borrower
-     *  @param receiver Indexed address of receiver
-     *  @param borrowAmount The amount of USD borrowed
-     *  @param repayAmount The amount of USD repaid
-     *
-     *  @custom:event Borrow
-     */
-    event Borrow(address indexed sender, address indexed borrower, address indexed receiver, uint256 borrowAmount, uint256 repayAmount);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -136,7 +131,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external returns (uint256);
+    function borrow(address collateral, address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external returns (uint256);
 
     /**
      *  @notice This low level function should only be called from `CygnusAltair` contract only
@@ -149,7 +144,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function liquidate(address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
+    function liquidate(address collateral, address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
 
     /**
      *  @notice Syncs internal balance with totalBalance

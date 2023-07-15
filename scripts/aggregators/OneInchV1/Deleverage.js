@@ -3,9 +3,9 @@
  *          `deleverageLpAmount` from the collateral contract. We must convert this amount to USDC using
  *          multiple swaps.
  */
-module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount) {
+module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount, difference) {
     // Get tokens and amounts out given an LP token and amount
-    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount);
+    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
     // remove OPTIMISM_WOOFI_V2
     const protocols =

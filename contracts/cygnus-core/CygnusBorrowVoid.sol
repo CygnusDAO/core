@@ -89,7 +89,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @inheritdoc ICygnusBorrowVoid
      */
-    uint256 public override lastReinvest;
+    uint256 public override lastHarvest;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -205,6 +205,9 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             // Amounts
             amounts[i - 1] = _checkBalance(tokens[i - 1]);
         }
+
+        /// @custom:event RechargeVoid
+        emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -258,31 +261,30 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         approveTokenPrivate(SONNE, address(DISTRIBUTOR), type(uint256).max);
 
         /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, shuttleId, msg.sender);
+        emit ChargeVoid(underlying, poolId, msg.sender);
     }
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant
      */
-    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
-        // Harvest rewards and return tokens and amounts
+    function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
+        // The harvester contract calls this function to harvest the rewards. Anyone can call 
+        // this function, but the rewards can only be moved by the harvester contract itself
         return getRewardsPrivate();
     }
 
     /**
-     *  @notice Not marked as non-reentrant since only trusted harvester can call
+     *  @notice Not marked as non-reentrant since only trusted harvester can call which does safety checks
      *  @inheritdoc ICygnusBorrowVoid
      */
     function reinvestRewards_y7b(uint256 liquidity) external override update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
-        if (msg.sender != address(harvester)) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
+        if (msg.sender != harvester) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
         // After deposit hook
         _afterDeposit(liquidity);
 
-        /// @custom:event RechargeVoid
-        emit RechargeVoid(msg.sender, liquidity, lastReinvest = block.timestamp);
     }
 
     /**

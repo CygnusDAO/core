@@ -84,7 +84,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    uint256 public override lastReinvest;
+    uint256 public override lastHarvest;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -162,6 +162,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
         // Get our balance
         amounts[0] = _checkBalance(VELO);
+
+        /// @custom:event RechargeVoid
+        emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -206,30 +209,29 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         approveTokenPrivate(underlying, address(gauge), type(uint256).max);
 
         /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, shuttleId, msg.sender);
+        emit ChargeVoid(underlying, poolId, msg.sender);
     }
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
-    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
-        // Harvest rewards and return tokens and amounts
+    function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
+        // The harvester contract calls this function to harvest the rewards. Anyone can call 
+        // this function, but the rewards can only be moved by the harvester contract itself
         return getRewardsPrivate();
     }
 
     /**
+     *  @notice Not marked as non-reentrant since only trusted harvester can call which does safety checks
      *  @inheritdoc ICygnusCollateralVoid
      */
     function reinvestRewards_y7b(uint256 liquidity) external override update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
-        if (msg.sender != address(harvester)) revert CygnusCollateralVoid__OnlyHarvesterAllowed();
+        if (msg.sender != harvester) revert CygnusCollateralVoid__OnlyHarvesterAllowed();
 
         // After deposit hook
         _afterDeposit(liquidity);
-
-        /// @custom:event RechargeVoid
-        emit RechargeVoid(msg.sender, liquidity, lastReinvest = block.timestamp);
     }
 
     /**

@@ -156,6 +156,14 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusCollateralControl
      */
+    function shuttleId() external view override returns (uint256) {
+        // The same shuttle id from the factory to get further info on this collateral
+        return poolId;
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralControl
+     */
     function borrowable() external view returns (address) {
         // Read the stored internal variable from terminal
         return twinstar;

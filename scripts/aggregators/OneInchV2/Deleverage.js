@@ -3,9 +3,9 @@
  *          `deleverageLpAmount` from the collateral contract. We must convert this amount to USDC using
  *          multiple swaps.
  */
-module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount) {
+module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount, difference) {
     // Get tokens and amounts out given an LP token and amount
-    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount);
+    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
     // remove OPTIMISM_WOOFI_V2
     const protocols =
@@ -21,7 +21,7 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
      */
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api url
-        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.01&protocols=${protocols}`;
+        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.005&protocols=${protocols}`;
 
         // Swap data
         const swapdata = await fetch(apiUrl).then((response) => response.json());

@@ -85,6 +85,11 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     address internal immutable twinstar;
 
+    /**
+     *  @notice The station ID for the borrowable, the Shuttle ID for the collateral
+     */
+    uint256 internal immutable poolId;
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
@@ -108,11 +113,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     ICygnusNebula public immutable override nebula;
 
     /**
-     *  @inheritdoc ICygnusTerminal
-     */
-    uint256 public immutable override shuttleId;
-
-    /**
      *  @notice The contract's totalBalance is stored as a uint160 which is the max transfer Permit2 allows
      *  @inheritdoc ICygnusTerminal
      */
@@ -128,7 +128,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     constructor() {
         // Get immutables from deployer contract who is msg.sender of deployments
         // Factory, asset, borrow/collateral, oracle, lending pool ID
-        (hangar18, underlying, twinstar, nebula, shuttleId) = IOrbiter(msg.sender).shuttleParameters();
+        (hangar18, underlying, twinstar, nebula, poolId) = IOrbiter(msg.sender).shuttleParameters();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

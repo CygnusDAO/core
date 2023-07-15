@@ -174,7 +174,7 @@ const reinvestCollateral = async () => {
     const borrowableBalance = (await borrowable.totalBalance()) / 1e6;
     const borrowerInfo = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceBefore = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
 
     console.log("----------------------------------------");
     console.log("Principal         | %s USD", borrowerInfo.principal / 1e6);
@@ -213,7 +213,7 @@ const reinvestCollateral = async () => {
     const borrowableBalanceAfter = (await borrowable.totalBalance()) / 1e6;
     const _borrowerInfoAfter = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceAfter = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const util = (await borrowable.utilizationRate()) / 1e16;
 
     console.log("----------------------------------------");
@@ -236,70 +236,71 @@ const reinvestCollateral = async () => {
     console.log("                                  HARVEST COLLATERAL                                          ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    await borrowable.sync();
-    const _borrowerInfoAfterV = await collateral.getBorrowerPosition(borrower._address);
-
-    console.log("----------------------------------------");
-    console.log("Principal         | %s USD", _borrowerInfoAfterV.principal / 1e6);
-    console.log("Borrow Balance    | %s USD", _borrowerInfoAfterV.borrowBalance / 1e6);
-    console.log("Price             | %s USD", _borrowerInfoAfterV.price / 1e6);
-    console.log("Position          | %s USD", _borrowerInfoAfterV.positionUsd / 1e6);
-    console.log("Health            | %s %%", _borrowerInfoAfterV.health / 1e16);
-    console.log("----------------------------------------");
+//    await borrowable.sync();
+//    const _borrowerInfoAfterV = await collateral.getBorrowerPosition(borrower._address);
+//
+//    console.log("----------------------------------------");
+//    console.log("Principal         | %s USD", _borrowerInfoAfterV.principal / 1e6);
+//    console.log("Borrow Balance    | %s USD", _borrowerInfoAfterV.borrowBalance / 1e6);
+//    console.log("Price             | %s USD", _borrowerInfoAfterV.price / 1e6);
+//    console.log("Position          | %s USD", _borrowerInfoAfterV.positionUsd / 1e6);
+//    console.log("Health            | %s %%", _borrowerInfoAfterV.health / 1e16);
+//    console.log("----------------------------------------");
+//
+//    // Get harvest calldata
+//    const swapdata = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
+//
+//    // reinvest
+//    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdata);
+//
+//    // get balance
+//    const collateralBalanceReinvest = (await collateral.totalBalance()) / 1e18;
+//
+//    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvest);
+//
+//    const borrowersPositionAfter = await collateral.getBorrowerPosition(borrower._address);
+//
+//    console.log("----------------------------------------");
+//    console.log("Principal         | %s USD", borrowersPositionAfter.principal / 1e6);
+//    console.log("Borrow Balance    | %s USD", borrowersPositionAfter.borrowBalance / 1e6);
+//    console.log("Price             | %s USD", borrowersPositionAfter.price / 1e6);
+//    console.log("Position          | %s USD", borrowersPositionAfter.positionUsd / 1e6);
+//    console.log("Health            | %s %%", borrowersPositionAfter.health / 1e16);
+//    console.log("----------------------------------------");
+//
+//    await mine(50_000);
+//
+//    // Get harvest calldata
+//    const swapdataB = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
+//
+//    // reinvest
+//    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdataB);
+//
+//    await borrowable.sync();
+//    // get balance
+//    const collateralBalanceReinvestB = (await collateral.totalBalance()) / 1e18;
+//
+//    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvestB);
+//
+//    const borrowersPositionAfterB = await collateral.getBorrowerPosition(borrower._address);
+//
+//    console.log("----------------------------------------");
+//    console.log("Principal         | %s USD", borrowersPositionAfterB.principal / 1e6);
+//    console.log("Borrow Balance    | %s USD", borrowersPositionAfterB.borrowBalance / 1e6);
+//    console.log("Price             | %s USD", borrowersPositionAfterB.price / 1e6);
+//    console.log("Position          | %s USD", borrowersPositionAfterB.positionUsd / 1e6);
+//    console.log("Health            | %s %%", borrowersPositionAfterB.health / 1e16);
+//    console.log("----------------------------------------");
+//
+//    await mine(50_000);
+//    await borrowable.sync();
+//
+//    const bx = (await borrowable.totalBalance()) / 1e6;
+//
+//    console.log("Borrowable`s USD Balance Before               | %s USDC", bx);
 
     // Get harvest calldata
-    const swapdata = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
-
-    // reinvest
-    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdata);
-
-    // get balance
-    const collateralBalanceReinvest = (await collateral.totalBalance()) / 1e18;
-
-    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvest);
-
-    const borrowersPositionAfter = await collateral.getBorrowerPosition(borrower._address);
-
-    console.log("----------------------------------------");
-    console.log("Principal         | %s USD", borrowersPositionAfter.principal / 1e6);
-    console.log("Borrow Balance    | %s USD", borrowersPositionAfter.borrowBalance / 1e6);
-    console.log("Price             | %s USD", borrowersPositionAfter.price / 1e6);
-    console.log("Position          | %s USD", borrowersPositionAfter.positionUsd / 1e6);
-    console.log("Health            | %s %%", borrowersPositionAfter.health / 1e16);
-    console.log("----------------------------------------");
-
-    await mine(50_000);
-
-    // Get harvest calldata
-    const swapdataB = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
-
-    // reinvest
-    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdataB);
-
     await borrowable.sync();
-    // get balance
-    const collateralBalanceReinvestB = (await collateral.totalBalance()) / 1e18;
-
-    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvestB);
-
-    const borrowersPositionAfterB = await collateral.getBorrowerPosition(borrower._address);
-
-    console.log("----------------------------------------");
-    console.log("Principal         | %s USD", borrowersPositionAfterB.principal / 1e6);
-    console.log("Borrow Balance    | %s USD", borrowersPositionAfterB.borrowBalance / 1e6);
-    console.log("Price             | %s USD", borrowersPositionAfterB.price / 1e6);
-    console.log("Position          | %s USD", borrowersPositionAfterB.positionUsd / 1e6);
-    console.log("Health            | %s %%", borrowersPositionAfterB.health / 1e16);
-    console.log("----------------------------------------");
-
-    await mine(50_000);
-    await borrowable.sync();
-
-    const bx = (await borrowable.totalBalance()) / 1e6;
-
-    console.log("Borrowable`s USD Balance Before               | %s USDC", bx);
-
-    // Get harvest calldata
     const swapdataBorrowable = await reinvestCalldata(dexAggregator, chainId, borrowable, harvesterB);
     await borrowable.sync();
     // reinvest

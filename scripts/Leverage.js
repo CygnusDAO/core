@@ -92,10 +92,10 @@ const cygnusLeverage = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(4e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(4e18), borrower._address, permit, signature);
 
     // Lender //
 
@@ -151,7 +151,7 @@ const cygnusLeverage = async () => {
     const borrowableBalance = (await borrowable.totalBalance()) / 1e6;
     const borrowerInfo = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceBefore = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
 
     console.log("----------------------------------------");
     console.log("Principal         | %s USD", borrowerInfo.principal / 1e6);
@@ -208,7 +208,7 @@ const cygnusLeverage = async () => {
     const borrowableBalanceAfter = (await borrowable.totalBalance()) / 1e6;
     const _borrowerInfoAfter = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceAfter = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const util = (await borrowable.utilizationRate()) / 1e16;
 
     console.log("----------------------------------------");
@@ -244,7 +244,7 @@ const cygnusLeverage = async () => {
     await collateral.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // Convert borrowBalance to LP and CygLP respectively
-    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const _lpPrice = await collateral.getLPTokenPrice();
     const er = await collateral.exchangeRate();
 
@@ -255,7 +255,8 @@ const cygnusLeverage = async () => {
     console.log("Deleverage CygLP Amount                        | %s CygLP", deleverageCygLPAmount / 1e18);
 
     // 1. Build swapdata with aggregator
-    const deleverageCalls = await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount);
+    // 0 difference since we didnt mine blocks
+    const deleverageCalls = await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount, 0);
 
     const receivedUsd = await router.connect(borrower).callStatic.deleverage(
         lpToken.address, // LP address
@@ -302,7 +303,7 @@ const cygnusLeverage = async () => {
     const _collateralBalanceAfter = (await collateral.totalBalance()) / 1e18;
     const _borrowableBalanceAfter = (await borrowable.totalBalance()) / 1e6;
     const _cygLPBalanceAfter = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: _borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+    const { borrowBalance: _borrowBalance } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
     const _util = (await borrowable.utilizationRate()) / 1e16;
 
     console.log("Collateral`s LP Balance after deleverage       | %s LP Tokens", _collateralBalanceAfter);

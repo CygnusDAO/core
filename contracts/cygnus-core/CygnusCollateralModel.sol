@@ -109,8 +109,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         else if (borrower == address(this)) revert CygnusCollateralModel__BorrowerCantBeCollateral();
 
         // Check if called externally or from borrowable. If called externally then borrowedAmount is always MaxUint256
-        // prettier-ignore
-        if (borrowBalance == type(uint256).max) (/* principal */, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
+        if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
         uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
@@ -145,7 +144,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         uint256 cygLPBalance = balanceOf(borrower);
 
         // Redeem amount can't be higher than account balance, return false
-        if (redeemAmount > cygLPBalance) return false;
+        if (redeemAmount > cygLPBalance || redeemAmount == 0) return false;
 
         // The borrower's final CygLP balance after redeeming `redeemAmount`
         uint256 finalBalance = cygLPBalance - redeemAmount;
@@ -154,12 +153,10 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         uint256 amountCollateral = finalBalance.mulWad(exchangeRate());
 
         // Get borrower's borrow balance from borrowable contract
-        // prettier-ignore
-        (/* principal */, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
+        (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
 
         // Get the LP price and calculate the needed collateral
-        // prettier-ignore
-        (/* liquidity */, uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
+        (, uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
 
         // If user has no shortfall after redeeming return true
         return shortfall == 0;
@@ -179,8 +176,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @inheritdoc ICygnusCollateralModel
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
-        // prettier-ignore
-        ( /* liquidity */, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
+        // Called by CygnusBorrow at the end of the `borrow` function to check if an `borrower` can borrow `borrowAmount`
+        (, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
 
         // User has no shortfall and can borrow
         return shortfall == 0;
@@ -209,7 +206,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         cygLPBalance = balanceOf(borrower);
 
         // The original borrowed amount without interest and the current owed amount
-        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
+        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
 
         // The LP Token price
         price = getLPTokenPrice();

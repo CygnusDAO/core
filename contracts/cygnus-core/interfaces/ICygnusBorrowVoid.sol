@@ -62,15 +62,14 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     event ChargeVoid(address underlying, uint256 shuttleId, address sender);
 
     /**
-     *  @dev Logs when user reinvests rewards
+     *  @dev Logs when a user claims rewards
      *
-     *  @param reinvestor The address of the caller who reinvested reward and received bounty
-     *  @param liquidity The amount of underlying USD received and reinvested
-     *  @param timestamp The timestamp of the reinvest
+     *  @param reinvestor The address of the caller who claimed the rewards
+     *  @param timestamp The timestamp of the harvest
      *
      *  @custom:event RechargeVoid
      */
-    event RechargeVoid(address indexed reinvestor, uint256 liquidity, uint256 timestamp);
+    event RechargeVoid(address indexed reinvestor, uint256 timestamp);
 
     /**
      *  @dev Logs when admin sets a new harvester to reinvest rewards
@@ -94,9 +93,9 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     function harvester() external view returns (address);
 
     /**
-     *  @return lastReinvest Timestamp of the last reinvest performed by the harvester contract
+     *  @return lastHarvest Timestamp of the last reinvest performed by the harvester contract
      */
-    function lastReinvest() external view returns (uint256);
+    function lastHarvest() external view returns (uint256);
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 

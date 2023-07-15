@@ -3,9 +3,9 @@
  *          `deleverageLpAmount` from the collateral contract. We must convert this amount to USDC using
  *          multiple swaps.
  */
-module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount) {
+module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount, difference) {
     // Get tokens and amounts out given an LP token and amount
-    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount);
+    const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
     /**
      *  @notice 1inch swagger API call
@@ -39,10 +39,14 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
         }
 
         // 1inch Api call
-        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.0025&skipValidation=true&takerAddress=${router}`;
+        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.02&skipValidation=true&takerAddress=${router}`;
+
+        const headers = {
+            "0x-api-key": "02a575e5-685a-464d-98d4-71431f79489a",
+        };
 
         // Swap data
-        const swapdata = await fetch(apiUrl).then((response) => response.json());
+        const swapdata = await fetch(apiUrl, { headers }).then((response) => response.json());
 
         // Return response
         return swapdata.data;

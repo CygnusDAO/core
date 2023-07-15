@@ -129,11 +129,6 @@ interface ICygnusTerminal is IERC20Permit {
     function nebula() external view returns (ICygnusNebula);
 
     /**
-     *  @return shuttleId The ID of this shuttle (shared by Collateral and Borrow)
-     */
-    function shuttleId() external view returns (uint256);
-
-    /**
      *  @return totalBalance Total balance owned by this shuttle pool in terms of its underlying
      */
     function totalBalance() external view returns (uint160);

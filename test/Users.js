@@ -25,8 +25,9 @@ module.exports = async function Users() {
     const lender2Address = "0xd165164cbab65004da73c596712687c16b981274";
 
     // Borrower
-    const borrowerAddress = "0x682a7394ae7d5834a1c409b01c04018eca8dadfb";
+    const borrowerAddress = "0xe173cc94d4755b72eb9196cf50dbcd2cba54e348";
     const borrower2Address = "0xa05ee11735d861afa66bf06004cb61f7370b1d2e";
+
 
     const lender = await makeUser(lenderAddress);
     const lender2 = await makeUser(lender2Address);
