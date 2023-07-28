@@ -131,7 +131,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function borrow(address collateral, address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external returns (uint256);
+    function borrow(address borrower, address receiver, uint256 borrowAmount, bytes calldata data) external returns (uint256);
 
     /**
      *  @notice This low level function should only be called from `CygnusAltair` contract only
@@ -144,7 +144,7 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *
      *  @custom:security non-reentrant
      */
-    function liquidate(address collateral, address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
+    function liquidate(address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
 
     /**
      *  @notice Syncs internal balance with totalBalance

@@ -62,14 +62,14 @@ contract AlbireoOrbiter is IAlbireoOrbiter {
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of USDC)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrowable
-     *  @custom:member stationId The ID for the station we are deploying
+     *  @custom:member shuttleId The ID for the shuttle we are deployin (shared by collateral)
      */
     struct BorrowParameters {
         address factory;
         address underlying;
         address collateral;
         address oracle;
-        uint256 stationId;
+        uint256 shuttleId;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -97,7 +97,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter {
         address underlying,
         address collateral,
         address oracle,
-        uint256 stationId
+        uint256 shuttleId
     ) external override returns (address borrowable) {
         // Assign important addresses to pass to borrow contracts
         shuttleParameters = BorrowParameters({
@@ -105,11 +105,11 @@ contract AlbireoOrbiter is IAlbireoOrbiter {
             underlying: underlying,
             collateral: collateral,
             oracle: oracle,
-            stationId: stationId
+            shuttleId: shuttleId
         });
 
         // Create Borrow contract
-        borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, msg.sender, stationId))}());
+        borrowable = address(new CygnusBorrow{salt: keccak256(abi.encode(collateral, msg.sender))}());
 
         // Delete and refund some gas
         delete shuttleParameters;

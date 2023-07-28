@@ -45,32 +45,18 @@ interface IHangar18 {
     error Hangar18__CygnusAdminOnly(address sender, address admin);
 
     /**
-     *  @dev Reverts when trying to deploy a shuttle that already exists
-     *
-     *  @custom:error ShuttleAlreadyDeployed
-     */
-    error Hangar18__ShuttleAlreadyDeployed();
-
-    /**
-     *  @dev Reverts when trying to deploy a shuttle with an unsupported LP Pair
-     *
-     *  @custom:error LiquidityTokenNotSupported
-     */
-    error Hangar18__LiquidityTokenNotSupported();
-
-    /**
-     *  @dev Reverts when trying to deploy a station that has already been deployed
-     *
-     *  @custom:error StationAlreadyDeployed
-     */
-    error Hangar18__StationAlreadyDeployed();
-
-    /**
      *  @dev Reverts when the borrow orbiter already exists
      *
      *  @custom:error OrbiterAlreadySet
      */
     error Hangar18__OrbiterAlreadySet();
+
+    /**
+     *  @dev Reverts when trying to deploy a shuttle that already exists
+     *
+     *  @custom:error ShuttleAlreadyDeployed
+     */
+    error Hangar18__ShuttleAlreadyDeployed();
 
     /**
      *  @dev Reverts when deploying a shuttle with orbiters that are inactive or dont exist
@@ -85,6 +71,13 @@ interface IHangar18 {
      *  @custom:error CollateralAddressMismatch
      */
     error Hangar18__CollateralAddressMismatch();
+
+    /**
+     *  @dev Reverts when trying to deploy a shuttle with an unsupported LP Pair
+     *
+     *  @custom:error LiquidityTokenNotSupported
+     */
+    error Hangar18__LiquidityTokenNotSupported();
 
     /**
      *  @dev Reverts when attempting to switch off orbiters that don't exist
@@ -120,11 +113,28 @@ interface IHangar18 {
     error Hangar18__AdminAlreadySet();
 
     /**
+     *  @dev Reverts when the pending admin is the same as the new one we are assigning
+     *
+     *  @param newPendingAdmin The address of the new pending admin
+     *  @param pendingAdmin The address of the existing pending admin
+     *
+     *  @custom:error PendingAdminAlreadySet
+     */
+    error Hangar18__PendingAdminAlreadySet(address newPendingAdmin, address pendingAdmin);
+
+    /**
      *  @dev Reverts when the pending dao reserves is already the dao reserves
      *
      *  @custom:error DaoReservesAlreadySet
      */
     error Hangar18__DaoReservesAlreadySet();
+
+    /**
+     *  @dev Reverts when the pending address is the same as the new pending
+     *
+     *  @custom:error PendingDaoReservesAlreadySet
+     */
+    error Hangar18__PendingDaoReservesAlreadySet();
 
     /**
      *  @dev Reverts when pending Cygnus admin is the zero address
@@ -163,8 +173,6 @@ interface IHangar18 {
      *  @custom:event NewShuttle
      */
     event NewShuttle(address indexed lpTokenPair, uint256 indexed shuttleId, uint256 orbiterId, address borrowable, address collateral);
-
-    event NewStation(LiquidityType liquidityType, uint256 albireoId, uint256 stationId, address borrowable);
 
     /**
      *  @dev Logs when a new Cygnus admin is requested
@@ -210,13 +218,22 @@ interface IHangar18 {
      *  @dev Logs when orbiters are initialized in the factory
      *
      *  @param status Whether or not these orbiters are active and usable
-     *  @param orbiterId How many orbiter pairs we have (equals the amount of Dexes cygnus is using)
-     *  @param orbiter The name of the dex for these orbiters
-     *  @param _name The name of the orbiter
+     *  @param orbitersLength How many orbiter pairs we have (equals the amount of Dexes cygnus is using)
+     *  @param borrowOrbiter The address of the borrow orbiter for this dex
+     *  @param denebOrbiter The address of the collateral orbiter for this dex
+     *  @param orbitersName The name of the dex for these orbiters
+     *  @param uniqueHash The keccack256 hash of the collateral init code hash and borrowable init code hash
      *
      *  @custom:event InitializeOrbiters
      */
-    event NewOrbiter(bool status, uint256 orbiterId, address orbiter, string _name);
+    event InitializeOrbiters(
+        bool status,
+        uint256 orbitersLength,
+        IAlbireoOrbiter borrowOrbiter,
+        IDenebOrbiter denebOrbiter,
+        bytes32 uniqueHash,
+        string orbitersName
+    );
 
     /**
      *  @dev Logs when admins switch orbiters off for future deployments
@@ -268,27 +285,21 @@ interface IHangar18 {
      * @custom:struct Official record of all collateral and borrow deployer contracts, unique per dex
      * @custom:member status Whether or not these orbiters are active and usable
      * @custom:member orbiterId The ID for this pair of orbiters
+     * @custom:member albireoOrbiter The address of the borrow deployer contract
      * @custom:member denebOrbiter The address of the collateral deployer contract
+     * @custom:member borrowableInitCodeHash The hash of the borrowable contract's initialization code
+     * @custom:member collateralInitCodeHash The hash of the collateral contract's initialization code
+     * @custom:member uniqueHash The unique hash of the orbiter
      * @custom:member orbiterName Huamn friendly name for the orbiters
      */
-    struct DenebOrbiter {
-        bool status;
-        uint88 orbiterId;
-        IDenebOrbiter denebOrbiter;
-        string orbiterName;
-    }
-
-    /**
-     * @custom:struct Official record of all collateral and borrow deployer contracts, unique per dex
-     * @custom:member status Whether or not these orbiters are active and usable
-     * @custom:member orbiterId The ID for this pair of orbiters
-     * @custom:member denebOrbiter The address of the collateral deployer contract
-     * @custom:member orbiterName Huamn friendly name for the orbiters
-     */
-    struct AlbireoOrbiter {
+    struct Orbiter {
         bool status;
         uint88 orbiterId;
         IAlbireoOrbiter albireoOrbiter;
+        IDenebOrbiter denebOrbiter;
+        bytes32 borrowableInitCodeHash;
+        bytes32 collateralInitCodeHash;
+        bytes32 uniqueHash;
         string orbiterName;
     }
 
@@ -308,22 +319,6 @@ interface IHangar18 {
         uint96 orbiterId;
     }
 
-    struct Station {
-        bool launched;
-        uint88 stationId;
-        address borrowable;
-        LiquidityType liquidityType;
-        uint256 orbiterId;
-    }
-
-    enum LiquidityType {
-        VERY_LOW, // stables
-        LOW, // metastables
-        MEDIUM, // semi-volatiles
-        HIGH, // volatile
-        VERY_HIGH // exotic
-    }
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
@@ -331,24 +326,28 @@ interface IHangar18 {
      *  @param _orbiterId The ID of the orbiter pair
      *  @return status Whether or not these orbiters are active and usable
      *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
+     *  @return albireoOrbiter The address of the borrow deployer contract
      *  @return denebOrbiter The address of the collateral deployer contract
+     *  @return borrowableInitCodeHash The init code hash of the borrowable
+     *  @return collateralInitCodeHash The init code hash of the collateral
+     *  @return uniqueHash The keccak256 hash of collateralInitCodeHash and borrowableInitCodeHash
      *  @return orbiterName The name of the dex
      */
-    function allDenebOrbiters(
+    function allOrbiters(
         uint256 _orbiterId
-    ) external view returns (bool status, uint88 orbiterId, IDenebOrbiter denebOrbiter, string memory orbiterName);
-
-    /**
-     *  @notice Array of structs containing all orbiters deployed
-     *  @param _orbiterId The ID of the orbiter pair
-     *  @return status Whether or not these orbiters are active and usable
-     *  @return orbiterId The ID for these orbiters (ideally should be 1 per dex)
-     *  @return albireoOrbiter The address of the borrowable deployer contract
-     *  @return orbiterName The name of the dex
-     */
-    function allAlbireoOrbiters(
-        uint256 _orbiterId
-    ) external view returns (bool status, uint88 orbiterId, IAlbireoOrbiter albireoOrbiter, string memory orbiterName);
+    )
+        external
+        view
+        returns (
+            bool status,
+            uint88 orbiterId,
+            IAlbireoOrbiter albireoOrbiter,
+            IDenebOrbiter denebOrbiter,
+            bytes32 borrowableInitCodeHash,
+            bytes32 collateralInitCodeHash,
+            bytes32 uniqueHash,
+            string memory orbiterName
+        );
 
     /**
      *  @notice Array of LP Token pairs deployed
@@ -362,12 +361,6 @@ interface IHangar18 {
     function allShuttles(
         uint256 _shuttleId
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
-
-    function isOrbiter(address orbiter) external view returns (bool);
-
-    function allStations(
-        uint256 _stationId
-    ) external view returns (bool launched, uint88 stationId, address borrowable, LiquidityType liquidityType, uint256 orbiterId);
 
     /**
      *  @notice Official record of all lending pools deployed
@@ -383,11 +376,6 @@ interface IHangar18 {
         address _lpTokenPair,
         uint256 _orbiterId
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
-
-    function getStation(
-        LiquidityType _liquidityType,
-        uint256 _orbiterId
-    ) external view returns (bool launched, uint88 stationId, address borrowable, LiquidityType liquidityType, uint256 orbiterId);
 
     /**
      *  @return Human friendly name for this contract
@@ -430,99 +418,96 @@ interface IHangar18 {
     function daoReserves() external view returns (address);
 
     /**
-     *  @return pendingDaoReserves The address of the requested contract to be the new dao reserves
+     * @dev Returns the address of the contract to be the new DAO reserves.
+     * @return pendingDaoReserves The address of the requested contract to be the new DAO reserves.
      */
     function pendingDaoReserves() external view returns (address);
 
     /**
-     *  @return cygnusX1Vault The address of the CygnusDAO revenue vault
+     * @dev Returns the address of the CygnusDAO revenue vault.
+     * @return cygnusX1Vault The address of the CygnusDAO revenue vault.
      */
     function cygnusX1Vault() external view returns (address);
 
     /**
-     *  @return totalAlbireoOrbiters The total number of borrowable orbiters
+     * @dev Returns the total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter).
+     * @return orbitersDeployed The total number of orbiter pairs deployed.
      */
-    function totalAlbireoOrbiters() external view returns (uint256);
+    function orbitersDeployed() external view returns (uint256);
 
     /**
-     *  @return totalDenebOrbiters The total number of collateral orbiters
+     * @dev Returns the total number of shuttles deployed.
+     * @return shuttlesDeployed The total number of shuttles deployed.
      */
-    function totalDenebOrbiters() external view returns (uint256);
+    function shuttlesDeployed() external view returns (uint256);
 
     /**
-     *  @return shuttlesDeployed The total number of shuttles deployed
+     *  @dev Returns the chain ID
      */
-    function totalShuttles() external view returns (uint256);
+    function chainId() external view returns (uint256);
 
     /**
-     *  @return shuttlesDeployed The total number of borrowable pools deployed
+     * @dev Returns the borrowable TVL (Total Value Locked) in USD for a specific shuttle.
+     * @param shuttleId The ID of the shuttle for which the borrowable TVL is requested.
+     * @return The borrowable TVL in USD for the specified shuttle.
      */
-    function totalStations() external view returns (uint256);
+    function borrowableTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     *  @return totalNebulas The total amount of unique oracle logic (ie Balancer oracle, Univ2 oracle, Univ3, etc.)
+     * @dev Returns the collateral TVL (Total Value Locked) in USD for a specific shuttle.
+     * @param shuttleId The ID of the shuttle for which the collateral TVL is requested.
+     * @return The collateral TVL in USD for the specified shuttle.
      */
-    function totalNebulas() external view returns (uint256);
+    function collateralTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     *  @notice TVL of a specific borrowable station
-     *  @param stationId The station ID
-     *  @return totalUsd The total USD value of the borrowable contract for `stationId`
+     * @dev Returns the total TVL (Total Value Locked) in USD for a specific shuttle.
+     * @param shuttleId The ID of the shuttle for which the total TVL is requested.
+     * @return The total TVL in USD for the specified shuttle.
      */
-    function borrowableTvlUsd(uint256 stationId) external view returns (uint256 totalUsd);
+    function shuttleTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     *  @notice TVL of a specific collateral shuttle
-     *  @param shuttleId The lending pool ID
-     *  @return totalUsd The total USD value of this shuttle's collateral contract
+     * @dev Returns the USD value of the DAO Cyg LP reserves.
+     * @return The USD value of the DAO Cyg LP reserves.
      */
-    function collateralTvlUsd(uint256 shuttleId) external view returns (uint256 totalUsd);
+    function daoCygLPReservesUsd() external view returns (uint256);
 
     /**
-     *  @notice TVL of a shuttle in USD
-     *  @param shuttleId The lending pool ID
-     *  @return totalUsd The total USD value of this shuttle
+     * @dev Returns the USD value of the DAO Cyg USD reserves.
+     * @return The USD value of the DAO Cyg USD reserves.
      */
-    function shuttleTvlUsd(uint256 shuttleId) external view returns (uint256 totalUsd);
-
-    // ------------ Cygnus TVLs ------------------
+    function daoCygUsdReservesUsd() external view returns (uint256);
 
     /**
-     *  @return collateralTvlUsd The TVL of all collateral pools deployed, in USD
+     * @dev Returns the total USD value of CygnusDAO reserves.
+     * @return The total USD value of CygnusDAO reserves.
+     */
+    function cygnusTotalReservesUsd() external view returns (uint256);
+
+    /**
+     * @dev Returns the total amount borrowed in USD.
+     * @return The total amount borrowed in USD.
+     */
+    function totalBorrowsUsd() external view returns (uint256);
+
+    /**
+     * @dev Returns the total borrowable TVL (Total Value Locked) in USD for all shuttles.
+     * @return The total borrowable TVL in USD.
+     */
+    function allBorrowablesTvlUsd() external view returns (uint256);
+
+    /**
+     * @dev Returns the total collateral TVL (Total Value Locked) in USD for all shuttles.
+     * @return The total collateral TVL in USD.
      */
     function allCollateralsTvlUsd() external view returns (uint256);
 
     /**
-     *  @return borrowableTvlUsd The TVL of all borrowable pools deployed, in USD
-     */
-    function allBorrowablesTvlUsd() external view returns (uint256);
-
-    // ------------ Cygnus TVL ------------------
-
-    /**
-     *  @return cygnusTvlUsd The TVL of Cygnus on this chain, in USD
+     * @dev Returns the total TVL (Total Value Locked) in USD for CygnusDAO.
+     * @return The total TVL in USD for CygnusDAO.
      */
     function cygnusTvlUsd() external view returns (uint256);
-
-    /**
-     *  @return cygnusTotalBorrowsUsd The total Borrows of Cygnus on this chain, in USD
-     */
-    function cygnusTotalBorrowsUsd() external view returns (uint256);
-
-    /**
-     *  @return daoBorrowableReservesUsd The USD value of the total CygUSD owned by the DAO
-     */
-    function daoBorrowableReservesUsd() external view returns (uint256);
-
-    /**
-     *  @return daoCollateralReservesUsd The USD value of the total CygLP owned by the DAO
-     */
-    function daoCollateralReservesUsd() external view returns (uint256);
-
-    /**
-     *  @return cygnusTotalReservesUsd The USD value of the DAO's total reserves (borrowable + collateral)
-     */
-    function cygnusTotalReservesUsd() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -532,39 +517,38 @@ interface IHangar18 {
 
     /**
      *  @notice Admin 👽
+     *  @notice Turns off orbiters making them not able for deployment of pools
+     *
+     *  @param orbiterId The ID of the orbiter pairs we want to switch the status of
+     *
+     *  @custom:security only-admin
+     */
+    function switchOrbiterStatus(uint256 orbiterId) external;
+
+    /**
+     *  @notice Admin 👽
      *  @notice Initializes both Borrow arms and the collateral arm
      *
      *  @param lpTokenPair The address of the underlying LP Token this pool is for
      *  @param orbiterId The ID of the orbiters we want to deploy to (= dex Id)
+     *  @return borrowable The address of the Cygnus borrow contract for this pool
      *  @return collateral The address of the Cygnus collateral contract for both borrow tokens
      *
      *  @custom:security non-reentrant only-admin 👽
      */
-    function deployShuttle(address lpTokenPair, uint256 orbiterId, uint256 stationId) external returns (address collateral);
-
-    function deployStation(LiquidityType liquidityType, uint256 orbiterId) external returns (address borrowable);
+    function deployShuttle(address lpTokenPair, uint256 orbiterId) external returns (address borrowable, address collateral);
 
     /**
      *  @notice Admin 👽
      *  @notice Sets the new orbiters to deploy collateral and borrow contracts and stores orbiters in storage
      *
      *  @param name The name of the strategy OR the dex these orbiters are for
+     *  @param albireoOrbiter the address of this orbiter's borrow deployer
      *  @param denebOrbiter The address of this orbiter's collateral deployer
      *
      *  @custom:security non-reentrant only-admin
      */
-    function setDenebOrbiter(string calldata name, address denebOrbiter) external;
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Sets the new orbiters to deploy collateral and borrow contracts and stores orbiters in storage
-     *
-     *  @param name The name of the strategy OR the dex these orbiters are for
-     *  @param denebOrbiter The address of this orbiter's collateral deployer
-     *
-     *  @custom:security non-reentrant only-admin
-     */
-    function setAlbireoOrbiter(string calldata name, address denebOrbiter) external;
+    function initializeOrbiter(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
 
     /**
      *  @notice Admin 👽

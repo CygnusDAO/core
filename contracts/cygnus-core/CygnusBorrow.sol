@@ -127,11 +127,11 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *          be tracked at core and updated on any interaction.
      */
     function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
-        // Check for zero address (in case of mints) - twinstar for borrowables is always the zero address
-        if (from != address(0)) _trackRewards(from, balanceOf(from), twinstar);
+        // Check for zero address (in case of mints)
+        if (from != address(0)) trackLender(from);
 
         // Check for zero address (in case of burns)
-        if (to != address(0)) _trackRewards(to, balanceOf(to), twinstar);
+        if (to != address(0)) trackLender(to);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -142,15 +142,11 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @custom:security non-reentrant
      */
     function borrow(
-        address collateral,
         address borrower,
         address receiver,
         uint256 borrowAmount,
         bytes calldata data
     ) external override nonReentrant update returns (uint256 liquidity) {
-        /// @custom:error InvalidCollateral
-        if (!isCollateral[collateral]) revert CygnusBorrow__InvalidCollateral();
-
         // Check if msg.sender can borrow on behalf of borrower, we use the same spend allowance as redeem
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
@@ -183,14 +179,14 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         //            there is no rounding errors.
 
         // Update internal record for `borrower` with borrow and repay amount
-        uint256 accountBorrows = _updateBorrow(collateral, borrower, borrowAmount, repayAmount);
+        uint256 accountBorrows = _updateBorrow(borrower, borrowAmount, repayAmount);
 
         // ────────── 5. Do checks for borrow and repay transactions
         // Borrow transaction. Check that the borrower has sufficient collateral after borrowing `borrowAmount` by
         // passing `accountBorrows` to the collateral contract
         if (borrowAmount > repayAmount) {
             // Check borrower's current liquidity/shortfall
-            bool userCanBorrow = ICygnusCollateral(collateral).canBorrow(borrower, accountBorrows);
+            bool userCanBorrow = ICygnusCollateral(twinstar).canBorrow(borrower, accountBorrows);
 
             /// @custom:error InsufficientLiquidity Avoid if borrower has insufficient liquidity for this amount
             if (!userCanBorrow) revert CygnusBorrow__InsufficientLiquidity();
@@ -215,18 +211,14 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
      *  @custom:security non-reentrant
      */
     function liquidate(
-        address collateral,
         address borrower,
         address receiver,
         uint256 repayAmount,
         bytes calldata data
     ) external override nonReentrant update returns (uint256 amountUsd) {
-        /// @custom:error InvalidCollateral
-        if (!isCollateral[collateral]) revert CygnusBorrow__InvalidCollateral();
-
         // ────────── 1. Get borrower's USD debt
         // Latest borrow balance
-        (, uint256 borrowBalance) = getBorrowBalance(collateral, borrower);
+        (, uint256 borrowBalance) = getBorrowBalance(borrower);
 
         // Adjust declared amount to max liquidatable
         uint256 actualRepayAmount = borrowBalance < repayAmount ? borrowBalance : repayAmount;
@@ -235,7 +227,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // CygLP = (actualRepayAmount * liq. incentive). Reverts at Collateral if:
         // - `actualRepayAmount` is 0.
         // - `borrower`'s position is not in liquidatable state
-        uint256 cygLPAmount = ICygnusCollateral(collateral).seizeCygLP(receiver, borrower, actualRepayAmount);
+        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, actualRepayAmount);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
         // Pass call to router
@@ -256,7 +248,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
         // ────────── 5. Update borrow internally with 0 borrow amount
         // Pass to CygnusBorrowModel
-        _updateBorrow(collateral, borrower, 0, amountUsd);
+        _updateBorrow(borrower, 0, amountUsd);
 
         // ────────── 6. Deposit in strategy
         // Deposit underlying in strategy

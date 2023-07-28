@@ -43,15 +43,15 @@ import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 // Libraries
 import {CygnusPoolAddress} from "./libraries/CygnusPoolAddress.sol";
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
-import {LibString} from "./libraries/LibString.sol";
 
 // Interfaces
 import {ICygnusNebulaRegistry} from "./interfaces/ICygnusNebulaRegistry.sol";
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+
+// For TVLs
 import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
-import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
 
 /**
  *  @title  Hangar18
@@ -98,17 +98,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    DenebOrbiter[] public override allDenebOrbiters;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    AlbireoOrbiter[] public override allAlbireoOrbiters;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    Station[] public override allStations;
+    Orbiter[] public override allOrbiters;
 
     /**
      *  @inheritdoc IHangar18
@@ -118,23 +108,12 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    mapping(address => bool) public override isOrbiter;
+    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles; // LP Address => Orbiter ID = Lending Pool
 
     /**
      *  @inheritdoc IHangar18
      */
-    mapping(LiquidityType => mapping(uint256 => Station)) public getStation; // Type -> Orbiter Id = Station
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles; // LP -> Orbiter Id = Shuttle
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    string public override name =
-        string.concat("Cygnus: Hangar18 - Lending Pool Deployer #", LibString.toString(block.chainid));
+    string public override name = "Cygnus: Hangar18";
 
     /**
      *  @inheritdoc IHangar18
@@ -193,13 +172,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @param _nativeToken The address of this chain's native token
      *  @param _registry The Cygnus oracle registry which keeps track of all initialized LP oracles
      */
-    constructor(
-        address _admin,
-        address _daoReserves,
-        address _usd,
-        address _nativeToken,
-        ICygnusNebulaRegistry _registry
-    ) {
+    constructor(address _admin, address _daoReserves, address _usd, address _nativeToken, ICygnusNebulaRegistry _registry) {
         // Assign cygnus admin, has access to special functions
         admin = _admin;
 
@@ -218,7 +191,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         /// @custom:event NewCygnusAdmin
         emit NewCygnusAdmin(address(0), _admin);
 
-        /// @custom:event DaoReserves
+        /// @custom:event NewDaoReserves
         emit NewDaoReserves(address(0), _daoReserves);
     }
 
@@ -250,19 +223,42 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         }
     }
 
-    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+    /**
+     *  @notice Checks if the same pair of collateral & borrowable deployers and oracle we are setting already exist
+     *  @param uniqueHash The keccak256 hash of the borrowableInitCodeHash, collateralInitCodeHash and oracle address
+     *  @param orbitersLength How many orbiter pairs we have deployed
+     */
+    function checkOrbitersPrivate(bytes32 uniqueHash, uint256 orbitersLength) private view {
+        // Load orbiter to memory
+        Orbiter[] memory orbiter = allOrbiters;
+
+        // Loop through all orbiters
+        for (uint256 i = 0; i < orbitersLength; i++) {
+            /// @custom:error OrbiterAlreadySet
+            if (uniqueHash == orbiter[i].uniqueHash) revert Hangar18__OrbiterAlreadySet();
+        }
+    }
+
+    /*  ─────────────────────────────────────────────── Public ──────────────────────────────────────────────── */
 
     /**
      *  @inheritdoc IHangar18
      */
-    function borrowableTvlUsd(uint256 stationId) public view override returns (uint256 totalUsd) {
-        // Get shuttle`
-        Station memory station = allStations[stationId];
+    function chainId() public view override returns (uint256) {
+        return block.chainid;
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function borrowableTvlUsd(uint256 shuttleId) public view override returns (uint256 totalUsd) {
+        // Get shuttleId's borrowable
+        address borrowable = allShuttles[shuttleId].borrowable;
         // Borrows
-        uint256 totalBorrows = ICygnusBorrow(station.borrowable).totalBorrows();
+        uint256 totalBorrows = ICygnusBorrow(borrowable).totalBorrows();
         // Current balance of USD
-        uint256 totalBalance = ICygnusCollateral(station.borrowable).totalBalance();
-        // Total USD value of pool
+        uint256 totalBalance = ICygnusBorrow(borrowable).totalBalance();
+        // Total USD value of pool = borrows + balance
         totalUsd = totalBorrows + totalBalance;
     }
 
@@ -270,46 +266,41 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      */
     function collateralTvlUsd(uint256 shuttleId) public view override returns (uint256 totalUsd) {
-        // Array of pools deployed
-        Shuttle memory shuttle = allShuttles[shuttleId];
+        // Get shuttleId's collateral
+        address collateral = allShuttles[shuttleId].collateral;
         // LP Price
-        uint256 price = ICygnusCollateral(shuttle.collateral).getLPTokenPrice();
+        uint256 price = ICygnusCollateral(collateral).getLPTokenPrice();
         // Total LP assets
-        uint256 totalBalance = ICygnusCollateral(shuttle.collateral).totalBalance();
+        uint256 totalBalance = ICygnusCollateral(collateral).totalBalance();
         // TVL = Price of LP * Balance of LP
         totalUsd = totalBalance.mulWad(price); // Denom in USDC
     }
 
     /**
-     *  @notice Duplicated TVL
      *  @inheritdoc IHangar18
      */
-    function shuttleTvlUsd(uint256 shuttleId) external view returns (uint256 totalUsd) {
-        // Array of pools deployed
-        Shuttle memory shuttle = allShuttles[shuttleId];
-        // Total pools deployed
-        address borrowable = ICygnusCollateral(shuttle.collateral).borrowable();
-        // Station id for this collateral`s borrowable
-        uint256 stationId = ICygnusBorrow(borrowable).stationId();
-        // TVL of a specific lending pool
-        return borrowableTvlUsd(stationId) + collateralTvlUsd(shuttleId);
+    function shuttleTvlUsd(uint256 shuttleId) public view override returns (uint256 totalUsd) {
+        // Return TVL of a single shuttle
+        return borrowableTvlUsd(shuttleId) + collateralTvlUsd(shuttleId);
     }
 
     /**
      *  @inheritdoc IHangar18
      */
     function allBorrowablesTvlUsd() public view override returns (uint256 totalUsd) {
-        // Loop through each pool deployed, get borrowable and add to total TVL
-        for (uint256 i = 0; i < allStations.length; i++) totalUsd += borrowableTvlUsd(i);
+        // Loop through all shuttles and accumulate the TVL of each borrowable
+        for (uint256 i = 0; i < allShuttles.length; i++) totalUsd += borrowableTvlUsd(i);
     }
 
-    function allCollateralsTvlUsd() public view returns (uint256 totalUsd) {
-        // Add collateral
+    /**
+     *  @inheritdoc IHangar18
+     */
+    function allCollateralsTvlUsd() public view override returns (uint256 totalUsd) {
+        // Loop through all shuttles and accumulate the TVL of each collateral
         for (uint256 i = 0; i < allShuttles.length; i++) totalUsd += collateralTvlUsd(i);
     }
 
     /**
-     *  @notice De-duplicated TVL
      *  @inheritdoc IHangar18
      */
     function cygnusTvlUsd() public view override returns (uint256) {
@@ -320,15 +311,15 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function daoBorrowableReservesUsd() public view override returns (uint256 reserves) {
+    function daoCygUsdReservesUsd() public view override returns (uint256 reserves) {
         // Array of pools deployed
-        Station[] memory stations = allStations;
+        Shuttle[] memory shuttles = allShuttles;
         // Total pools deployed
-        uint256 poolsDeployed = stations.length;
+        uint256 poolsDeployed = shuttles.length;
         // Loop through each pool deployed, get borrowable and add to total TVL
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s borrowable
-            address borrowable = stations[i].borrowable;
+            address borrowable = shuttles[i].borrowable;
             // Total reserves owned by the DAO
             uint256 cygUsdBalance = ICygnusBorrow(borrowable).balanceOf(daoReserves);
             // current exchange rate of CygUSD to USD
@@ -341,7 +332,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function daoCollateralReservesUsd() public view override returns (uint256 reserves) {
+    function daoCygLPReservesUsd() public view override returns (uint256 reserves) {
         // Array of pools deployed
         Shuttle[] memory shuttles = allShuttles;
         // Total pools deployed
@@ -352,7 +343,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
             // This pool`s collateral
             address collateral = shuttles[i].collateral;
             // Position in USD
-            (, , , , , uint256 positionUsd, ) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
+            (, , , , , uint256 positionUsd, , , ,) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
             // Add to reserves
             reserves += positionUsd;
         }
@@ -363,23 +354,23 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      */
     function cygnusTotalReservesUsd() public view override returns (uint256) {
         // Total reserves USD
-        return daoBorrowableReservesUsd() + daoCollateralReservesUsd();
+        return daoCygUsdReservesUsd() + daoCygLPReservesUsd();
     }
 
     /**
      *  @inheritdoc IHangar18
      */
-    function cygnusTotalBorrowsUsd() public view override returns (uint256 totalBorrows) {
+    function totalBorrowsUsd() public view override returns (uint256 totalUsd) {
         // Array of pools deployed
-        Station[] memory stations = allStations;
+        Shuttle[] memory shuttles = allShuttles;
         // Total pools deployed
-        uint256 poolsDeployed = stations.length;
+        uint256 poolsDeployed = shuttles.length;
         // Loop through each pool deployed, get borrowable and add to total TVL
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s borrowable
-            address borrowable = stations[i].borrowable;
-            // Total stablecoin borrows
-            totalBorrows += ICygnusBorrow(borrowable).totalBorrows();
+            address borrowable = shuttles[i].borrowable;
+            // Current total borrows
+            totalUsd += ICygnusBorrow(borrowable).totalBorrows();
         }
     }
 
@@ -388,41 +379,17 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function totalDenebOrbiters() external view override returns (uint256) {
-        // Return how many collateral deployers we have
-        return allDenebOrbiters.length;
+    function orbitersDeployed() external view override returns (uint256) {
+        // Return how many borrow/collateral orbiters this contract has
+        return allOrbiters.length;
     }
 
     /**
      *  @inheritdoc IHangar18
      */
-    function totalAlbireoOrbiters() external view override returns (uint256) {
-        // Return how many borrowable deployers we have
-        return allAlbireoOrbiters.length;
-    }
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    function totalShuttles() external view override returns (uint256) {
+    function shuttlesDeployed() external view override returns (uint256) {
         // Return how many shuttles this contract has launched
         return allShuttles.length;
-    }
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    function totalStations() external view override returns (uint256) {
-        // Return how many borrowable lending pools we have
-        return allStations.length;
-    }
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    function totalNebulas() external view override returns (uint256) {
-        // Return unique nebulas
-        return nebulaRegistry.totalNebulas();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -439,8 +406,11 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @return shuttle Struct of the lending pool being deployed
      */
     function boardShuttlePrivate(address lpTokenPair, uint256 orbiterId) private returns (Shuttle storage) {
+        // Get the ID for this LP token's shuttle
+        bool deployed = getShuttles[lpTokenPair][orbiterId].launched;
+
         /// @custom:error ShuttleAlreadyDeployed
-        if (getShuttles[lpTokenPair][orbiterId].launched) revert Hangar18__ShuttleAlreadyDeployed();
+        if (deployed) revert Hangar18__ShuttleAlreadyDeployed();
 
         // Create shuttle
         return
@@ -453,52 +423,37 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
             );
     }
 
-    /**
-     *  @notice Creates a record of each station deployed by this contract
-     *  @dev Prepares Station for deployment and stores the orbiter used for this station
-     *  @param liquidityType Enum representing the type of shuttles this station supports
-     *  @param orbiterId The orbiter ID used to deploy this station
-     *  @return station Struct of the station beign deployed
-     */
-    function boardStationPrivate(LiquidityType liquidityType, uint256 orbiterId) internal returns (Station storage) {
-        /// @custom:error StationAlreadyDeployed Avoid deploying the same station twice
-        if (getStation[liquidityType][orbiterId].launched) revert Hangar18__StationAlreadyDeployed();
-
-        // Return station
-        return
-            getStation[liquidityType][orbiterId] = Station(
-                false, // Set to false until call succeeds
-                uint88(allStations.length), // Lending pool ID
-                address(0), // Zero Address until deployment succeds
-                liquidityType, // Liquidity type
-                orbiterId
-            );
-    }
-
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  Phase 1: Load orbiter
-     *  Phase 2: Create shuttle struct, reverts if LP has already been launched with the same orbiter
-     *  Phase 3: Check that we have an oracle enabled for the LP
-     *  Phase 4: Deploy Collateral
-     *  Phase 5: Initialize
+     *  Phase1: Orbiter check
+     *            - Orbiters (deployers) are active and usable
+     *  Phase2: Board shuttle check
+     *            - No shuttle with the same LP Token AND Orbiter has been deployed before
+     *  Phase4: Price Oracle check:
+     *            - Assert price oracle exists for this LP Token pair
+     *  Phase3: Deploy Collateral and Borrow contracts
+     *            - Calculate address of the collateral and deploy borrow contract with calculated collateral address
+     *            - Deploy the collateral contract with the deployed borrow address
+     *            - Check that collateral contract address is equal to the calculated collateral address, else revert
+     *  Phase5: Initialize shuttle
+     *            - Initialize and store record of this shuttle in this contract
      *
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
     function deployShuttle(
         address lpTokenPair,
-        uint256 denebId,
-        uint256 stationId
-    ) external override cygnusAdmin returns (address collateral) {
+        uint256 orbiterId
+    ) external override cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
-        // Load orbiter to storage for gas savings (throws if orbiter doesn't exist)
-        DenebOrbiter storage orbiter = allDenebOrbiters[denebId];
+        // Load orbiter to storage for gas savings (throws if not set)
+        Orbiter storage orbiter = allOrbiters[orbiterId];
 
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
-        Shuttle storage shuttle = boardShuttlePrivate(lpTokenPair, denebId);
+        // Load shuttle to storage to store if the call succeeds
+        Shuttle storage shuttle = boardShuttlePrivate(lpTokenPair, orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
         // Check that oracle has been initialized in the registry and get the nebula address
@@ -508,11 +463,22 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         if (nebula == address(0)) revert Hangar18__LiquidityTokenNotSupported();
 
         //  ─────────────────────────────── Phase 4 ───────────────────────────────
-        // Get station, throws if it doesnt exist
-        address borrowable = allStations[stationId].borrowable;
+        // Get the pre-determined collateral address for this LP Token (check CygnusPoolAddres library)
+        address create2Collateral = CygnusPoolAddress.getCollateralContract(
+            lpTokenPair,
+            address(this),
+            address(orbiter.denebOrbiter),
+            orbiter.collateralInitCodeHash
+        );
+
+        // Deploy borrow contract
+        borrowable = orbiter.albireoOrbiter.deployAlbireo(usd, create2Collateral, nebula, shuttle.shuttleId);
 
         // Deploy collateral contract
         collateral = orbiter.denebOrbiter.deployDeneb(lpTokenPair, borrowable, nebula, shuttle.shuttleId);
+
+        /// @custom:error CollateralAddressMismatch
+        if (collateral != create2Collateral) revert Hangar18__CollateralAddressMismatch();
 
         //  ─────────────────────────────── Phase 5 ───────────────────────────────
         // Save addresses to storage and mark as launched. This LP Token with orbiter ID cannot be redeployed
@@ -527,97 +493,62 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Push the lending pool struct to the object array
         allShuttles.push(shuttle);
 
-        // Add collateral to the borrowable
-        ICygnusBorrow(borrowable).setCollateral(collateral);
-
-        /// @custom:event NewShuttle
-        emit NewShuttle(lpTokenPair, denebId, shuttle.shuttleId, borrowable, collateral);
+        /// @custom:event NewShuttleLaunched
+        emit NewShuttle(lpTokenPair, orbiterId, shuttle.shuttleId, shuttle.borrowable, shuttle.collateral);
     }
 
     /**
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function deployStation(
-        LiquidityType liquidityType,
-        uint256 albireoId
-    ) external override cygnusAdmin returns (address borrowable) {
-        // Load orbiter to storage for gas savings (throws if orbiter doesn't exist)
-        AlbireoOrbiter storage orbiter = allAlbireoOrbiters[albireoId];
+    function initializeOrbiter(string memory _name, IAlbireoOrbiter albireo, IDenebOrbiter deneb) external override cygnusAdmin {
+        // Borrowable init code hash
+        bytes32 borrowableInitCodeHash = albireo.borrowableInitCodeHash();
 
-        // Prepare station for deployment, reverts if station already exists for this liquidity type
-        Station storage station = boardStationPrivate(liquidityType, albireoId);
+        // Collateral init code hash
+        bytes32 collateralInitCodeHash = deneb.collateralInitCodeHash();
 
-        // Deploy station with liquidity type and no twin star (collaterals get assigned later)
-        borrowable = orbiter.albireoOrbiter.deployAlbireo(usd, address(0), address(nebulaRegistry), station.stationId);
+        // Unique hash of both orbiters by hashing their respective init code hash
+        bytes32 uniqueHash = keccak256(abi.encode(borrowableInitCodeHash, collateralInitCodeHash));
 
-        // Save addresses to storage and mark as launched. This liquidity type with orbiter ID cannot be redeployed
-        station.launched = true;
+        // Total orbiters
+        uint256 totalOrbiters = allOrbiters.length;
 
-        // Assign borrowable to Station struct
-        station.borrowable = borrowable;
-
-        // Push to station array
-        allStations.push(station);
-
-        /// @custom:event NewStation
-        emit NewStation(liquidityType, albireoId, station.stationId, borrowable);
-    }
-
-    /**
-     *  @inheritdoc IHangar18
-     *  @custom:security only-admin 👽
-     */
-    function setDenebOrbiter(string calldata _name, address deneb) external override cygnusAdmin {
-        /// @custom:error OrbiterAlreadySet
-        if (isOrbiter[deneb]) revert Hangar18__OrbiterAlreadySet();
-
-        // Total collateral orbiters
-        uint256 totalOrbiters = allDenebOrbiters.length;
+        // Check if we already initialized these orbiter pair, reverts if we have
+        checkOrbitersPrivate(uniqueHash, totalOrbiters);
 
         // Has not been initialized yet, create struct and push to orbiter array
-        allDenebOrbiters.push(
-            DenebOrbiter({
-                status: true, // Cant be set again
-                orbiterId: uint88(totalOrbiters), // Collateral Orbiter ID
-                denebOrbiter: IDenebOrbiter(deneb), // To deploy contracts
-                orbiterName: _name // Friendly name (ie. 'Balancer Weighted Pools')
+        allOrbiters.push(
+            Orbiter({
+                orbiterId: uint88(totalOrbiters), // Orbiter ID
+                orbiterName: _name, // Friendly name
+                albireoOrbiter: albireo, // Borrowable deployer
+                denebOrbiter: deneb, // Collateral deployer
+                borrowableInitCodeHash: borrowableInitCodeHash, // Borrowable code hash
+                collateralInitCodeHash: collateralInitCodeHash, // Collateral code hash
+                uniqueHash: uniqueHash, // Unique bytes32 orbiter id
+                status: true // Mark as true
             })
         );
 
-        // Cant be set again
-        isOrbiter[deneb] = true;
-
         /// @custom:event InitializeOrbiters
-        emit NewOrbiter(true, totalOrbiters, deneb, _name);
+        emit InitializeOrbiters(true, totalOrbiters, albireo, deneb, uniqueHash, _name);
     }
 
     /**
+     *  @notice Reverts future deployments with disabled orbiter
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function setAlbireoOrbiter(string calldata _name, address albireo) external override cygnusAdmin {
-        /// @custom:error OrbiterAlreadySet
-        if (isOrbiter[albireo]) revert Hangar18__OrbiterAlreadySet();
+    function switchOrbiterStatus(uint256 orbiterId) external override cygnusAdmin {
+        // Get the orbiter by the ID (throws if not set)
+        IHangar18.Orbiter storage orbiter = allOrbiters[orbiterId];
 
-        // Total borrowable orbiters
-        uint256 totalOrbiters = allAlbireoOrbiters.length;
+        // Switch orbiter status. If currently active then future deployments with this orbiter will revert
+        orbiter.status = !orbiter.status;
 
-        // Has not been initialized yet, create struct and push to albireo orbiter array
-        allAlbireoOrbiters.push(
-            AlbireoOrbiter({
-                status: true,
-                orbiterId: uint88(totalOrbiters), // Orbiter ID
-                albireoOrbiter: IAlbireoOrbiter(albireo), // Borrowable deployer
-                orbiterName: _name // Friendly name (ie STARGATE POOLS, SONNE POOLS, etc)
-            })
-        );
-
-        // Cant be set again
-        isOrbiter[albireo] = true;
-
-        /// @custom:event InitializeOrbiters
-        emit NewOrbiter(true, totalOrbiters, albireo, _name);
+        /// @custom:event SwitchOrbiterStatus
+        emit SwitchOrbiterStatus(orbiter.status, orbiter.orbiterId, orbiter.albireoOrbiter, orbiter.denebOrbiter, orbiter.orbiterName);
     }
 
     /**
@@ -694,7 +625,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Gas refund
         delete pendingDaoReserves;
 
-        /// @custom:event DaoReserves
+        /// @custom:event NewDaoReserves
         emit NewDaoReserves(oldDaoReserves, daoReserves);
     }
 

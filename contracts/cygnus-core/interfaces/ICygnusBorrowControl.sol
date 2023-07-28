@@ -112,29 +112,9 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Returns whether or not an address is a collateral for this borrowable
+     *  @return collateral The address of the collateral
      */
-    function isCollateral(address collateral) external view returns (bool);
-
-    /**
-     *  @notice Returns a collateral at a given index
-     */
-    function allCollaterals(uint256 id) external view returns (address);
-
-    /**
-     *  @notice Returns this station's id
-     */
-    function stationId() external view returns (uint256);
-
-    /**
-     *  @notice Total collaterals length
-     */
-    function totalCollaterals() external view returns (uint256);
-
-    /**
-     *  @return collaterals Returns the whole array of all supported collaterals
-     */
-    function collaterals() external view returns (address[] memory);
+    function collateral() external view returns (address);
 
     /**
      *  @return pillarsOfCreation Address of the contract that rewards both borrowers and lenders in CYG
@@ -202,6 +182,4 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @custom:security only-admin
      */
     function setPillarsOfCreation(address newPillars) external;
-
-    function setCollateral(address collateral) external;
 }

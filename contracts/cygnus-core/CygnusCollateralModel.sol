@@ -75,21 +75,15 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Collateral Deposited * LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
-        // Adjust to this lending pool's current debt ratio parameter
-        uint256 adjustedCollateralInUsd = collateralInUsd.mulWad(debtRatio);
-
-        // If borrows is 0 then return collateral by liq params - Max liquidity
-        if (borrowedAmount == 0) return (adjustedCollateralInUsd.divWad(liquidationIncentive + liquidationFee), 0);
-
-        // Adjust borrowed admount with liquidation incentive, rounding up
-        uint256 collateralNeededInUsd = borrowedAmount.mulWadUp(liquidationIncentive + liquidationFee);
+        // Adjust the collateral by the pool`s debt ratio and liquidation incentives to get the max borrowed amount
+        uint256 maxLiquidity = collateralInUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee);
 
         // Never underflows
         unchecked {
             // If account has collateral available to borrow against, return liquidity and 0 shortfall
-            if (adjustedCollateralInUsd >= collateralNeededInUsd) return (adjustedCollateralInUsd - collateralNeededInUsd, 0);
+            if (maxLiquidity >= borrowedAmount) return (maxLiquidity - borrowedAmount, 0);
             // else, return 0 liquidity and the account's shortfall, position can be liquidated
-            else return (0, collateralNeededInUsd - adjustedCollateralInUsd);
+            else return (0, borrowedAmount - maxLiquidity);
         }
     }
 
@@ -109,7 +103,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         else if (borrower == address(this)) revert CygnusCollateralModel__BorrowerCantBeCollateral();
 
         // Check if called externally or from borrowable. If called externally then borrowedAmount is always MaxUint256
-        if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
+        if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
         uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
@@ -153,7 +147,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         uint256 amountCollateral = finalBalance.mulWad(exchangeRate());
 
         // Get borrower's borrow balance from borrowable contract
-        (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
+        (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the LP price and calculate the needed collateral
         (, uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
@@ -199,14 +193,17 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
             uint256 price,
             uint256 rate,
             uint256 positionUsd,
-            uint256 health
+            uint256 positionLp,
+            uint256 health,
+            uint256 liquidity,
+            uint256 shortfall
         )
     {
         // Collateral balance of the borrower (CygLP)
         cygLPBalance = balanceOf(borrower);
 
         // The original borrowed amount without interest and the current owed amount
-        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(address(this), borrower);
+        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // The LP Token price
         price = getLPTokenPrice();
@@ -218,11 +215,17 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Position in USD = LP Tokens balance * LP Token Price
         positionUsd = cygLPBalance.mulWad(rate).mulWad(price);
 
+        // LP tokens owned
+        positionLp = cygLPBalance.mulWad(rate);
+
         // Health = (Borrow Balance * Liquidation Penalty) / (Collateral in USD * Debt Ratio)
         // Adjust borrowed admount with liquidation penalty, rounding up
         uint256 collateralNeededInUsd = borrowBalance.mulWadUp(liquidationIncentive + liquidationFee);
 
         // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
         health = positionUsd == 0 ? 0 : collateralNeededInUsd.divWad(positionUsd.mulWad(debtRatio));
+
+        // Liquidity and shortfall
+        (liquidity, shortfall) = _accountLiquidity(borrower, type(uint256).max);
     }
 }

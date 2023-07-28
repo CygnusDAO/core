@@ -69,7 +69,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /**
      *  @notice Internal snapshot of each borrower. To get the principal and current owed amount use `getBorrowBalance(account)`
      */
-    mapping(address => mapping(address => BorrowSnapshot)) internal borrowBalances;
+    mapping(address => BorrowSnapshot) internal borrowBalances;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -162,14 +162,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @dev It is used by CygnusCollateral contract to check a borrower's position
      *  @inheritdoc ICygnusBorrowModel
      */
-    function getBorrowBalance(
-        address collateral,
-        address borrower
-    ) public view override returns (uint256 principal, uint256 borrowBalance) {
+    function getBorrowBalance(address borrower) public view override returns (uint256 principal, uint256 borrowBalance) {
         // Load user struct to storage (gas savings when called from Collateral.sol)
-        BorrowSnapshot storage borrowSnapshot = borrowBalances[collateral][borrower];
+        BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
-        // If interestIndex = 0 then borrowBalance is 0
+        // If interestIndex = 0 then user has no borrows
         if (borrowSnapshot.interestIndex == 0) return (0, 0);
 
         // The original loaned amount without interest accruals
@@ -212,6 +209,28 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         return util.mulWad(rateToPool);
     }
 
+    /**
+     *  @inheritdoc ICygnusBorrowModel
+     */
+    function getLenderPosition(address lender) external view returns (uint256 cygUsdBalance, uint256 rate, uint256 positionUsd) {
+        // CygUSD balance
+        cygUsdBalance = balanceOf(lender);
+
+        // Exchange Rate between CygUSD and USD
+        rate = exchangeRate();
+
+        // Position in USD = CygUSD balance * Exchange Rate
+        positionUsd = cygUsdBalance.mulWad(rate);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowModel
+     */
+    function getDenominationPrice() external view override returns (uint256) {
+        // Return price of the denom token
+        return nebula.denominationTokenPrice();
+    }
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             6. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -235,6 +254,20 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
             // Mint to Hangar18's latest `daoReserves`
             _mint(daoReserves, newReserves);
         }
+    }
+
+    /**
+     *  @notice Track borrows and lending rewards
+     *  @param account The address of the lender or borrower
+     *  @param balance Record of this borrower's total borrows up to this point
+     *  @param collateral Whether the position is a lend or borrow position
+     */
+    function trackRewardsPrivate(address account, uint256 balance, address collateral) internal {
+        // Latest pillars of creation address
+        address rewarder = pillarsOfCreation;
+
+        // If pillars of creation is set then track reward
+        if (rewarder != address(0)) IPillarsOfCreation(rewarder).trackRewards(account, balance, collateral);
     }
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
@@ -311,14 +344,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      * @param repayAmount The amount of tokens being repaid by the borrower.
      * @return accountBorrows The borrower's updated borrow balance
      */
-    function _updateBorrow(
-        address collateral,
-        address borrower,
-        uint256 borrowAmount,
-        uint256 repayAmount
-    ) internal returns (uint256 accountBorrows) {
+    function _updateBorrow(address borrower, uint256 borrowAmount, uint256 repayAmount) internal returns (uint256 accountBorrows) {
         // Get the borrower's current borrow balance
-        (, uint256 borrowBalance) = getBorrowBalance(collateral, borrower);
+        (, uint256 borrowBalance) = getBorrowBalance(borrower);
 
         // If the borrow amount is equal to the repay amount, return the current borrow balance
         if (borrowAmount == repayAmount) return borrowBalance;
@@ -327,7 +355,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 borrowIndexStored = borrowIndex;
 
         // Get the borrower's current borrow balance and borrow index
-        BorrowSnapshot storage borrowSnapshot = borrowBalances[collateral][borrower];
+        BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
 
         // Increase the borrower's borrow balance if the borrow amount is greater than the repay amount
         if (borrowAmount > repayAmount) {
@@ -389,21 +417,21 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         }
 
         // Track borrower
-        _trackRewards(borrower, borrowSnapshot.principal, collateral);
+        trackRewardsPrivate(borrower, borrowSnapshot.principal, twinstar);
     }
 
-    /**
-     *  @notice Track borrows and lending rewards
-     *  @param account The address of the lender or borrower
-     *  @param balance Record of this borrower's total borrows up to this point
-     *  @param collateral Whether the position is a lend or borrow position
-     */
-    function _trackRewards(address account, uint256 balance, address collateral) internal {
-        // Latest pillars of creation address
-        address rewarder = pillarsOfCreation;
+    /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-        // If pillars of creation is set then track reward
-        if (rewarder != address(0)) IPillarsOfCreation(rewarder).trackRewards(account, balance, collateral);
+    /**
+     *  @inheritdoc ICygnusBorrowModel
+     */
+    function trackLender(address lender) public override {
+        // Get latest CygUSD balance
+        uint256 balance = balanceOf(lender);
+
+        // Pass balance with address(0) as collateral - The rewarder will calculate the exchange rate of CygUSD to USD to
+        // correctly track how much USD the user currently has.
+        trackRewardsPrivate(lender, balance, address(0));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -419,25 +447,11 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /**
      *  @inheritdoc ICygnusBorrowModel
      */
-    function trackBorrower(address collateral, address borrower) external override {
+    function trackBorrower(address borrower) external override {
         // Latest borrow balance (with interest)
-        (uint256 principal, ) = getBorrowBalance(collateral, borrower);
+        (uint256 principal, ) = getBorrowBalance(borrower);
 
         // Pass borrower info to the Rewarder (if any)
-        _trackRewards(borrower, principal, collateral);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowModel
-     */
-    function trackLender(address lender) external { 
-      // Get latest CygUSD balance
-      uint256 balance = balanceOf(lender);
-
-      // Pass balance with address(0) as collateral - The rewarder will calculate the exchange rate of CygUSD to USD to
-      // correctly track how much USD the user currently has.
-      // If user transfered CygUSD tokens to another account, then the _afterTokenTransfer hook tracks the sender and receiver
-      // so lender trackings are always accurate.
-      _trackRewards(lender, balance, address(0));
+        trackRewardsPrivate(borrower, principal, twinstar);
     }
 }

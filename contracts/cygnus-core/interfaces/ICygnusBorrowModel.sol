@@ -76,7 +76,7 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *  @return principal The USD amount borrowed without interest accrual
      *  @return borrowBalance The USD amount borrowed with interest accrual (ie. USD amount the borrower must repay)
      */
-    function getBorrowBalance(address collateral, address borrower) external view returns (uint256 principal, uint256 borrowBalance);
+    function getBorrowBalance(address borrower) external view returns (uint256 principal, uint256 borrowBalance);
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -90,11 +90,32 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      */
     function supplyRate() external view returns (uint256);
 
+    /**
+     *  @return getDenominationPrice the price of the denomination token
+     */
+    function getDenominationPrice() external view returns (uint256);
+
+    /**
+     *  @notice Get the lender`s full position
+     *  @param lender The address of the lender
+     *  @return cygUsdBalance The `lender's` balance of CygUSD
+     *  @return rate The currente exchange rate
+     *  @return positionInUsd The lender's position in USD
+     */
+    function getLenderPosition(address lender) external view returns (uint256 cygUsdBalance, uint256 rate, uint256 positionInUsd);
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Manually track the user's deposited USD
+     *
+     *  @param lender The address of the lender
+     */
+    function trackLender(address lender) external;
 
     /**
      *  @notice Applies interest accruals to borrows and reserves
@@ -106,12 +127,5 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
      *
      *  @param borrower The address of the borrower
      */
-    function trackBorrower(address collateral, address borrower) external;
-
-    /**
-     *  @notice Manually track the user's deposited USD
-     *
-     *  @param lender The address of the lender
-     */
-    function trackLender(address lender) external;
+    function trackBorrower(address borrower) external;
 }

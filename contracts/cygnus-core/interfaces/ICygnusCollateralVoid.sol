@@ -38,6 +38,13 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      */
     error CygnusCollateralVoid__OnlyHarvesterAllowed();
 
+    /**
+     *  @dev Reverts if the token we are sweeping is the underlying LP
+     *
+     *  @custom:error TokenIsUnderlying
+     */
+    error CygnusCollateralVoid__TokenIsUnderlying();
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -72,6 +79,16 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *  @custom:event NewHarvester
      */
     event NewHarvester(address oldHarvester, address newHarvester);
+
+    /**
+     *  @dev Logs when admin sets a new reward token for the harvester (if needed)
+     *
+     *  @param _token Address of the token we are allowing the harvester to move
+     *  @param _harvester Address of the harvester
+     *
+     *  @custom:event NewBonusHarvesterToken
+     */
+    event NewBonusHarvesterToken(address _token, address _harvester);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -108,12 +125,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Can be called by anyone. Charges approvals needed for deposits and withdrawals, and any other function
-     *          needed to get the vault started. ie, setting a pool ID from a MasterChef, a gauge, etc.
-     */
-    function chargeVoid() external;
-
-    /**
      *  @notice Get the pending rewards manually - helpful to get rewards through static calls
      *
      *  @return tokens The addresses of the reward tokens earned by harvesting rewards
@@ -135,6 +146,14 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
 
     /**
      *  @notice Admin 👽
+     *  @notice Can be called by anyone. Charges approvals needed for deposits and withdrawals, and any other function
+     *          needed to get the vault started. ie, setting a pool ID from a MasterChef, a gauge, etc.
+     *  @custom:security only-admin
+     */
+    function chargeVoid() external;
+
+    /**
+     *  @notice Admin 👽
      *  @notice Sets the harvester address to harvest and reinvest rewards into more underlying
      *
      *  @param _harvester The address of the new harvester contract
@@ -142,4 +161,12 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *  @custom:security only-admin
      */
     function setHarvester(address _harvester) external;
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Sweeps a token that was sent to this address by mistake, or a bonus reward token we are not tracking. Cannot
+     *          sweep the underlying LP
+     *  @custom:security only-admin
+     */
+    function sweepToken(address token, address to) external;
 }

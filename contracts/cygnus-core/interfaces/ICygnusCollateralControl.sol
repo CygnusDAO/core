@@ -82,8 +82,6 @@ interface ICygnusCollateralControl is ICygnusTerminal {
      */
     function borrowable() external view returns (address);
 
-    function shuttleId() external view returns (uint256);
-
     // ────────────── Current Pool Rates ──────────────
 
     /**

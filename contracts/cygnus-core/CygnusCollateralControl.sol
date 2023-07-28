@@ -130,7 +130,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
         // Name of the collateral arm
-        return "Cygnus-Deneb: Collateral";
+        return "Cygnus: Collateral";
     }
 
     /**
@@ -152,14 +152,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusCollateralControl
-     */
-    function shuttleId() external view override returns (uint256) {
-        // The same shuttle id from the factory to get further info on this collateral
-        return poolId;
-    }
 
     /**
      *  @inheritdoc ICygnusCollateralControl

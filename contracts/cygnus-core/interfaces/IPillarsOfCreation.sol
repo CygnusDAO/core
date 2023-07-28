@@ -22,7 +22,6 @@ pragma solidity >=0.8.17;
  *  @notice Interface to interact with CYG rewards
  */
 interface IPillarsOfCreation {
-
     /**
      *  @dev Tracks rewards for lenders and borrowers.
      *

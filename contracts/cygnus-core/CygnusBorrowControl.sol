@@ -97,16 +97,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    mapping(address => bool) public isCollateral;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    address[] public override allCollaterals;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
     address public override pillarsOfCreation;
 
     // ───────────────────────────── Current pool rates
@@ -114,7 +104,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    uint256 public override reserveFactor = 0.1e18;
+    uint256 public override reserveFactor; // Default is no reserves
 
     /**
      *  @inheritdoc ICygnusBorrowControl
@@ -146,7 +136,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      */
     function name() public pure override(ERC20, IERC20) returns (string memory) {
         // Name of the borrowable arm
-        return "Cygnus-Albireo: Borrowable";
+        return "Cygnus: Borrowable";
     }
 
     /**
@@ -172,25 +162,9 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    function stationId() external view override returns (uint256) {
-        // The same station id from the factory to get further info on this borrowable
-        return poolId;
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    function collaterals() external view override returns (address[] memory) {
+    function collateral() external view override returns (address) {
         // Return the whole array
-        return allCollaterals;
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    function totalCollaterals() external view override returns (uint256) {
-        // Return how many collaterals this borrowable currently supports
-        return allCollaterals.length;
+        return twinstar;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -242,27 +216,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security only-hangar
-     */
-    function setCollateral(address collateral) external override {
-        /// @custom:error MsgSenderNotHangar
-        if (msg.sender != address(hangar18)) revert CygnusBorrowControl__MsgSenderNotHangar();
-
-        /// @custom;error CollateralAlreadySet
-        if (isCollateral[collateral] == true) revert CygnusBorrowControl__CollateralAlreadySet();
-
-        // Set to true, this collateral can borrow
-        isCollateral[collateral] = true;
-
-        // Push to collateral list
-        allCollaterals.push(collateral);
-
-        /// @custom:event NewCollateralAdded
-        emit NewCollateralAdded(msg.sender, collateral, allCollaterals.length);
-    }
 
     /**
      *  @inheritdoc ICygnusBorrowControl

@@ -29,9 +29,8 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 
 // Strategy
-import {ISonnePool} from "./interfaces/BorrowableVoid/ISonnePool.sol";
-import {IUniTroller} from "./interfaces/BorrowableVoid/IUniTroller.sol";
-import {IStakedDistributor} from "./interfaces/BorrowableVoid/IStakedDistributor.sol";
+import {IComet} from "./interfaces/BorrowableVoid/IComet.sol";
+import {ICometRewards} from "./interfaces/BorrowableVoid/ICometRewards.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -57,27 +56,20 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
     /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
-    /*  ─────────── Strategy */
+    /**
+     *  @notice CompoundV3's USDC
+     */
+    IComet private constant COMET_USDC = IComet(0xF25212E676D1F7F89Cd72fFEe66158f541246445);
 
     /**
-     *  @notice Sonne USDC Pool
+     *  @notice Rewarder
      */
-    ISonnePool private constant SONNE_USDC = ISonnePool(0xEC8FEa79026FfEd168cCf5C627c7f486D77b765F);
+    ICometRewards private constant COMET_REWARDS = ICometRewards(0x45939657d1CA34A8FA39A924B71D28Fe8431e581);
 
     /**
-     *  @notice Comptroller
+     *  @notice Address of the COMP token on this chain
      */
-    IUniTroller private constant REWARDER = IUniTroller(0x60CF091cD3f50420d50fD7f707414d0DF4751C58);
-
-    /**
-     *  @notice Distributor for bonus rewards
-     */
-    IStakedDistributor private constant DISTRIBUTOR = IStakedDistributor(0xDC05d85069Dc4ABa65954008ff99f2D73FF12618);
-
-    /**
-     *  @notice Sonne Token
-     */
-    address private constant SONNE = 0x1DB2466d9F5e10D7090E7152B68d62703a2245F0;
+    address private constant COMP = 0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -130,7 +122,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     function rewarder() external pure override returns (address) {
         // Return the contract that rewards us with `rewardsToken`
-        return address(DISTRIBUTOR);
+        return address(COMET_REWARDS);
     }
 
     /**
@@ -138,7 +130,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     function rewardToken() external pure override returns (address) {
         // Return the address of the main reward tokn
-        return SONNE;
+        return COMP;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -164,47 +156,20 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @notice Gets the rewards from the stgRewarder contract
      */
     function getRewardsPrivate() private returns (address[] memory tokens, uint256[] memory amounts) {
-        // Make the markets array to claim from the Comptroller
-        address[] memory markets = new address[](1);
+        // Harvest COMP
+        COMET_REWARDS.claim(address(COMET_USDC), address(this), true);
 
-        // Assign cToken
-        markets[0] = address(SONNE_USDC);
+        // Single reward token array
+        tokens = new address[](1);
 
-        // Make holders array for gas savings (claim only supply side)
-        address[] memory holders = new address[](1);
+        // Single reward amount
+        amounts = new uint256[](1);
 
-        // Assign holder
-        holders[0] = address(this);
+        // Get reward token
+        tokens[0] = COMP;
 
-        // 1. Claim Sonne from Comptroller only for supply positions
-        REWARDER.claimComp(holders, markets, false, true);
-
-        // 2. Claim Sonne from Distributor
-        uint256[] memory _amounts = DISTRIBUTOR.claimAll();
-
-        // 3. Re-stake 50% of Sonne rewards, convert the rest to USD
-        uint256 sonneRewards = _checkBalance(SONNE) / 2;
-
-        // Stake rewards
-        if (sonneRewards > 0) DISTRIBUTOR.mint(sonneRewards);
-
-        // 4. Get bonus rewards from Distributor (remove address 0 and index 0)
-        uint256 numTokens = _amounts.length - 1;
-
-        // Tokens harvested from the distributor
-        tokens = new address[](numTokens);
-
-        // Amounts harvested from the distributor
-        amounts = new uint256[](numTokens);
-
-        // Loop through each reward token
-        for (uint256 i = 1; i <= numTokens; i++) {
-            // Token
-            tokens[i - 1] = DISTRIBUTOR.tokens(i);
-
-            // Amounts
-            amounts[i - 1] = _checkBalance(tokens[i - 1]);
-        }
+        // We always return our balance of the reward token
+        amounts[0] = _checkBalance(COMP);
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
@@ -217,9 +182,9 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
      */
-    function _previewTotalBalance() internal override(CygnusTerminal) returns (uint256 balance) {
-        // Accrue interest and return total balance
-        balance = SONNE_USDC.balanceOfUnderlying(address(this));
+    function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
+        // Return latest balance of Comet
+        balance = COMET_USDC.balanceOf(address(this));
     }
 
     /**
@@ -228,11 +193,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @inheritdoc CygnusTerminal
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
-        // Mint sonneUsdc
-        uint256 errorcode = SONNE_USDC.mint(assets);
-
-        /// @custom:error CTokenError Avoid cToken mint error (NO_ERROR == 0)
-        if (errorcode != 0) revert CygnusBorrowVoid__CTokenError();
+        // Supply USD to Comet
+        COMET_USDC.supply(underlying, assets);
     }
 
     /**
@@ -241,35 +203,18 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @inheritdoc CygnusTerminal
      */
     function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
-        // Redeem for underlying
-        uint256 errorcode = SONNE_USDC.redeemUnderlying(assets);
-
-        /// @custom:error CTokenError Avoid cToken redeem error (NO_ERROR == 0)
-        if (errorcode != 0) revert CygnusBorrowVoid__CTokenError();
+        // Withdraw USD from Comet
+        COMET_USDC.withdraw(underlying, assets);
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     */
-    function chargeVoid() external override {
-        // Allow cToken to access our underlying
-        approveTokenPrivate(underlying, address(SONNE_USDC), type(uint256).max);
-
-        // Allow cToken to access our underlying
-        approveTokenPrivate(SONNE, address(DISTRIBUTOR), type(uint256).max);
-
-        /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, poolId, msg.sender);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant
      */
     function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
-        // The harvester contract calls this function to harvest the rewards. Anyone can call 
+        // The harvester contract calls this function to harvest the rewards. Anyone can call
         // this function, but the rewards can only be moved by the harvester contract itself
         return getRewardsPrivate();
     }
@@ -284,7 +229,18 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         // After deposit hook
         _afterDeposit(liquidity);
+    }
 
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security only-admin 👽
+     */
+    function chargeVoid() external override cygnusAdmin {
+        // Allow Stargate router to use our USDC to deposits
+        approveTokenPrivate(underlying, address(COMET_USDC), type(uint256).max);
+
+        /// @custom:event ChargeVoid
+        emit ChargeVoid(underlying, shuttleId, msg.sender);
     }
 
     /**
@@ -295,9 +251,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Old harvester
         address oldHarvester = harvester;
 
-        // Assign harvester.
-        harvester = _harvester;
-
         // Get reward tokens for the harvester.
         // We harvest once to get the tokens and set approvals in case reward tokens/harvester change.
         // NOTE: This is safe because approved token is never underlying
@@ -306,16 +259,34 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Loop through each token
         for (uint256 i = 0; i < tokens.length; i++) {
             // Approve harvester in token `i`
-            if (tokens[i] != underlying && tokens[i] != address(SONNE_USDC)) {
+            if (tokens[i] != underlying && tokens[i] != address(COMET_USDC)) {
                 // Remove allowance for old harvester
-                approveTokenPrivate(tokens[i], oldHarvester, 0);
+                if (oldHarvester != address(0)) approveTokenPrivate(tokens[i], oldHarvester, 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], _harvester, type(uint256).max);
             }
         }
 
+        // Assign harvester.
+        harvester = _harvester;
+
         /// @custom:event NewHarvester
         emit NewHarvester(oldHarvester, _harvester);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security only-admin 👽
+     */
+    function sweepToken(address token, address to) external override cygnusAdmin {
+        /// @custom;error CantSweepUnderlying Avoid sweeping underlying
+        if (token == underlying || token == address(COMET_USDC)) revert CygnusBorrowVoid__TokenIsUnderlying();
+
+        // Get balance of token
+        uint256 balance = _checkBalance(token);
+
+        // Transfer token balance to `to`
+        token.safeTransfer(to, balance);
     }
 }

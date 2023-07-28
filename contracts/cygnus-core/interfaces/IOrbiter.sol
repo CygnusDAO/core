@@ -35,9 +35,9 @@ interface IOrbiter {
      *                     then it is the address of the borrowable. If borrowable is being deployed, it is the
      *                     address of the collateral.
      *  @return oracle     The address of the oracle
-     *  @return poolId     The lending pool ID, station ID for borrowable and shuttleId for collateral
+     *  @return shuttleId  The lending pool ID
      */
     function shuttleParameters()
         external
-        returns (IHangar18 factory, address underlying, address twinstar, ICygnusNebula oracle, uint256 poolId);
+        returns (IHangar18 factory, address underlying, address twinstar, ICygnusNebula oracle, uint256 shuttleId);
 }

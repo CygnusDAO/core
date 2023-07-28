@@ -30,8 +30,7 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
 // Strategy
-import {IVeloGauge} from "./interfaces/CollateralVoid/IVeloGauge.sol";
-import {IVeloVoter} from "./interfaces/CollateralVoid/IVeloVoter.sol";
+import {IMiniChefV2, IRewarder} from "./interfaces/CollateralVoid/IMiniChef.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -60,19 +59,24 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ─────────── Strategy */
 
     /**
-     *  @notice Velodrome voter to get gauge
+     *  @notice Gamma's MiniChef
      */
-    IVeloVoter private constant VOTER = IVeloVoter(0x41C914ee0c7E1A5edCD0295623e6dC557B5aBf3C);
+    IMiniChefV2 private constant REWARDER = IMiniChefV2(0x20ec0d06F447d550fC6edee42121bc8C1817b97D);
 
     /**
-     *  @notice Address of the Rewarder contract
+     *  @notice Rewards token (Quickswap's DQUICK)
      */
-    IVeloGauge private immutable gauge;
+    address private constant DQUICK = 0x958d208Cdf087843e9AD98d23823d32E17d723A1;
 
     /**
-     *  @notice Rewards token
+     *  @notice Bonus rewards token
      */
-    address private constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
+    address private constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+
+    /**
+     *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
+     */
+    uint256 private masterChefId = type(uint256).max;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -93,13 +97,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Constructs the Cygnus Void contract which handles the strategy for the collateral`s underlying.
      */
-    constructor() {
-        // Get asset from factory to get the gauge (underlying is immutable so can't read)
-        (, address asset, , , ) = IOrbiter(msg.sender).shuttleParameters();
-
-        // Store pool ID from rewarder contract
-        gauge = IVeloGauge(VOTER.gauges(asset));
-    }
+    constructor() {}
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
@@ -110,9 +108,9 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @inheritdoc ICygnusCollateralVoid
      */
-    function rewarder() external view override returns (address) {
+    function rewarder() external pure override returns (address) {
         // Return the contract that rewards us with `rewardsToken`
-        return address(gauge);
+        return address(REWARDER);
     }
 
     /**
@@ -120,7 +118,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function rewardToken() external pure override returns (address) {
         // Return the address of the main reward tokn
-        return VELO;
+        return DQUICK;
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -148,20 +146,26 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @return amounts Array of reward token amounts
      */
     function getRewardsPrivate() private returns (address[] memory tokens, uint256[] memory amounts) {
-        // Create array of reward tokens length
-        tokens = new address[](1);
+        // Harvest rewards first
+        REWARDER.harvest(masterChefId, address(this));
 
-        // Create array of reward amounts length
-        amounts = new uint256[](1);
+        // Tokens harvested
+        tokens = new address[](2);
 
-        // Get address of reward token `i` from gauge
-        tokens[0] = VELO;
+        // Amounts harvested
+        amounts = new uint256[](2);
 
-        // Harvest VELO rewards
-        gauge.getReward(address(this));
+        // Token is always dQuick
+        tokens[0] = DQUICK;
 
-        // Get our balance
-        amounts[0] = _checkBalance(VELO);
+        // Bonus token is always Matic
+        tokens[1] = WMATIC;
+
+        // Amount harvested of dQuick
+        amounts[0] = _checkBalance(DQUICK);
+
+        // Amount harvested of wMatic
+        amounts[1] = _checkBalance(WMATIC);
 
         /// @custom:event RechargeVoid
         emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
@@ -176,7 +180,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // Get this contracts deposited LP amount from Velo gauge
-        balance = _checkBalance(address(gauge));
+        (balance, ) = REWARDER.userInfo(masterChefId, address(this));
     }
 
     /**
@@ -185,8 +189,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @param assets The amount of assets to deposit in the strategy
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
-        // Deposit assets into the strategy with no tokenId
-        gauge.deposit(assets);
+        // Deposit assets into the strategy
+        REWARDER.deposit(masterChefId, assets, address(this));
     }
 
     /**
@@ -196,28 +200,17 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy
-        gauge.withdraw(assets);
+        REWARDER.withdraw(masterChefId, assets, address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
-     */
-    function chargeVoid() external override {
-        // Allow rewarder to access our underlying
-        approveTokenPrivate(underlying, address(gauge), type(uint256).max);
-
-        /// @custom:event ChargeVoid
-        emit ChargeVoid(underlying, poolId, msg.sender);
-    }
-
-    /**
-     *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
     function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
-        // The harvester contract calls this function to harvest the rewards. Anyone can call 
+        // The harvester contract calls this function to harvest the rewards. Anyone can call
         // this function, but the rewards can only be moved by the harvester contract itself
         return getRewardsPrivate();
     }
@@ -238,12 +231,42 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security only-admin 👽
      */
+    function chargeVoid() external override cygnusAdmin {
+        // Charge with pool ID only once (pool Id is never -1)
+        if (masterChefId == type(uint256).max) {
+            // Get total length
+            uint256 rewarderLength = REWARDER.poolLength();
+
+            // Loop through total length and get underlying LP
+            for (uint256 i = 0; i < rewarderLength; i++) {
+                // Get the underlying LP in rewarder at length `i`
+                address _underlying = REWARDER.lpToken(i);
+
+                // If same LP then assign pool ID to `i`
+                if (_underlying == underlying) {
+                    // Assign pool Id;
+                    masterChefId = i;
+
+                    // Exit
+                    break;
+                }
+            }
+        }
+
+        // Allow rewarder to access our underlying
+        approveTokenPrivate(underlying, address(REWARDER), type(uint256).max);
+
+        /// @custom:event ChargeVoid
+        emit ChargeVoid(underlying, shuttleId, msg.sender);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security only-admin 👽
+     */
     function setHarvester(address _harvester) external override cygnusAdmin {
         // Old harvester
         address oldHarvester = harvester;
-
-        // Assign harvester.
-        harvester = _harvester;
 
         // Get reward tokens for the harvester.
         // We harvest once to get the tokens and set approvals in case reward tokens/harvester change.
@@ -255,14 +278,32 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
             // Approve harvester in token `i`
             if (tokens[i] != underlying) {
                 // Remove allowance for old harvester
-                approveTokenPrivate(tokens[i], oldHarvester, 0);
+                if (oldHarvester != address(0)) approveTokenPrivate(tokens[i], oldHarvester, 0);
 
                 // Approve new harvester
                 approveTokenPrivate(tokens[i], _harvester, type(uint256).max);
             }
         }
 
+        // Assign harvester.
+        harvester = _harvester;
+
         /// @custom:event NewHarvester
         emit NewHarvester(oldHarvester, _harvester);
+    }
+
+    /**
+     *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security only-admin 👽
+     */
+    function sweepToken(address token, address to) external override cygnusAdmin {
+        /// @custom;error CantSweepUnderlying Avoid sweeping underlying
+        if (token == underlying) revert CygnusCollateralVoid__TokenIsUnderlying();
+
+        // Get balance of token
+        uint256 balance = _checkBalance(token);
+
+        // Transfer token balance to `to`
+        token.safeTransfer(to, balance);
     }
 }
