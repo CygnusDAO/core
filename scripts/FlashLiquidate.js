@@ -26,7 +26,7 @@ const { deleverageCalldata } = require(path.resolve(__dirname, "./aggregators/Ag
 const dexAggregator = 0;
 
 // Slipp
-const difference = BigInt(10000);
+const difference = BigInt(0);
 
 // We use the lender as liquidator for simplicity since they already have USDC
 const flashLiquidate = async () => {
@@ -93,10 +93,10 @@ const flashLiquidate = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(1e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(1e18), borrower._address, permit, signature);
 
     // Lender //
 
@@ -126,7 +126,7 @@ const flashLiquidate = async () => {
     await usdc.connect(lender).transfer(owner.address, BigInt(100000e6));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await borrowable.connect(owner).deposit(BigInt(1000e6), lender._address, permitB, signatureB);
+    await borrowable.connect(owner).deposit(BigInt(10000e6), lender._address, permitB, signatureB);
 
     // Balance of vault tokens
 
@@ -156,7 +156,7 @@ const flashLiquidate = async () => {
     await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
-    await router.connect(borrower).borrow(collateral.address, borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
+    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -164,7 +164,7 @@ const flashLiquidate = async () => {
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
     const { health: _health } = await collateral.getBorrowerPosition(borrower._address);
-    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(borrower._address);
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
@@ -178,12 +178,12 @@ const flashLiquidate = async () => {
     console.log("                                          ACCRUE                                              ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    await mine(200000);
+    await mine(2000000);
     await borrowable.sync();
 
     // Get liquidity
     const { liquidity: liquidity_, shortfall: shortfall_ } = await collateral.getAccountLiquidity(borrower._address);
-    const { borrowBalance: borrowbal_ } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: borrowbal_ } = await borrowable.getBorrowBalance(borrower._address);
     const { health: health_ } = await collateral.getBorrowerPosition(borrower._address);
     console.log("Borrower`s USD debt after accrue              | %s USD", borrowbal_ / 1e6);
     console.log("Borrower`s Debt Ratio after accrue            | %s%", health_ / 1e16);
@@ -200,8 +200,7 @@ const flashLiquidate = async () => {
     // Checks that liquidate amount is never above borrowed balance in router (ie if user borrowed 20 usdc, router will repay 20 usdc, not 5000)
     const liqIncentive = await collateral.liquidationIncentive();
     const lpPrice = await collateral.getLPTokenPrice();
-    const repayAmount = ethers.BigNumber.from(100e6);
-    const deleverageLPAmount = repayAmount.mul(liqIncentive).div(lpPrice);
+    const deleverageLPAmount = borrowbal_.mul(liqIncentive).div(lpPrice);
     const borrowableBalBefore = await borrowable.totalBalance();
 
     console.log("LP Amount deleveraging                         | %s LP Tokens", deleverageLPAmount / 1e18);
@@ -213,23 +212,16 @@ const flashLiquidate = async () => {
 
     await router
         .connect(lender)
-        .flashLiquidate(
-            borrowable.address,
-            collateral.address,
-            BigInt(100e6),
-            borrower._address,
-            ethers.constants.MaxUint256,
-            dexAggregator,
-            deleverageCalls,
-            { gasLimit: 5000000 },
-        );
+        .flashLiquidate(borrowable.address, collateral.address, borrowbal_, borrower._address, ethers.constants.MaxUint256, dexAggregator, deleverageCalls, {
+            gasLimit: 9000000,
+        });
 
     console.log("----------------------------------------------------------------------------------------------");
 
     const liqBalAfter = (await usdc.balanceOf(lender._address)) / 1e6;
     const borrowerBalanceCollAfterLiq = (await collateral.balanceOf(borrower._address)) / 1e18;
     const lenderBalanceCollAfterLiq = (await collateral.balanceOf(lender._address)) / 1e18;
-    const { borrowBalance: borrowBalanceAfterLiq } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: borrowBalanceAfterLiq } = await borrowable.getBorrowBalance(borrower._address);
     const borrowableBalAfter = await borrowable.totalBalance();
 
     console.log("USD Balance of liquidator after                | %s USD", liqBalAfter);

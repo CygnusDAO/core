@@ -27,7 +27,7 @@ const cygnusBorrow = async () => {
     await borrowable.connect(owner).chargeVoid();
 
     // Set interest rate to 1% base rate and 10% slope
-    await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.1e18), 2, BigInt(0.8e18));
+    await borrowable.connect(owner).setInterestRateModel(BigInt(0), BigInt(0), 2, BigInt(0.8e18));
 
     /***********************************************************************************************************
                                                  START FLASH LIQUIDATE
@@ -81,10 +81,10 @@ const cygnusBorrow = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(0.5e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(0.5e18), borrower._address, permit, signature);
 
     // Lender //
 
@@ -131,11 +131,11 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    //const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { health } = await collateral.getBorrowerPosition(borrower._address);
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    //console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    console.log("Borrower`s Health before borrow                | %s%", health / 1e16);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
@@ -143,7 +143,7 @@ const cygnusBorrow = async () => {
     // Approve Borrow
     await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
-    const firstDeposit = BigInt(liquidity) / BigInt(3);
+    const firstDeposit = BigInt(liquidity) / BigInt(2);
 
     // Borrow
     await router.connect(borrower).borrow(borrowable.address, firstDeposit, borrower._address, ethers.constants.MaxUint256, "0x");
@@ -153,13 +153,14 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
-    const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
+  const { health: _health } = await collateral.getBorrowerPosition(borrower._address);
+    const { principal: pri_, borrowBalance: br_ } = await borrowable.getBorrowBalance(borrower._address);
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
-    console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    //console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    console.log("Borrower`s USD principal after borrow              | %s USD", pri_ / 1e6);
+    console.log("Borrower`s USD debt after borrow              | %s USD", br_ / 1e6);
+    console.log("Borrower`s Health after borrow                | %s%", _health / 1e16);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);
@@ -170,23 +171,27 @@ const cygnusBorrow = async () => {
     console.log("Borrower's Loan                               | %s USD", chalk.cyan("+" + loan));
     console.log("----------------------------------------------------------------------------------------------");
 
+    const newLiq = await collateral.getAccountLiquidity(borrower._address);
+    console.log("NEW LIQ: %s", newLiq.liquidity);
     console.log("SECOND BORROW");
     await mine(10000);
-    await router.connect(borrower).borrow(borrowable.address, firstDeposit, borrower._address, ethers.constants.MaxUint256, "0x");
+    await router.connect(borrower).borrow(borrowable.address, newLiq.liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
 
     // Get liquidity
     const { liquidity: liquidity_ } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter_ = (await usdc.balanceOf(borrower._address)) / 1e6;
     //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
-    const borrowBal_ = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
+    const { principal: _pri, borrowBalance: _br } = await borrowable.getBorrowBalance(borrower._address);
     const tbAfter_ = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter_);
-    console.log("Borrower`s USD debt after borrow              | %s USD", borrowBal_);
+    console.log("Borrower`s USD principal after borrow         | %s USD", _pri / 1e6);
+    console.log("Borrower`s USD debt after borrow              | %s USD", _br / 1e6);
     //console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
     console.log("Borrower`s Liquidity after borrow             | %s USD", liquidity_ / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter_);
 
+    await router.connect(borrower).borrow(borrowable.address, BigInt(1), borrower._address, ethers.constants.MaxUint256, "0x");
 };
 
 cygnusBorrow();

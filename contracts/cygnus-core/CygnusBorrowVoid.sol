@@ -59,17 +59,17 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /**
      *  @notice CompoundV3's USDC
      */
-    IComet private constant COMET_USDC = IComet(0xF25212E676D1F7F89Cd72fFEe66158f541246445);
+    IComet public constant COMET_USDC = IComet(0xF25212E676D1F7F89Cd72fFEe66158f541246445);
 
     /**
      *  @notice Rewarder
      */
-    ICometRewards private constant COMET_REWARDS = ICometRewards(0x45939657d1CA34A8FA39A924B71D28Fe8431e581);
+    ICometRewards public constant COMET_REWARDS = ICometRewards(0x45939657d1CA34A8FA39A924B71D28Fe8431e581);
 
     /**
      *  @notice Address of the COMP token on this chain
      */
-    address private constant COMP = 0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c;
+    address public constant COMP = 0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 

@@ -80,10 +80,10 @@ const cygnusBorrow = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(1e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), owner.address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(1e18), owner.address, permit, signature);
 
     // Lender //
 
@@ -130,11 +130,9 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(owner.address);
     const usdBal = (await usdc.balanceOf(owner.address)) / 1e6;
-    const debtRatio = (await collateral.getDebtRatio(owner.address)) / 1e16;
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
@@ -156,7 +154,7 @@ const cygnusBorrow = async () => {
     // TYPES
     //
     const types = {
-        BorrowPermit: [
+        Permit: [
             { name: "owner", type: "address" },
             { name: "spender", type: "address" },
             { name: "value", type: "uint256" },
@@ -181,15 +179,8 @@ const cygnusBorrow = async () => {
     const _signature = await owner._signTypedData(domain, types, values);
     const { v, r, s } = await ethers.utils.splitSignature(_signature);
 
-  console.log(values.value == ethers.constants.MaxUint256);
-  console.log(values.value);
-  console.log(ethers.constants.MaxUint256);
-
     // Encode Permit data to pass to router
-    const permitBytes = await ethers.utils.defaultAbiCoder.encode(
-        ["bool", "uint8", "bytes32", "bytes32"],
-        [values.value == ethers.constants.MaxUint256, v, r, s],
-    );
+    const permitBytes = await ethers.utils.defaultAbiCoder.encode(["uint256", "uint8", "bytes32", "bytes32"], [values.value, v, r, s]);
 
     // Borrow
     await router.connect(owner).borrow(borrowable.address, liquidity, owner.address, ethers.constants.MaxUint256, permitBytes);
@@ -199,13 +190,11 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(owner.address);
     const usdBalAfter = (await usdc.balanceOf(owner.address)) / 1e6;
-    const debtRatioAfter = (await collateral.getDebtRatio(owner.address)) / 1e16;
     const _borrowBal = (await borrowable.getBorrowBalance(owner.address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);

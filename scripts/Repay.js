@@ -7,18 +7,19 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 // Permit2
-const { PERMIT2_ADDRESS, AllowanceTransfer, SignatureTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
 const Users = require(path.resolve(__dirname, "../test/Users.js"));
+const Permit2Abi = require(path.resolve(__dirname, "./abis/permit2.json"));
 
 // Swapdata
 
 // Simple Borrow
 const cygnusBorrow = async () => {
     // CONFIG
-    const [, hangar18, router, borrowable, collateral, usdc, lpToken] = await Make();
+    const [, , router, borrowable, collateral, usdc, lpToken] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Charge allowances
@@ -130,17 +131,17 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { health: debtRatio } = await collateral.getBorrowerPosition(borrower._address);
     const tbBefore = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio / 1e16);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
     console.log("Borrowable`s Total Balance before borrow       | %s USD", tbBefore);
 
     // Approve borrow
-    await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
+    await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
     await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
@@ -150,13 +151,13 @@ const cygnusBorrow = async () => {
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    const { health: debtRatio_ } = await collateral.getBorrowerPosition(borrower._address);
     const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatio_ / 1e16);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
     console.log("Borrowable`s Total Balance after borrow       | %s USD", tbAfter);
@@ -171,34 +172,31 @@ const cygnusBorrow = async () => {
     console.log("                                             REPAY                                            ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    await usdc.connect(lender).transfer(owner.address, BigInt(500e6));
+    await usdc.connect(lender).transfer(owner.address, BigInt(10000e6));
 
     // Repays full amount of 4k but not whole is used
-    const repayAmount = BigInt(4000e6);
+    const repayAmount = BigInt(1000e6);
 
-    // 2. Build permit
+    const permit2C = new ethers.Contract(PERMIT2_ADDRESS, Permit2Abi, ethers.provider);
+    const { nonce } = await permit2C.allowance(owner.address, usdc.address, router.address);
+
+    //---------- 2. Build Permit -----------//
     const _permit = {
-        permitted: {
+        details: {
             token: usdc.address,
             amount: repayAmount,
+            expiration: MaxAllowanceExpiration,
+            nonce: nonce,
         },
         spender: router.address,
-        nonce: 0,
-        deadline: ethers.constants.MaxUint256,
+        sigDeadline: ethers.constants.MaxUint256,
     };
-
     // 3. Sign the permit
-    const _permitData = SignatureTransfer.getPermitData(_permit, PERMIT2_ADDRESS, _chainId); // Get the permit data
+    const _permitData = AllowanceTransfer.getPermitData(_permit, PERMIT2_ADDRESS, _chainId); // Get the permit data
     const _signature = await owner._signTypedData(_permitData.domain, _permitData.types, _permitData.values); // Sign the permit
 
     // 4. Repay with permit
-    await router
-        .connect(owner)
-        .repayPermit2Signature(borrowable.address, repayAmount, borrower._address, ethers.constants.MaxUint256, _permit, _signature);
-
-    // Check the borrower's new borrow balance
-    const newBorrowBal = await borrowable.getBorrowBalance(borrower._address);
-    console.log("Last Borrow Balance: %s", newBorrowBal);
+    await router.connect(owner).repayPermit2Allowance(borrowable.address, repayAmount, borrower._address, ethers.constants.MaxUint256, _permit, _signature);
 };
 
 cygnusBorrow();

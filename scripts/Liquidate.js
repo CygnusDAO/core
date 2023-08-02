@@ -79,10 +79,10 @@ const cygnusLiquidate = async () => {
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+    await lpToken.connect(borrower).transfer(owner.address, BigInt(0.5e18));
 
     //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(owner).deposit(BigInt(0.5e18), borrower._address, permit, signature);
 
     // Lender //
 
@@ -129,14 +129,14 @@ const cygnusLiquidate = async () => {
     // Get liquidity
     const { liquidity, shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBal = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    // const debtRatio = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     console.log("Borrower`s USD Balance before borrow           | %s USD", usdBal);
-    console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
+    // console.log("Borrower`s Debt Ratio before borrow            | %s%", debtRatio);
     console.log("Borrower`s Liquidity before borrow             | %s USD", liquidity / 1e6);
     console.log("Borrower`s Shortfall before borrow             | %s USD", shortfall / 1e6);
 
     // Approve borrow
-    await borrowable.connect(borrower).borrowApprove(router.address, ethers.constants.MaxUint256);
+    await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
     await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, '0x')
@@ -144,11 +144,11 @@ const cygnusLiquidate = async () => {
     // Get liquidity
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     const _borrowBal = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
     console.log("Borrower`s USD debt after borrow              | %s USD", _borrowBal);
-    console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
+    // console.log("Borrower`s Debt Ratio after borrow            | %s%", debtRatioAfter);
     console.log("Borrower`s Liquidity after borrow             | %s USD", _liquidity / 1e6);
     console.log("Borrower`s Shortfall after borrow             | %s USD", _shortfall / 1e6);
 
@@ -162,9 +162,9 @@ const cygnusLiquidate = async () => {
     // Get liquidity
     const { liquidity: liquidity_, shortfall: shortfall_ } = await collateral.getAccountLiquidity(borrower._address);
     const borrowBal_ = (await usdc.balanceOf(borrower._address)) / 1e6;
-    const debtRatio_ = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    // const debtRatio_ = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     console.log("Borrower`s USD debt after accrue              | %s USD", borrowBal_);
-    console.log("Borrower`s Debt Ratio after accrue            | %s%", debtRatio_);
+    // console.log("Borrower`s Debt Ratio after accrue            | %s%", debtRatio_);
     console.log("Borrower`s Liquidity after accrue             | %s USD", liquidity_ / 1e6);
     console.log("Borrower`s Shortfall after accrue             | %s USD", shortfall_ / 1e6);
 
@@ -175,6 +175,8 @@ const cygnusLiquidate = async () => {
     const _liqUsdBal = (await usdc.balanceOf(lender._address)) / 1e6;
     console.log("Liquidator's USD Balance before liq.           | %s USD", _liqUsdBal);
 
+  console.log("B BALANCE BEFORE LIQ: %s", await borrowable.getBorrowBalance(borrower._address));
+
     // We pass a number much above their liquidity but router does not use all
     const amount = BigInt(10000e6);
 
@@ -182,14 +184,14 @@ const cygnusLiquidate = async () => {
     await usdc.connect(lender).approve(router.address, ethers.constants.MaxUint256);
 
     // prettier-ignore
-    await router.connect(lender).liquidate(borrowable.address, amount, borrower._address, lender._address, ethers.constants.MaxUint256);
+    await router.connect(lender).liquidate(borrowable.address, amount, borrower._address, lender._address, ethers.constants.MaxUint256, '0x');
 
     console.log("----------------------------------------------------------------------------------------------");
 
     const borrowerCygLPBal = (await collateral.balanceOf(borrower._address)) / 1e18;
     const lenderCygLPBal = (await collateral.balanceOf(lender._address)) / 1e18;
     const borrowBalanceAfterLiq = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
-    const debtRatioAfterLiq = (await collateral.getDebtRatio(borrower._address)) / 1e16;
+    // const debtRatioAfterLiq = (await collateral.getDebtRatio(borrower._address)) / 1e16;
     const { liquidity: newLiq, shortfall: newShort } = await collateral.getAccountLiquidity(borrower._address);
     const liqUsdBal = (await usdc.balanceOf(lender._address)) / 1e6;
 
@@ -197,9 +199,10 @@ const cygnusLiquidate = async () => {
     console.log("Borrower CygLP Balance after liq.              | %s CygLP", borrowerCygLPBal);
     console.log("Liquidator CygLP Balance after liq.            | %s CygLP", lenderCygLPBal);
     console.log("Borrow Balance of borrower                     | %s USD", borrowBalanceAfterLiq);
-    console.log("Borrower`s Debt Ratio after liq.               | %s%", debtRatioAfterLiq);
+    // console.log("Borrower`s Debt Ratio after liq.               | %s%", debtRatioAfterLiq);
     console.log("Borrower`s Liquidity after liq.                | %s USD", newLiq / 1e6);
     console.log("Borrower`s Shortfall after liq.                | %s USD", newShort / 1e6);
+  console.log("B BALANCE after LIQ: %s", await borrowable.getBorrowBalance(borrower._address));
 };
 
 cygnusLiquidate();

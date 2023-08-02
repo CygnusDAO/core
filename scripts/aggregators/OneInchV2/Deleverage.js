@@ -7,10 +7,6 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
     // Get tokens and amounts out given an LP token and amount
     const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
-    // remove OPTIMISM_WOOFI_V2
-    const protocols =
-        "OPTIMISM_UNISWAP_V3,OPTIMISM_SYNTHETIX,OPTIMISM_SYNTHETIX_WRAPPER,OPTIMISM_ONE_INCH_LIMIT_ORDER,OPTIMISM_ONE_INCH_LIMIT_ORDER_V2,OPTIMISM_ONE_INCH_LIMIT_ORDER_V3,OPTIMISM_CURVE,OPTIMISM_BALANCER_V2,OPTIMISM_VELODROME,OPTIMISM_KYBERSWAP_ELASTIC,OPTIMISM_CLIPPER_COVES,OPTIMISM_KYBER_DMM_STATIC,OPTIMISM_AAVE_V3,OPTIMISM_ELK,OPTIMISM_TRIDENT,OPTIMISM_MUMMY_FINANCE,OPTIMISM_NOMISWAPEPCS";
-
     /**
      *  @notice 1inch swagger API call
      *  @param {Number} chainId - The id of this chain
@@ -21,7 +17,7 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
      */
     const oneInch = async (chainId, fromToken, toToken, amount, router) => {
         // 1inch Api url
-        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.005&protocols=${protocols}`;
+        const apiUrl = `https://api-cygnusdaofinance.1inch.io/v5.0/${chainId}/swap?fromTokenAddress=${fromToken}&toTokenAddress=${toToken}&amount=${amount}&fromAddress=${router}&disableEstimate=true&slippage=0.5`;
 
         // Swap data
         const swapdata = await fetch(apiUrl).then((response) => response.json());

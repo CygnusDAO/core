@@ -61,22 +61,22 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Gamma's MiniChef
      */
-    IMiniChefV2 private constant REWARDER = IMiniChefV2(0x20ec0d06F447d550fC6edee42121bc8C1817b97D);
+    IMiniChefV2 public constant REWARDER = IMiniChefV2(0x20ec0d06F447d550fC6edee42121bc8C1817b97D);
 
     /**
      *  @notice Rewards token (Quickswap's DQUICK)
      */
-    address private constant DQUICK = 0x958d208Cdf087843e9AD98d23823d32E17d723A1;
+    address public constant DQUICK = 0x958d208Cdf087843e9AD98d23823d32E17d723A1;
 
     /**
      *  @notice Bonus rewards token
      */
-    address private constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address public constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
 
     /**
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
      */
-    uint256 private masterChefId = type(uint256).max;
+    uint256 public masterChefId = type(uint256).max;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 

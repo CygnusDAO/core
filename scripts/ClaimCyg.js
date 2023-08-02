@@ -147,9 +147,7 @@ const cygnusBorrow = async () => {
     await borrowable.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
     // Borrow
-    await router
-        .connect(borrower)
-        .borrow(collateral.address, borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
+    await router.connect(borrower).borrow(borrowable.address, liquidity, borrower._address, ethers.constants.MaxUint256, "0x");
 
     console.log("----------------------------------------------------------------------------------------------");
 
@@ -157,7 +155,7 @@ const cygnusBorrow = async () => {
     const { liquidity: _liquidity, shortfall: _shortfall } = await collateral.getAccountLiquidity(borrower._address);
     const usdBalAfter = (await usdc.balanceOf(borrower._address)) / 1e6;
     //const debtRatioAfter = (await collateral.getDebtRatio(borrower._address)) / 1e16;
-    const { borrowBalance } = (await borrowable.getBorrowBalance(collateral.address, borrower._address)) / 1e6;
+    const { borrowBalance } = (await borrowable.getBorrowBalance(borrower._address)) / 1e6;
     const tbAfter = (await borrowable.totalBalance()) / 1e6;
 
     console.log("Borrower`s USD Balance after borrow           | %s USD", usdBalAfter);
@@ -182,29 +180,17 @@ const cygnusBorrow = async () => {
     console.log("---- mine 100,000 blocks ----");
     console.log("Current Epoch: %s", await rewarder.getCurrentEpoch());
 
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
-    console.log(
-        "Lender`s Pending CYG                          | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18,
-    );
+    console.log("Lender`s Pending CYG                          | %s CYG", (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18);
     console.log("Lender`s balance of CYG                       | %s CYG", (await cygToken.balanceOf(lender._address)) / 1e18);
 
     await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
     await rewarder.connect(lender).collect(borrowable.address, LENDER, lender._address);
 
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
-    console.log(
-        "Lender`s Pending CYG                          | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18,
-    );
+    console.log("Lender`s Pending CYG                          | %s CYG", (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18);
     console.log("Lender`s balance of CYG                       | %s CYG", (await cygToken.balanceOf(lender._address)) / 1e18);
 
     console.log("Pacing: %s", (await rewarder.epochRewardsPacing()) / 1e16);
@@ -213,29 +199,17 @@ const cygnusBorrow = async () => {
     console.log("---- mine 100,000 blocks ----");
     console.log("Current Epoch: %s", await rewarder.getCurrentEpoch());
 
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
-    console.log(
-        "Lender`s Pending CYG                          | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18,
-    );
+    console.log("Lender`s Pending CYG                          | %s CYG", (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18);
     console.log("Lender`s balance of CYG                       | %s CYG", (await cygToken.balanceOf(lender._address)) / 1e18);
 
     await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
     await rewarder.connect(lender).collect(borrowable.address, LENDER, lender._address);
 
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
-    console.log(
-        "Lender`s Pending CYG                          | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18,
-    );
+    console.log("Lender`s Pending CYG                          | %s CYG", (await rewarder.pendingCyg(borrowable.address, LENDER, lender._address)) / 1e18);
     console.log("Lender`s balance of CYG                       | %s CYG", (await cygToken.balanceOf(lender._address)) / 1e18);
 
     console.log("----------------------------------------------------------------------------------------------");
@@ -245,7 +219,7 @@ const cygnusBorrow = async () => {
     await usdc.connect(lender).transfer(owner.address, BigInt(500e6));
 
     // Repays full amount of 4k but not whole is used
-    const repayAmount = BigInt(4000e6);
+    const repayAmount = BigInt(100e6);
 
     // 2. Build permit
     const _permit = {
@@ -263,38 +237,20 @@ const cygnusBorrow = async () => {
     const _signature = await owner._signTypedData(_permitData.domain, _permitData.types, _permitData.values); // Sign the permit
 
     // 4. Repay with permit
-    await router
-        .connect(owner)
-        .repayPermit2Signature(
-            collateral.address,
-            borrowable.address,
-            repayAmount,
-            borrower._address,
-            ethers.constants.MaxUint256,
-            _permit,
-            _signature,
-        );
+    await router.connect(owner).repayPermit2Signature(borrowable.address, repayAmount, borrower._address, ethers.constants.MaxUint256, _permit, _signature);
 
     // Check the borrower's new borrow balance
-    const { borrowBalance: borrowBal } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: borrowBal } = await borrowable.getBorrowBalance(borrower._address);
 
     console.log("Borrow balance                                | %s USD", borrowBal / 1e6);
-    console.log( "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
     await rewarder.connect(borrower).collect(borrowable.address, BORROWER, borrower._address);
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
     await mine(100_000);
     await rewarder.accelerateTheUniverse();
-    console.log(
-        "Borrower`s Pending CYG                        | %s CYG",
-        (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18,
-    );
+    console.log("Borrower`s Pending CYG                        | %s CYG", (await rewarder.pendingCyg(borrowable.address, BORROWER, borrower._address)) / 1e18);
     console.log("Borrower`s balance of CYG                     | %s CYG", (await cygToken.balanceOf(borrower._address)) / 1e18);
 };
 

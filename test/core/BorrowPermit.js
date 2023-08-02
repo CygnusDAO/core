@@ -150,10 +150,10 @@ describe("Test borrowing with Permit functions on the router and core", function
         const signature = await owner._signTypedData(permitData.domain, permitData.types, permitData.values);
 
         // 3. Transfer LP tokens to owner
-        await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
+        await lpToken.connect(borrower).transfer(owner.address, BigInt(1e18));
 
         // 4. Owner deposits using borrower address
-        await collateral.connect(owner).deposit(BigInt(2e18), owner.address, permit, signature);
+        await collateral.connect(owner).deposit(BigInt(1e18), owner.address, permit, signature);
     };
 
     /**
@@ -194,7 +194,7 @@ describe("Test borrowing with Permit functions on the router and core", function
 
             const { liquidity } = await collateral.getAccountLiquidity(owner.address);
 
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
         });
 
         // Check: `borrow()`
@@ -206,7 +206,7 @@ describe("Test borrowing with Permit functions on the router and core", function
 
             const { liquidity } = await collateral.getAccountLiquidity(owner.address);
 
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.emit(
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.emit(
                 borrowable,
                 "Borrow",
             );
@@ -267,7 +267,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             );
 
             // Borrow
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.emit(
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.emit(
                 borrowable,
                 "Borrow",
             );
@@ -285,7 +285,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             const { liquidity } = await collateral.getAccountLiquidity(owner.address);
 
             // Assert before test
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
             const allowance = await borrowable.allowance(owner.address, router.address);
             expect(allowance).to.be.eq(0);
 
@@ -335,7 +335,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             const permitBytes = await ethers.utils.defaultAbiCoder.encode(["uint256", "uint8", "bytes32", "bytes32"], [liquidity, v, r, s]);
 
             // Borrow
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, permitBytes)).to.emit(
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, permitBytes)).to.emit(
                 borrowable,
                 "Borrow",
             );
@@ -351,7 +351,7 @@ describe("Test borrowing with Permit functions on the router and core", function
             const { liquidity } = await collateral.getAccountLiquidity(owner.address);
 
             // Assert before test
-            await expect(router.connect(owner).borrow(borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
+            await expect(router.connect(owner).borrow(collateral.address, borrowable.address, liquidity, owner.address, MaxUint256, "0x")).to.be.reverted;
             const allowance = await borrowable.allowance(owner.address, router.address);
             expect(allowance).to.be.eq(0);
 

@@ -14,9 +14,11 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
     // Construct minimal SDK with fetcher only
     const paraSwapMin = constructSimpleSDK({ chainId: chainId, axios });
 
-    // Get token0 and token1 for this lp
-    const token0 = await lpToken.token0();
-    const token1 = await lpToken.token1();
+    const ext = await router.getAltairExtension(lpToken.address);
+    const _router = await ethers.getContractAt("CygnusAltairX", ext);
+
+    // Get tokens and weights
+    const { token0, token1, token0Weight, token1Weight } = await _router.getTokenWeights(lpToken.address);
 
     /// @notice 1inch swagger API call
     /// @param {String} fromToken - The address of the token we are swapping
@@ -40,7 +42,6 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
             amount: amount,
             userAddress: router,
             excludeDEXS: "WooFiV2",
-            includeContractMethods: "multiSwap",
             side: "SELL",
         });
 
@@ -52,43 +53,47 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
             destDecimals: _dstDecimals,
             destToken: toToken,
             srcAmount: amount,
-            slippage: "10",
+            slippage: "20",
             priceRoute,
             userAddress: router,
             ignoreChecks: "true",
             receiver: router,
-            deadline: Math.floor(Date.now() / 1000) + 4503599627370496,
+            deadline: Math.floor(Date.now() / 1000) + 10000000,
         });
 
         return swapdata.data;
     };
 
-    // 1Inch call array to pass to periphery
+    // 0xproject call array to pass to periphery
     let calls = [];
 
     // Check if token0 is already usdc
-    if (token0.toLowerCase() === usdc.toLowerCase() || token1.toLowerCase() === usdc.toLowerCase()) {
-        // If usdc pass empty bytes
-        calls = [...calls, "0x"];
-    }
-    // Not usdc, check for native token (ie WETH) to minimize slippage
-    else {
-        if (token0.toLowerCase() === nativeToken.toLowerCase() || token1.toLowerCase() === nativeToken.toLowerCase()) {
-            // Swap USDC to Native
-            const swapdata = await paraswap(usdc, nativeToken, leverageUsdcAmount.toString(), router.address);
+    if (token0.toLowerCase() != usdc.toLowerCase()) {
+        // weight of token0 in the pool
+        const adjustedAmount0 = (BigInt(leverageUsdcAmount) * BigInt(token0Weight)) / BigInt(1e18);
 
-            // Add to call array
-            calls = [...calls, swapdata];
-        }
-        // Swap to token0
-        else {
-            // Swap USDC to token0
-            const swapdata = await paraswap(usdc, token0, leverageUsdcAmount.toString(), router.address);
+        // Swap USDC to Native
+        const swapdata = await paraswap(usdc, token0, adjustedAmount0.toString(), router.address);
 
-            // Add to call array
-            calls = [...calls, swapdata];
-        }
+        // Add to call array
+        calls = [...calls, swapdata];
     }
+    // Add empty call array
+    else calls = [...calls, "0x"];
+
+    // Check if token1 is already usdc
+    if (token1.toLowerCase() != usdc.toLowerCase()) {
+        // Weight of toekn1 in the pool
+        const adjustedAmount1 = (BigInt(leverageUsdcAmount) * BigInt(token1Weight)) / BigInt(1e18);
+
+        // Swap USDC to Native
+        const swapdata = await paraswap(usdc, token1, adjustedAmount1.toString(), router.address);
+
+        // Add to call array
+        calls = [...calls, swapdata];
+    }
+    // Add empty call array
+    else calls = [...calls, "0x"];
 
     // Return bytes array to pass to periphery
     return calls;

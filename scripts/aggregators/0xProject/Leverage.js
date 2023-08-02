@@ -1,8 +1,13 @@
+const hre = require("hardhat");
+const ethers = hre.ethers;
+
 /// @notice Build swaps using 0xProject's Swap API to leverage.
 module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount) {
-    // Get token0 and token1 for this lp
-    const token0 = await lpToken.token0();
-    const token1 = await lpToken.token1();
+    const ext = await router.getAltairExtension(lpToken.address);
+    const _router = await ethers.getContractAt("CygnusAltairX", ext);
+
+    // Get tokens and weights
+    const { token0, token1, token0Weight, token1Weight } = await _router.getTokenWeights(lpToken.address);
 
     /// @notice 0xProject swap api call
     /// @param {Number} chainId - The id of this chain
@@ -34,7 +39,9 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
         }
 
         // 0xProject Api call
-        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.0025&skipValidation=true&takerAddress=${router}`;
+        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.01&skipValidation=true&takerAddress=${router}`;
+
+        console.log(apiUrl);
 
         const headers = {
             "0x-api-key": "02a575e5-685a-464d-98d4-71431f79489a",
@@ -51,28 +58,32 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
     let calls = [];
 
     // Check if token0 is already usdc
-    if (token0.toLowerCase() === usdc.toLowerCase() || token1.toLowerCase() === usdc.toLowerCase()) {
-        // If usdc pass empty bytes
-        calls = [...calls, "0x"];
-    }
-    // Not usdc, check for native token (ie WETH) to minimize slippage
-    else {
-        if (token0.toLowerCase() === nativeToken.toLowerCase() || token1.toLowerCase() === nativeToken.toLowerCase()) {
-            // Swap USDC to Native
-            const swapdata = await _0xProjectSwap(chainId, usdc, nativeToken, leverageUsdcAmount, router.address);
+    if (token0.toLowerCase() != usdc.toLowerCase()) {
+        // weight of token0 in the pool
+        const adjustedAmount0 = (BigInt(leverageUsdcAmount) * BigInt(token0Weight)) / BigInt(1e18);
 
-            // Add to call array
-            calls = [...calls, swapdata];
-        }
-        // Swap to token0
-        else {
-            // Swap USDC to token0
-            const swapdata = await _0xProjectSwap(chainId, usdc, token0, leverageUsdcAmount, router.address);
+        // Swap USDC to Native
+        const swapdata = await _0xProjectSwap(chainId, usdc, token0, adjustedAmount0.toString(), router.address);
 
-            // Add to call array
-            calls = [...calls, swapdata];
-        }
+        // Add to call array
+        calls = [...calls, swapdata];
     }
+    // Add empty call array
+    else calls = [...calls, "0x"];
+
+    // Check if token1 is already usdc
+    if (token1.toLowerCase() != usdc.toLowerCase()) {
+        // Weight of toekn1 in the pool
+        const adjustedAmount1 = (BigInt(leverageUsdcAmount) * BigInt(token1Weight)) / BigInt(1e18);
+
+        // Swap USDC to Native
+        const swapdata = await _0xProjectSwap(chainId, usdc, token1, adjustedAmount1.toString(), router.address);
+
+        // Add to call array
+        calls = [...calls, swapdata];
+    }
+    // Add empty call array
+    else calls = [...calls, "0x"];
 
     // Return bytes array to pass to periphery
     return calls;

@@ -45,26 +45,25 @@ module.exports = async function Make() {
      *        `orbiterName`   -  Optional, it's useful when querying deployers from the factory contract.
      */
     // Set the chain ID
-    const chainId = 10; // For 1inch
+    const chainId = 137; // For 1inch
 
-    // Set the LP Token address
-    const lpTokenAddress = "0xd25711edfbf747efce181442cc1d8f5f8fc8a0d3";
+    // Matic / ETH
+    const lpTokenAddress = "0x3cc20a6795c4b57d9817399f68e83e71c8626580";
 
     // Set the USDC address on this chain
-    const usdcAddress = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607";
+    const usdcAddress = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174";
 
     // Set the native chain token address (ie WETH)
-    const nativeAddress = "0x4200000000000000000000000000000000000006";
+    const nativeAddress = "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270";
 
     // Set the Chainlink aggregator addresses for USDC
-    const usdcAggregator = "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3";
+    const usdcAggregator = "0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7";
 
     // Set the chainlink aggregator addresses for the LP token's assets (token0/token1)
-    const aggregators = ["0x13e3Ee699D1909E989722E753853AE30b17e08c5", "0x0D276FC14719f9292D5C1eA2198673d1f4269246"];
+    const aggregators = ["0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7", "0xF9680D99D6C9589e2a93a78A04A279e509205945"];
 
     // Set a friendly name for the orbiter
-    const denebName = "Velodrome: Volatile LP";
-    const albireoName = "Sonne: Staked Distributor";
+    const orbiterName = "Gamma: Concentrated LP";
 
     // You can create your own below or just leave as it is
 
@@ -119,25 +118,20 @@ module.exports = async function Make() {
     const factory = await Factory.deploy(owner.address, daoReserves.address, usdcAddress, nativeAddress, registry.address);
 
     // Initialize the factory with the Albireo and Deneb orbiter instances, and the CygnusNebulaOracle instance
-    await factory.setDenebOrbiter(denebName, deneb.address);
-    await factory.setAlbireoOrbiter(albireoName, albireo.address);
+    await factory.initializeOrbiter(orbiterName, albireo.address, deneb.address);
 
     console.log("\t-----------------------------------------------------------------------------");
     console.log("\tCygnus Factory     | %s", chalk.green(factory.address));
 
     const DAOReserves = await ethers.getContractFactory("CygnusDAOReserves");
-    const reserves = await DAOReserves.deploy(factory.address, BigInt(0.5e18));
+    const reserves = await DAOReserves.deploy(factory.address);
     await factory.setPendingDaoReserves(reserves.address);
     await factory.setNewDaoReserves();
 
     // ═══════════════════ 5. SHUTTLE ══════════════════════════════════════════════════════════
 
-    // LiquidityType = 1 = semiVolatile
-    //
-    await factory.deployStation(1, 0);
-
     // Deploy lending pool
-    await factory.deployShuttle(lpToken.address, 0, 0);
+    await factory.deployShuttle(lpToken.address, 0);
 
     // Get shuttle
     const shuttle = await factory.getShuttles(lpToken.address, 0);
@@ -160,7 +154,7 @@ module.exports = async function Make() {
     const router = await Router.deploy(factory.address);
 
     const RouterX = await ethers.getContractFactory("CygnusAltairX");
-    const routerX = await RouterX.deploy(factory.address, denebName);
+    const routerX = await RouterX.deploy(factory.address, orbiterName, registry.address);
     await router.setAltairExtension(0, routerX.address);
 
     console.log("\t-----------------------------------------------------------------------------");
@@ -181,8 +175,8 @@ module.exports = async function Make() {
     const CygRewarder = await ethers.getContractFactory("PillarsOfCreation");
 
     // 2_000_000 Tokens as an example
-    const totalCygRewards = BigInt(2_000_000e18);
-    const totalCygRewardsDAO = BigInt(1_000_000e18);
+    const totalCygRewards = BigInt(1_750_000e18);
+    const totalCygRewardsDAO = BigInt(500_000e18);
 
     // Deploy with totalCyg rewards as 3M and the contract creates the emissions curve
     const cygRewarder = await CygRewarder.deploy(factory.address, cygToken.address, totalCygRewards, totalCygRewardsDAO);
@@ -192,6 +186,8 @@ module.exports = async function Make() {
 
     // Transfer ownership
     await cygToken.connect(owner).transferOwnership(cygRewarder.address);
+
+    await cygRewarder.initializePillars();
 
     // Initialize rewarder for shuttle ID 0 with 1000 alloc points
     await cygRewarder.setLendingRewards(borrowable.address, 1000);
@@ -235,5 +231,6 @@ module.exports = async function Make() {
         vault, // CygnusX1Vault.sol
         reserves,
         cygToken,
+        registry,
     ];
 };

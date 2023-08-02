@@ -18,12 +18,7 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { MaxUint256 } = ethers.constants;
 
 // Permit2
-const {
-    PERMIT2_ADDRESS,
-    AllowanceTransfer,
-    SignatureTransfer,
-    MaxAllowanceExpiration,
-} = require("@uniswap/permit2-sdk");
+const { PERMIT2_ADDRESS, SignatureTransfer, } = require("@uniswap/permit2-sdk");
 
 const permit2Abi = require(path.resolve(__dirname, "../../scripts/abis/permit2.json"));
 

@@ -218,12 +218,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // LP tokens owned
         positionLp = cygLPBalance.mulWad(rate);
 
-        // Health = (Borrow Balance * Liquidation Penalty) / (Collateral in USD * Debt Ratio)
-        // Adjust borrowed admount with liquidation penalty, rounding up
-        uint256 collateralNeededInUsd = borrowBalance.mulWadUp(liquidationIncentive + liquidationFee);
-
         // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
-        health = positionUsd == 0 ? 0 : collateralNeededInUsd.divWad(positionUsd.mulWad(debtRatio));
+        health = positionUsd == 0 ? 0 : borrowBalance.divWad(positionUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee));
 
         // Liquidity and shortfall
         (liquidity, shortfall) = _accountLiquidity(borrower, type(uint256).max);

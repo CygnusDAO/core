@@ -71,7 +71,7 @@ const cygnusDeposit = async () => {
 
     //---------- 3. Sign Permit -----------//
     // Permit data
-     const permitDataA = AllowanceTransfer.getPermitData(permit, PERMIT2_ADDRESS, _chainId);
+    const permitDataA = AllowanceTransfer.getPermitData(permit, PERMIT2_ADDRESS, _chainId);
     // Signature
     const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
     // Transfer LP from borrower to Owner
@@ -112,8 +112,8 @@ const cygnusDeposit = async () => {
 
     // Balance of vault tokens
 
-    const cygLPBal = (await collateral.balanceOf(borrower._address));
-    const cygUsdBal = (await borrowable.balanceOf(lender._address));
+    const cygLPBal = await collateral.balanceOf(borrower._address);
+    const cygUsdBal = await borrowable.balanceOf(lender._address);
 
     console.log("Borrower's CygLP Balance                       | %s CygLP", cygLPBal / 1e18);
     console.log("Lenders' CygUSD Balance                        | %s CygUSD", cygUsdBal / 1e6);

@@ -8,30 +8,33 @@ const ethers = hre.ethers;
 
 // Permit2
 const { PERMIT2_ADDRESS, AllowanceTransfer, MaxAllowanceExpiration } = require("@uniswap/permit2-sdk");
+const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Fixture
 const Make = require(path.resolve(__dirname, "../test/Make.js"));
 const Users = require(path.resolve(__dirname, "../test/Users.js"));
 
 // Constants
-//const ONE = ethers.utils.parseUnits("1", 18);
-const { mine } = require("@nomicfoundation/hardhat-network-helpers");
+const ONE = ethers.utils.parseUnits("1", 18);
+const permit2Abi = require(path.resolve(__dirname, "./abis/permit2.json"));
 
 // Router calldata
-const { leverageCalldata } = require(path.resolve(__dirname, "./aggregators/Aggregatoors.js"));
-const { reinvestCalldata } = require(path.resolve(__dirname, "./reinvestors/Reinvestoors.js"));
+const { leverageCalldata, deleverageCalldata } = require(path.resolve(__dirname, "./aggregators/Aggregatoors.js"));
 
 // enum DexAggregator {
 //    PARASWAP,
-//    ONE_INCH_LEGACY,
-//    ONE_INCH_V2
+//    ONE_INCH_V1, // legacy
+//    ONE_INCH_V2,  // Optimized routers
+//    0xPROJECT,
+//    OPEN_OCEAN
 // }
-const dexAggregator = 0; // Use 1inch
+const dexAggregator = 4;
+const difference = 10000;
 
 // Leverage and deleverage a collateral position
-const reinvestCollateral = async () => {
+const cygnusLeverage = async () => {
     // Make Cygnus
-    const [, factory, router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
+    const [, , router, borrowable, collateral, usdc, lpToken, chainId] = await Make();
     const [owner, , , lender, borrower] = await Users();
 
     // Initialize pools
@@ -39,28 +42,7 @@ const reinvestCollateral = async () => {
     await borrowable.connect(owner).chargeVoid();
 
     // Set interest rate to 1% base rate and 10% slope
-    await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.1e18), 2, BigInt(0.8e18));
-
-    /***** COLLATERAL *****/
-
-    // Deploy harvester
-    const Harvester = await ethers.getContractFactory("VeloHarvester");
-    const harvester = await Harvester.deploy(factory.address);
-    // Initialize harvester
-    const { tokenA } = await harvester.getOptimalDstToken(lpToken.address);
-    await harvester.initializeHarvester(collateral.address, tokenA, harvester.address);
-    // Set harvester in the collateral
-    await collateral.setHarvester(harvester.address);
-
-    /***** BORROWABLE *****/
-
-    // Deploy harvester
-    const HarvesterB = await ethers.getContractFactory("SonneHarvester");
-    const harvesterB = await HarvesterB.deploy(factory.address);
-    // Initialize harvester
-    await harvesterB.initializeHarvester(borrowable.address, usdc.address, borrowable.address);
-    // Set harvester in the collateral
-    await borrowable.setHarvester(harvesterB.address);
+    await borrowable.connect(owner).setInterestRateModel(BigInt(0.01e18), BigInt(0.2e18), 2, BigInt(0.8e18));
 
     /***********************************************************************************************************
                                                      START LEVERAGE
@@ -88,7 +70,9 @@ const reinvestCollateral = async () => {
     // Borrower//
 
     //---------- 1. Approve Permit2 -------------//
-    await lpToken.connect(owner).approve(PERMIT2_ADDRESS, ethers.constants.MaxUint256);
+    await lpToken.connect(borrower).approve(PERMIT2_ADDRESS, ethers.constants.MaxUint256);
+    const permit2 = new ethers.Contract(PERMIT2_ADDRESS, permit2Abi, ethers.provider);
+    await permit2.connect(borrower).approve(lpToken.address, collateral.address, BigInt(200000e18), MaxAllowanceExpiration);
 
     //---------- 2. Build Permit -----------//
     const permit = {
@@ -109,28 +93,21 @@ const reinvestCollateral = async () => {
     };
 
     //---------- 3. Sign Permit -----------//
-    // Permit data
-    const permitDataA = AllowanceTransfer.getPermitData(permit, PERMIT2_ADDRESS, _chainId);
-    // Signature
-    const signature = await owner._signTypedData(permitDataA.domain, permitDataA.types, permitDataA.values);
-    // Transfer LP from borrower to Owner
-    await lpToken.connect(borrower).transfer(owner.address, BigInt(2e18));
-
-    //---------- 4. Owner deposits using borrower address -----------//
-    await collateral.connect(owner).deposit(BigInt(2e18), borrower._address, permit, signature);
+    await collateral.connect(borrower).deposit(BigInt(1e18), borrower._address, permit, '0x');
 
     // Lender //
 
     //---------- 1. Approve Permit2 -------------//
     // Approve
-    await usdc.connect(owner).approve(PERMIT2_ADDRESS, ethers.constants.MaxUint256);
+    await usdc.connect(lender).approve(PERMIT2_ADDRESS, ethers.constants.MaxUint256);
+    await permit2.connect(lender).approve(usdc.address, borrowable.address, BigInt(100000e18), MaxAllowanceExpiration);
 
     //---------- 2. Build Permit -----------//
     // AllowanceTransfer
     const permitB = {
         details: {
             token: usdc.address,
-            amount: BigInt(10000e6),
+            amount: BigInt(100000e6),
             expiration: MaxAllowanceExpiration,
             nonce: 0,
         },
@@ -138,18 +115,10 @@ const reinvestCollateral = async () => {
         sigDeadline: ethers.constants.MaxUint256,
     };
 
-    //---------- 3. Sign Permit -----------//
-    // Permit data
-    const permitDataB = AllowanceTransfer.getPermitData(permitB, PERMIT2_ADDRESS, _chainId);
-    // Signature
-    const signatureB = await owner._signTypedData(permitDataB.domain, permitDataB.types, permitDataB.values);
-    // Transfer USD to owner
-    await usdc.connect(lender).transfer(owner.address, BigInt(10000e6));
-
     //---------- 4. Owner deposits using borrower address -----------//
-    await borrowable.connect(owner).deposit(BigInt(10000e6), lender._address, permitB, signatureB);
+    await borrowable.connect(lender).deposit(BigInt(100000e6), lender._address, permitB, '0x');
 
-    // Balance of vault tokens
+    await mine(100000);
 
     const cygLPBal = (await collateral.balanceOf(borrower._address)) / 1e18;
     const cygUsdBal = (await borrowable.balanceOf(lender._address)) / 1e6;
@@ -163,7 +132,7 @@ const reinvestCollateral = async () => {
 
     //// Leverage amount is max liquidity * xLeverage
     const { liquidity } = await collateral.getAccountLiquidity(borrower._address);
-    const leverageAmount = liquidity * 8;
+    const leverageAmount = liquidity * 5;
     console.log("Leverage Amount                                | %s USD", leverageAmount / 1e6);
 
     // 1. Approve borrow
@@ -173,7 +142,7 @@ const reinvestCollateral = async () => {
     const borrowableBalance = (await borrowable.totalBalance()) / 1e6;
     const borrowerInfo = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceBefore = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: borrowBalanceBefore } = await borrowable.getBorrowBalance(borrower._address);
 
     console.log("----------------------------------------");
     console.log("Principal         | %s USD", borrowerInfo.principal / 1e6);
@@ -190,8 +159,27 @@ const reinvestCollateral = async () => {
 
     const nativeToken = await router.nativeToken();
 
+    console.log("LEV AMOUNT: %s", leverageAmount);
+
     // 2. Build swapdata with aggregator
     const leverageCalls = await leverageCalldata(dexAggregator, chainId, lpToken, nativeToken, usdc.address, router, leverageAmount);
+
+    const receivedLP = await router.connect(borrower).callStatic.leverage(
+        lpToken.address, // LP Address
+        collateral.address, // Collateral
+        borrowable.address, // Borrowable
+        leverageAmount, // USD Amount to leverage
+        0, // Min LP Token received
+        ethers.constants.MaxUint256, // Deadline
+        "0x", // Permit data
+        dexAggregator, // Enum  for dex aggregators
+        leverageCalls, // Bytes array with 1inch data
+        { gasLimit: 9000000 },
+    );
+
+    console.log("----------------------------------------");
+    console.log("Estimated received LP: %s", receivedLP / 1e18);
+    console.log("----------------------------------------");
 
     // 3. Leverage
     await router.connect(borrower).leverage(
@@ -204,6 +192,7 @@ const reinvestCollateral = async () => {
         "0x", // Permit data
         dexAggregator, // Enum  for dex aggregators
         leverageCalls, // Bytes array with 1inch data
+        { gasLimit: 9000000 },
     );
 
     console.log("----------------------------------------------------------------------------------------------");
@@ -212,7 +201,7 @@ const reinvestCollateral = async () => {
     const borrowableBalanceAfter = (await borrowable.totalBalance()) / 1e6;
     const _borrowerInfoAfter = await collateral.getBorrowerPosition(borrower._address);
     const cygLPBalanceAfter = (await collateral.balanceOf(borrower._address)) / 1e18;
-    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(collateral.address, borrower._address);
+    const { borrowBalance: borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
     const util = (await borrowable.utilizationRate()) / 1e16;
 
     console.log("----------------------------------------");
@@ -221,6 +210,7 @@ const reinvestCollateral = async () => {
     console.log("Price             | %s USD", _borrowerInfoAfter.price / 1e6);
     console.log("Position          | %s USD", _borrowerInfoAfter.positionUsd / 1e6);
     console.log("Health            | %s %%", _borrowerInfoAfter.health / 1e16);
+    console.log("Liquidity         | %s % USD", _borrowerInfoAfter.liquidity / 1e6);
     console.log("----------------------------------------");
 
     console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceAfter);
@@ -229,104 +219,92 @@ const reinvestCollateral = async () => {
     console.log("Borrower`s borrow balance                      | %s", borrowBalance / 1e6);
     console.log("Utilization Rate                               | %s%", util);
 
-    await mine(50_000);
-
     console.log("----------------------------------------------------------------------------------------------");
-    console.log("                                  HARVEST COLLATERAL                                          ");
+    console.log("                                        DELEVERAGE                                            ");
     console.log("----------------------------------------------------------------------------------------------");
 
-    //    await borrowable.sync();
-    //    const _borrowerInfoAfterV = await collateral.getBorrowerPosition(borrower._address);
-    //
-    //    console.log("----------------------------------------");
-    //    console.log("Principal         | %s USD", _borrowerInfoAfterV.principal / 1e6);
-    //    console.log("Borrow Balance    | %s USD", _borrowerInfoAfterV.borrowBalance / 1e6);
-    //    console.log("Price             | %s USD", _borrowerInfoAfterV.price / 1e6);
-    //    console.log("Position          | %s USD", _borrowerInfoAfterV.positionUsd / 1e6);
-    //    console.log("Health            | %s %%", _borrowerInfoAfterV.health / 1e16);
-    //    console.log("----------------------------------------");
-    //
-    //    // Get harvest calldata
-    //    const swapdata = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
-    //
-    //    // reinvest
-    //    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdata);
-    //
-    //    // get balance
-    //    const collateralBalanceReinvest = (await collateral.totalBalance()) / 1e18;
-    //
-    //    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvest);
-    //
-    //    const borrowersPositionAfter = await collateral.getBorrowerPosition(borrower._address);
-    //
-    //    console.log("----------------------------------------");
-    //    console.log("Principal         | %s USD", borrowersPositionAfter.principal / 1e6);
-    //    console.log("Borrow Balance    | %s USD", borrowersPositionAfter.borrowBalance / 1e6);
-    //    console.log("Price             | %s USD", borrowersPositionAfter.price / 1e6);
-    //    console.log("Position          | %s USD", borrowersPositionAfter.positionUsd / 1e6);
-    //    console.log("Health            | %s %%", borrowersPositionAfter.health / 1e16);
-    //    console.log("----------------------------------------");
-    //
-    //    await mine(50_000);
-    //
-    //    // Get harvest calldata
-    //    const swapdataB = await reinvestCalldata(dexAggregator, chainId, collateral, harvester);
-    //
-    //    // reinvest
-    //    await harvester.reinvestRewards(dexAggregator, collateral.address, swapdataB);
-    //
-    //    await borrowable.sync();
-    //    // get balance
-    //    const collateralBalanceReinvestB = (await collateral.totalBalance()) / 1e18;
-    //
-    //    console.log("Collateral`s LP Balance AFTER                  | %s LP Tokens", collateralBalanceReinvestB);
-    //
-    //    const borrowersPositionAfterB = await collateral.getBorrowerPosition(borrower._address);
-    //
-    //    console.log("----------------------------------------");
-    //    console.log("Principal         | %s USD", borrowersPositionAfterB.principal / 1e6);
-    //    console.log("Borrow Balance    | %s USD", borrowersPositionAfterB.borrowBalance / 1e6);
-    //    console.log("Price             | %s USD", borrowersPositionAfterB.price / 1e6);
-    //    console.log("Position          | %s USD", borrowersPositionAfterB.positionUsd / 1e6);
-    //    console.log("Health            | %s %%", borrowersPositionAfterB.health / 1e16);
-    //    console.log("----------------------------------------");
-    //
-    //    await mine(50_000);
-    //    await borrowable.sync();
-    //
-    //    const bx = (await borrowable.totalBalance()) / 1e6;
-    //
-    //    console.log("Borrowable`s USD Balance Before               | %s USDC", bx);
-
-    // Get harvest calldata
     await borrowable.sync();
-    const swapdataBorrowable = await reinvestCalldata(dexAggregator, chainId, borrowable, harvesterB);
-    await borrowable.sync();
-    // reinvest
-    await harvesterB.reinvestRewards(dexAggregator, borrowable.address, swapdataBorrowable);
-    await borrowable.sync();
-    // get balance
-    const borrowableBalAfter = (await borrowable.totalBalance()) / 1e6;
+    const _borrowerInfoAfterV = await collateral.getBorrowerPosition(borrower._address);
 
-    console.log("Borrowable`s USD Balance After               | %s USDC", borrowableBalAfter);
+    console.log("----------------------------------------");
+    console.log("Principal         | %s USD", _borrowerInfoAfterV.principal / 1e6);
+    console.log("Borrow Balance    | %s USD", _borrowerInfoAfterV.borrowBalance / 1e6);
+    console.log("Price             | %s USD", _borrowerInfoAfterV.price / 1e6);
+    console.log("Position          | %s USD", _borrowerInfoAfterV.positionUsd / 1e6);
+    console.log("Health            | %s %%", _borrowerInfoAfterV.health / 1e16);
+    console.log("----------------------------------------");
 
-    await mine(50_000);
-    await borrowable.sync();
+    // Deleveraging requires 1 approval, allowing the router to use user's CygLP
+    await collateral.connect(borrower).approve(router.address, ethers.constants.MaxUint256);
 
-    const bxx = (await borrowable.totalBalance()) / 1e6;
+    // Convert borrowBalance to LP and CygLP respectively
+    const { borrowBalance: _borrowBal } = await borrowable.getBorrowBalance(borrower._address);
+    const _lpPrice = await collateral.getLPTokenPrice();
+    const er = await collateral.exchangeRate();
 
-    console.log("Borrowable`s USD Balance Before               | %s USDC", bxx);
+    const deleverageLPAmount = _borrowBal.mul(ONE).div(_lpPrice);
+    const deleverageCygLPAmount = _borrowBal.mul(ONE).div(_lpPrice).mul(er).div(ONE);
 
-    // Get harvest calldata
-    const swapdataBorrowableV2 = await reinvestCalldata(dexAggregator, chainId, borrowable, harvesterB);
-    await borrowable.sync();
-    // reinvest
-    await harvesterB.reinvestRewards(dexAggregator, borrowable.address, swapdataBorrowableV2);
-    await borrowable.sync();
-    // get balance
-    const borrowableBalAfterV3 = (await borrowable.totalBalance()) / 1e6;
+    console.log("Deleverage LP Amount                           | %s LP Tokens", deleverageLPAmount / 1e18);
+    console.log("Deleverage CygLP Amount                        | %s CygLP", deleverageCygLPAmount / 1e18);
 
-    console.log("Borrowable`s USD Balance After               | %s USDC", borrowableBalAfterV3);
+    // 1. Build swapdata with aggregator
+    // 0 difference since we didnt mine blocks
+    const deleverageCalls = await deleverageCalldata(dexAggregator, chainId, lpToken, usdc.address, router, deleverageLPAmount, difference);
+
+    const receivedUsd = await router.connect(borrower).callStatic.deleverage(
+        lpToken.address, // LP address
+        collateral.address, // Collateral
+        borrowable.address, // Borrowable
+        deleverageCygLPAmount, // CygLP Amount deleveraging
+        0, // Min USD received
+        ethers.constants.MaxUint256, // Deadline
+        "0x", // No permit
+        dexAggregator, // Enum
+        deleverageCalls, // 1 inch bytes data
+        { gasLimit: 5000000 },
+    );
+
+    console.log("----------------------------------------");
+    console.log("Estimated received USD: %s", receivedUsd / 1e6);
+    console.log("----------------------------------------");
+
+    // 2. Deleverage
+    await router.connect(borrower).deleverage(
+        lpToken.address, // LP address
+        collateral.address, // Collateral
+        borrowable.address, // Borrowable
+        deleverageCygLPAmount, // CygLP Amount deleveraging
+        0, // Min USD received
+        ethers.constants.MaxUint256, // Deadline
+        "0x", // No permit
+        dexAggregator, // Enum
+        deleverageCalls, // 1 inch bytes data
+        { gasLimit: 5000000 },
+    );
+
+    const borrowerInfo_ = await collateral.getBorrowerPosition(borrower._address);
+
+    console.log("INFO AFTER DELEVERAGE:");
+    console.log("----------------------------------------");
+    console.log("Principal         | %s USD", borrowerInfo_.principal / 1e6);
+    console.log("Borrow Balance    | %s USD", borrowerInfo_.borrowBalance / 1e6);
+    console.log("Price             | %s USD", borrowerInfo_.price / 1e6);
+    console.log("Position          | %s USD", borrowerInfo_.positionUsd / 1e6);
+    console.log("Health            | %s %%", borrowerInfo_.health / 1e16);
+    console.log("----------------------------------------");
+
+    const _collateralBalanceAfter = (await collateral.totalBalance()) / 1e18;
+    const _borrowableBalanceAfter = (await borrowable.totalBalance()) / 1e6;
+    const _cygLPBalanceAfter = (await collateral.balanceOf(borrower._address)) / 1e18;
+    const { borrowBalance: _borrowBalance } = await borrowable.getBorrowBalance(borrower._address);
+    const _util = (await borrowable.utilizationRate()) / 1e16;
+
+    console.log("Collateral`s LP Balance after deleverage       | %s LP Tokens", _collateralBalanceAfter);
+    console.log("Borrowable's USD Balance after deleverage      | %s USD", _borrowableBalanceAfter);
+    console.log("Borrower`s CygLP Balance after deleverage      | %s", _cygLPBalanceAfter);
+    console.log("Borrower`s borrow balance after deleverage     | %s", _borrowBalance / 1e6);
+    console.log("Utilization Rate ater deleverage               | %s", _util);
 };
 
-reinvestCollateral();
+cygnusLeverage();

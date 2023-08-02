@@ -230,33 +230,21 @@ const cygnusLeverage = async () => {
     // Deploy harvester
     const Harvester = await ethers.getContractFactory("CygnusHarvester");
     const harvester = await Harvester.deploy(factory.address);
-    console.log(
-        "Pending Cyg of borrower before mine: %s",
-        await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address),
-    );
+    console.log("Pending Cyg of borrower before mine: %s", await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address));
     // Mine 100k blocks
     await mine(100_000);
-    console.log(
-        "Pending Cyg of borrower after mine: %s",
-        await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address),
-    );
+    console.log("Pending Cyg of borrower after mine: %s", await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address));
 
     // Set harvester in the collateral
     await collateral.setHarvester(harvester.address);
 
     const cygBal = await cygToken.balanceOf(borrower._address);
-    console.log(
-        "Pending Cyg of borrower before collect: %s",
-        await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address),
-    );
+    console.log("Pending Cyg of borrower before collect: %s", await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address));
     console.log("CYG Balance of Borrower before collect: %s", cygBal / 1e18);
     await rewarder.connect(borrower).collect(borrowable.address, collateral.address, borrower._address);
 
     const newCygBal = await cygToken.balanceOf(borrower._address);
-    console.log(
-        "Pending Cyg of borrower after collect: %s",
-        await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address),
-    );
+    console.log("Pending Cyg of borrower after collect: %s", await rewarder.pendingCyg(borrowable.address, collateral.address, borrower._address));
     console.log("CYG Balance of Borrower after collect: %s", newCygBal / 1e18);
 
     await cygToken.connect(borrower).approve(x1Vault.address, BigInt(10000000000e18));
@@ -271,7 +259,7 @@ const cygnusLeverage = async () => {
 
     for (let i = 0; i < tokens.length; i++) {
         await x1Vault.addRewardToken(tokens[i]);
-        await harvester.addRewardToken(tokens[i])
+        await harvester.addRewardToken(tokens[i]);
     }
 
     console.log("REWARD BALANCE OF VAULT: %s", await x1Vault.lastRewardBalance(tokens[0]));

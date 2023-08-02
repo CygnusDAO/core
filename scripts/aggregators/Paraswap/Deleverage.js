@@ -57,11 +57,11 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
             srcDecimals: _srcDecimals,
             destDecimals: _dstDecimals,
             srcAmount: amount,
-            slippage: "20",
+            slippage: "100",
             priceRoute,
             userAddress: router,
             ignoreChecks: "true",
-            deadline: Math.floor(Date.now() / 1000) + 4503599627370496,
+            deadline: Math.floor(Date.now() / 1000) + 900000000000000,
         });
 
         return swapdata.data;
