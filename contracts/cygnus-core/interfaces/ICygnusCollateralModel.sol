@@ -114,9 +114,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
             uint256 rate,
             uint256 positionUsd,
             uint256 positionLp,
-            uint256 health,
-            uint256 liquidity,
-            uint256 shortfall
+            uint256 health
         );
 
     /**

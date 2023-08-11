@@ -145,7 +145,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
         // Symbol of the Borrowable (ie `CygUSD: USDC`)
-        return string(abi.encodePacked("CygUSD: ", IERC20(underlying).symbol()));
+        return string.concat("CygUSD: ", IERC20(underlying).symbol());
     }
 
     /**

@@ -4,7 +4,8 @@ pragma solidity ^0.8.4;
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 
 // IMPORTANT: - Removed the `_beforeTokenTransfer` and `_afterTokenTransfer` hooks from the internal `_transfer` function
-//            - Removed `increaseAllowance` and `decreaseAllowance` for deploy savings
+//            - Removed `increaseAllowance` and `decreaseAllowance`
+//            - Removed the `_beforeTokenTransfer` from `_mint`
 
 /// @notice Simple ERC20 + EIP-2612 implementation.
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/tokens/ERC20.sol)
@@ -360,7 +361,6 @@ abstract contract ERC20 is IERC20Permit {
     ///
     /// Emits a {Transfer} event.
     function _mint(address to, uint256 amount) internal virtual {
-        _beforeTokenTransfer(address(0), to, amount);
         /// @solidity memory-safe-assembly
         assembly {
             let totalSupplyBefore := sload(_TOTAL_SUPPLY_SLOT)

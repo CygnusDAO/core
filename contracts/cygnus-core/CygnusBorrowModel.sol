@@ -338,7 +338,6 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
     /**
      * @notice Updates the borrow balance of a borrower and the total borrows of the protocol.
-     * @dev This is an internal function that should only be called from within the contract.
      * @param borrower The address of the borrower whose borrow balance is being updated.
      * @param borrowAmount The amount of tokens being borrowed by the borrower.
      * @param repayAmount The amount of tokens being repaid by the borrower.

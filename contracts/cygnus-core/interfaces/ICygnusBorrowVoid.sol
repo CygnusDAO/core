@@ -39,14 +39,6 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     error CygnusBorrowVoid__OnlyHarvesterAllowed();
 
     /**
-     *  @dev Strategy specific error
-     *  @dev Reverts if there was a mint or redeem error on the cToken
-     *
-     *  @custom:error CTokenError
-     */
-    error CygnusBorrowVoid__CTokenError();
-
-    /**
      *  @dev Reverts if the token we are sweeping is underlying
      *
      *  @custom:error TokenIsUnderlying
@@ -114,6 +106,13 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
      */
     function lastHarvest() external view returns (uint256);
 
+    /**
+     *  @notice Array of reward tokens for this pool
+     *  @param index The index of the token in the array
+     *  @return rewardToken The reward token
+     */
+    function allRewardTokens(uint256 index) external view returns (address rewardToken);
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -122,9 +121,9 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     function rewarder() external view returns (address);
 
     /**
-     *  @return rewardToken The address of the main reward token
+     *  @return rewardTokensLength Length of reward tokens
      */
-    function rewardToken() external view returns (address);
+    function rewardTokensLength() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -165,10 +164,11 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
      *  @notice Sets the harvester address to harvest and reinvest rewards into more underlying
      *
      *  @param _harvester The address of the new harvester contract
+     *  @param rewardTokens Array of reward tokens
      *
      *  @custom:security only-admin
      */
-    function setHarvester(address _harvester) external;
+    function setHarvester(address _harvester, address[] calldata rewardTokens) external;
 
     /**
      *  @notice Admin 👽

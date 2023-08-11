@@ -126,8 +126,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Escape in case of `flashRedeemAltair()` and `mint()`
         // 1. This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
         // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem` before transfer.
-        // 2. From address(0) only occurs during minting, so no need to check for `canRedeem`
-        if (from == address(this) || from == address(0)) return;
+        if (from == address(this)) return;
 
         /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();

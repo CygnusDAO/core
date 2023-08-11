@@ -160,6 +160,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      */
     address public override cygnusX1Vault;
 
+
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -343,7 +344,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
             // This pool`s collateral
             address collateral = shuttles[i].collateral;
             // Position in USD
-            (, , , , , uint256 positionUsd, , , ,) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
+            (, , , , , uint256 positionUsd, , ) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
             // Add to reserves
             reserves += positionUsd;
         }

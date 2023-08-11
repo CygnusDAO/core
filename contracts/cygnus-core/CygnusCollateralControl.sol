@@ -139,7 +139,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
         // Symbol of the Collateral (ie `CygLP: ETH/OP`)
-        return string(abi.encodePacked("CygLP: ", IERC20(underlying).symbol()));
+        return string.concat("CygLP: ", IERC20(underlying).symbol());
     }
 
     /**

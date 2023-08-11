@@ -54,11 +54,11 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *
      *  @param underlying The address of the underlying stablecoin
      *  @param shuttleId The unique ID of the lending pool
-     *  @param sender The address of the msg.sender (admin)
+     *  @param whitelisted The contract we approved to use our underlying
      *
      *  @custom:event ChargeVoid
      */
-    event ChargeVoid(address underlying, uint256 shuttleId, address sender);
+    event ChargeVoid(address underlying, uint256 shuttleId, address whitelisted);
 
     /**
      *  @dev Logs when a user claims rewards
@@ -80,16 +80,6 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      */
     event NewHarvester(address oldHarvester, address newHarvester);
 
-    /**
-     *  @dev Logs when admin sets a new reward token for the harvester (if needed)
-     *
-     *  @param _token Address of the token we are allowing the harvester to move
-     *  @param _harvester Address of the harvester
-     *
-     *  @custom:event NewBonusHarvesterToken
-     */
-    event NewBonusHarvesterToken(address _token, address _harvester);
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -106,6 +96,13 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      */
     function lastHarvest() external view returns (uint256);
 
+    /**
+     *  @notice Array of reward tokens for this pool
+     *  @param index The index of the token in the array
+     *  @return rewardToken The reward token
+     */
+    function allRewardTokens(uint256 index) external view returns (address rewardToken);
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -114,9 +111,9 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     function rewarder() external view returns (address);
 
     /**
-     *  @return rewardToken The address of the main reward token
+     *  @return rewardTokensLength Length of reward tokens
      */
-    function rewardToken() external view returns (address);
+    function rewardTokensLength() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -160,7 +157,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *
      *  @custom:security only-admin
      */
-    function setHarvester(address _harvester) external;
+    function setHarvester(address _harvester, address[] calldata rewardTokens) external;
 
     /**
      *  @notice Admin 👽

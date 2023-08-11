@@ -75,7 +75,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Collateral Deposited * LP Token price
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
-        // Adjust the collateral by the pool`s debt ratio and liquidation incentives to get the max borrowed amount
+        // Adjust the collateral by the pool`s debt ratio and liquidation incentives to get the max liquidity
         uint256 maxLiquidity = collateralInUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee);
 
         // Never underflows
@@ -194,9 +194,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
             uint256 rate,
             uint256 positionUsd,
             uint256 positionLp,
-            uint256 health,
-            uint256 liquidity,
-            uint256 shortfall
+            uint256 health
         )
     {
         // Collateral balance of the borrower (CygLP)
@@ -220,8 +218,5 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
 
         // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
         health = positionUsd == 0 ? 0 : borrowBalance.divWad(positionUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee));
-
-        // Liquidity and shortfall
-        (liquidity, shortfall) = _accountLiquidity(borrower, type(uint256).max);
     }
 }

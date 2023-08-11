@@ -165,9 +165,11 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Check for data.length for leverage.
         // If it's a simple borrow tx then data should be empty
         if (data.length > 0) {
-            // Pass data to router
+            // Pass data to router, liquidity is the amount of LP received
             liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
-        }
+        } 
+        // If no data then liquidity is just the borrowed amount
+        else liquidity = borrowAmount;
 
         // ────────── 3. Get the repay amount (if any)
         // Amount of USD sent to the contract which is not deposited in the strategy.

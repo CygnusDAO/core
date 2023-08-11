@@ -56,13 +56,6 @@ interface ICygnusTerminal is IERC20Permit {
      */
     error CygnusTerminal__MsgSenderNotAdmin();
 
-    /**
-     *  @dev Reverts when trying to sweep the underlying asset from this contract
-     *
-     *  @custom:error CantSweepUnderlying
-     */
-    error CygnusTerminal__CantSweepUnderlying();
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
