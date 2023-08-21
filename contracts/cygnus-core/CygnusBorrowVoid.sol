@@ -68,11 +68,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      */
     ICometRewards private constant COMET_REWARDS = ICometRewards(0x45939657d1CA34A8FA39A924B71D28Fe8431e581);
 
-    /**
-     *  @notice Address of the COMP token on this chain
-     */
-    address private constant COMP = 0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c;
-
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
@@ -163,20 +158,25 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Harvest the rewards from the strategy
         harvestRewardsPrivate();
 
-        // Single reward token array
-        tokens = new address[](1);
+        // Assign reward tokens and gas savings
+        tokens = allRewardTokens;
 
-        // Single reward amount
-        amounts = new uint256[](1);
+        // Create array of amounts
+        amounts = new uint256[](tokens.length);
 
-        // Get reward token
-        tokens[0] = COMP;
+        // Loop over each reward token and return balance
+        for (uint256 i = 0; i < tokens.length; ) {
+            // Assign balance of reward token `i`
+            amounts[i] = _checkBalance(tokens[i]);
 
-        // We always return our balance of the reward token
-        amounts[0] = _checkBalance(COMP);
+            // Next iteration
+            unchecked {
+                i++;
+            }
+        }
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
+        emit RechargeVoid(msg.sender, tokens, amounts, lastHarvest = block.timestamp);
     }
 
     /**
@@ -206,8 +206,11 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
         // Loop through each token
         for (uint256 i = 0; i < tokens.length; i++) {
-            // Approve harvester in token
-            tokens[i].safeApprove(_harvester, type(uint256).max);
+            // Check for underlying/strategy token
+            if (tokens[i] != underlying && tokens[i] != address(COMET_USDC)) {
+                // Approve harvester
+                tokens[i].safeApprove(_harvester, type(uint256).max);
+            }
         }
     }
 
@@ -249,7 +252,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant
      */
-    function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
+    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         // The harvester contract calls this function to harvest the rewards. Anyone can call
         // this function, but the rewards can only be moved by the harvester contract itself
         return getRewardsPrivate();
@@ -257,12 +260,14 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
+     *  @custom:security non-reentrant
      */
     function reinvestRewards_y7b(uint256 liquidity) external override nonReentrant update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
         if (msg.sender != harvester) revert CygnusBorrowVoid__OnlyHarvesterAllowed();
 
-        // After deposit hook, doesn't mint any shares
+        // After deposit hook, doesn't mint any shares. The contract should have already received
+        // the underlying stablecoin
         _afterDeposit(liquidity);
     }
 
@@ -298,7 +303,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         allRewardTokens = rewardTokens;
 
         /// @custom:event NewHarvester
-        emit NewHarvester(oldHarvester, harvester = newHarvester);
+        emit NewHarvester(oldHarvester, harvester = newHarvester, rewardTokens);
     }
 
     /**

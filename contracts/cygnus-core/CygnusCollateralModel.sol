@@ -106,7 +106,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
-        uint256 amountCollateral = balanceOf(borrower).mulWad(exchangeRate());
+        uint256 amountCollateral = _convertToAssets(balanceOf(borrower));
 
         // Calculate user's liquidity or shortfall internally
         return _collateralNeeded(amountCollateral, borrowBalance);
@@ -144,7 +144,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         uint256 finalBalance = cygLPBalance - redeemAmount;
 
         // Calculate the amount of underlying LPs the final balance is worth
-        uint256 amountCollateral = finalBalance.mulWad(exchangeRate());
+        uint256 amountCollateral = _convertToAssets(finalBalance);
 
         // Get borrower's borrow balance from borrowable contract
         (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);

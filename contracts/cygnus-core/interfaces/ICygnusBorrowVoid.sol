@@ -52,33 +52,36 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     /**
      *  @dev Logs when the strategy is first initialized or re-approves contracts
      *
-     *  @param underlying The address of the underlying stablecoin
+     *  @param underlying The address of the underlying LP
      *  @param shuttleId The unique ID of the lending pool
-     *  @param sender The address of the msg.sender (admin)
+     *  @param whitelisted The contract we approved to use our underlying
      *
      *  @custom:event ChargeVoid
      */
-    event ChargeVoid(address underlying, uint256 shuttleId, address sender);
+    event ChargeVoid(address underlying, uint256 shuttleId, address whitelisted);
 
     /**
-     *  @dev Logs when a user claims rewards
+     *  @dev Logs when rewards are harvested
      *
-     *  @param reinvestor The address of the caller who claimed the rewards
+     *  @param sender The address of the caller who harvested the rewards
+     *  @param tokens Total reward tokens harvested
+     *  @param amounts Amounts of reward tokens harvested
      *  @param timestamp The timestamp of the harvest
      *
      *  @custom:event RechargeVoid
      */
-    event RechargeVoid(address indexed reinvestor, uint256 timestamp);
+    event RechargeVoid(address indexed sender, address[] tokens, uint256[] amounts, uint256 timestamp);
 
     /**
      *  @dev Logs when admin sets a new harvester to reinvest rewards
      *
      *  @param oldHarvester The address of the old harvester
      *  @param newHarvester The address of the new harvester
+     *  @param rewardTokens The reward tokens added for the new harvester
      *
      *  @custom:event NewHarvester
      */
-    event NewHarvester(address oldHarvester, address newHarvester);
+    event NewHarvester(address oldHarvester, address newHarvester, address[] rewardTokens);
 
     /**
      *  @dev Logs when admin sets a new reward token for the harvester (if needed)

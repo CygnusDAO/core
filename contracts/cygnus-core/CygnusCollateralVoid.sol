@@ -71,7 +71,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /**
      *  @notice Pool ID this lpTokenPair corresponds to in `rewarder`
      */
-    uint256 private masterChefId = type(uint256).max;
+    uint256 private gammaId = type(uint256).max;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
@@ -132,7 +132,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function harvestRewardsPrivate() private {
         // Harvest rewards first
-        REWARDER.harvest(masterChefId, address(this));
+        REWARDER.harvest(gammaId, address(this));
 
         // Check for dquick balance
         uint256 dquickBalance = _checkBalance(DQUICK);
@@ -157,13 +157,18 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         amounts = new uint256[](tokens.length);
 
         // Loop over each reward token and return balance
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ) {
             // Assign balance of reward token `i`
             amounts[i] = _checkBalance(tokens[i]);
+
+            // Next iteration
+            unchecked {
+                i++;
+            }
         }
 
         /// @custom:event RechargeVoid
-        emit RechargeVoid(msg.sender, lastHarvest = block.timestamp);
+        emit RechargeVoid(msg.sender, tokens, amounts, lastHarvest = block.timestamp);
     }
 
     /**
@@ -193,8 +198,11 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
         // Loop through each token
         for (uint256 i = 0; i < tokens.length; i++) {
-            // Approve harvester in token
-            tokens[i].safeApprove(_harvester, type(uint256).max);
+            // Check for underlying
+            if (tokens[i] != underlying) {
+                // Approve harvester in token
+                tokens[i].safeApprove(_harvester, type(uint256).max);
+            }
         }
     }
 
@@ -207,7 +215,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // Get this contracts deposited LP amount from Velo gauge
-        (balance, ) = REWARDER.userInfo(masterChefId, address(this));
+        (balance, ) = REWARDER.userInfo(gammaId, address(this));
     }
 
     /**
@@ -217,7 +225,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
         // Deposit assets into the strategy
-        REWARDER.deposit(masterChefId, assets, address(this));
+        REWARDER.deposit(gammaId, assets, address(this));
     }
 
     /**
@@ -227,7 +235,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy
-        REWARDER.withdraw(masterChefId, assets, address(this));
+        REWARDER.withdraw(gammaId, assets, address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -236,7 +244,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      *  @inheritdoc ICygnusCollateralVoid
      *  @custom:security non-reentrant
      */
-    function getRewards() external override nonReentrant update returns (address[] memory tokens, uint256[] memory amounts) {
+    function getRewards() external override nonReentrant returns (address[] memory tokens, uint256[] memory amounts) {
         // The harvester contract calls this function to harvest the rewards. Anyone can call
         // this function, but the rewards can only be moved by the harvester contract itself.
         return getRewardsPrivate();
@@ -244,12 +252,14 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
     /**
      *  @inheritdoc ICygnusCollateralVoid
+     *  @custom:security non-reentrant
      */
     function reinvestRewards_y7b(uint256 liquidity) external override nonReentrant update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester
         if (msg.sender != harvester) revert CygnusCollateralVoid__OnlyHarvesterAllowed();
 
-        // After deposit hook, doesn't mint any shares
+        // After deposit hook, doesn't mint any shares. The contract should have already received
+        // the underlying LP from the harvester.
         _afterDeposit(liquidity);
     }
 
@@ -261,7 +271,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
      */
     function chargeVoid() external override cygnusAdmin {
         // Charge with pool ID only once (pool Id is never -1)
-        if (masterChefId == type(uint256).max) {
+        if (gammaId == type(uint256).max) {
             // Get total length
             uint256 rewarderLength = REWARDER.poolLength();
 
@@ -273,7 +283,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
                 // If same LP then assign pool ID to `i`
                 if (_underlying == underlying) {
                     // Assign pool Id;
-                    masterChefId = i;
+                    gammaId = i;
 
                     // Exit
                     break;
@@ -306,7 +316,7 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         allRewardTokens = rewardTokens;
 
         /// @custom:event NewHarvester
-        emit NewHarvester(oldHarvester, harvester = newHarvester);
+        emit NewHarvester(oldHarvester, harvester = newHarvester, rewardTokens);
     }
 
     /**

@@ -36,9 +36,8 @@ import {ERC20} from "./ERC20.sol";
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
  *  @notice Initializes Collateral Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygLP Token.
- *          This contract should be the only contract the Admin has control of (apart from CygnusCollateralVoid),
- *          specifically to set liquidation fees for the protocol, liquidation incentives for the liquidators
- *          and setting and the debt ratio for this shuttle.
+ *          This contract should be the only contract the Admin has control of specifically to set liquidation fees 
+ *          for the protocol, liquidation incentives for the liquidators and setting and the max debt ratio.
  *
  *          The constructor stores the borrowable address this pool is linked with, and only this address may
  *          borrow stablecoins from the borrowable.

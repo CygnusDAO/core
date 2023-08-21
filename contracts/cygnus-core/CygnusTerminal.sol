@@ -182,7 +182,41 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         return token.balanceOf(address(this));
     }
 
+    /**
+     *  @notice Converts assets to shares
+     *  @notice Overridden by CygnusBorrow.sol
+     */
+    function _convertToShares(uint256 assets) internal view returns (uint256) {
+        // Gas savings if non-zero
+        uint256 _totalSupply = totalSupply();
+
+        // Compute shares given an amount of stablecoin of LP token assets
+        return _totalSupply == 0 ? assets : assets.fullMulDiv(_totalSupply, totalAssets());
+    }
+
+    /**
+     *  @notice Convert shares to assets
+     *  @notice Override by CygnusBorrow.sol
+     */
+    function _convertToAssets(uint256 shares) internal view returns (uint256) {
+        // Gas savings if non-zero
+        uint256 _totalSupply = totalSupply();
+
+        // Compute assets given an amount of CygUSD or CygLP shares
+        return _totalSupply == 0 ? shares : shares.fullMulDiv(totalAssets(), _totalSupply);
+    }
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
+
+    // Overridden in `BorrowModel.sol`, note `virtual`
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    function totalAssets() public view virtual override returns (uint256) {
+        // NOTE: This is overriden by borrowable arm to include total borrows.
+        return uint256(totalBalance);
+    }
 
     /**
      *  @inheritdoc ICygnusTerminal
@@ -193,7 +227,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
         // Compute the exchange rate as the total balance of the underlying asset divided by the total supply of
         // the vault token. If there is no supply for this token, return the initial exchange rate of 1:1.
-        return _totalSupply == 0 ? 1e18 : uint256(totalBalance).divWad(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalAssets().divWad(_totalSupply);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -203,7 +237,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Updates this contract's total balance in terms of its underlying
+     *  @notice Updates this contract's total balance in terms of its underlying. This is triggered after any
+     *          state-changing function is called.
      */
     function _update() internal {
         // Get current balanceOf this contract
@@ -212,6 +247,8 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         /// @custom:event Sync
         emit Sync(totalBalance = SafeCastLib.toUint160(balance));
     }
+
+    // Overridden in strategy contract (BorrowVoid.sol & CollateralVoid.sol), note `virtual`
 
     /**
      *  @notice Preview the total balance of the underlying we own from the strategy (if any)
@@ -275,7 +312,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         uint256 balanceAfter = _previewTotalBalance();
 
         // Check for deposit fee
-        shares = (balanceAfter - balanceBefore).divWad(exchangeRate());
+        shares = _convertToShares(balanceAfter - balanceBefore);
 
         /// @custom:error CantMintZeroShares Avoid minting no shares
         if (shares == 0) revert CygnusTerminal__CantMintZeroShares();
@@ -305,7 +342,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 
         // Check current exchange rate
-        assets = shares.mulWad(exchangeRate());
+        assets = _convertToAssets(shares);
 
         /// @custom:error CantRedeemZeroAssets Avoid redeeming no assets
         if (assets <= 0) revert CygnusTerminal__CantRedeemZeroAssets();

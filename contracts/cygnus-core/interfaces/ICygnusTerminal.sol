@@ -127,9 +127,14 @@ interface ICygnusTerminal is IERC20Permit {
     function shuttleId() external view returns (uint256);
 
     /**
-     *  @return totalBalance Total balance owned by this shuttle pool in terms of its underlying
+     *  @return totalBalance Total available cash (USDC for borrowable, LPs by collateral) owned by this shuttle
      */
     function totalBalance() external view returns (uint160);
+
+    /**
+     *  @return totalAssets The total assets (including those not in this contract, ie. borrows) owned by this shuttle
+     */
+    function totalAssets() external view returns (uint256);
 
     /**
      *  @return exchangeRate The ratio which 1 pool token can be redeemed for underlying amount.

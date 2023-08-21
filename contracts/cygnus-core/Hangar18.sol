@@ -160,6 +160,15 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      */
     address public override cygnusX1Vault;
 
+    /**
+     *  @inheritdoc IHangar18
+     */
+    address public override cygnusPillars;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    address public override cygnusAltair;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
@@ -231,12 +240,12 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      */
     function checkOrbitersPrivate(bytes32 uniqueHash, uint256 orbitersLength) private view {
         // Load orbiter to memory
-        Orbiter[] memory orbiter = allOrbiters;
+        Orbiter[] memory orbiters = allOrbiters;
 
         // Loop through all orbiters
         for (uint256 i = 0; i < orbitersLength; i++) {
             /// @custom:error OrbiterAlreadySet
-            if (uniqueHash == orbiter[i].uniqueHash) revert Hangar18__OrbiterAlreadySet();
+            if (uniqueHash == orbiters[i].uniqueHash) revert Hangar18__OrbiterAlreadySet();
         }
     }
 
@@ -646,5 +655,42 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
         /// @custom:event NewX1Vault
         emit NewX1Vault(oldVault, newX1Vault);
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
+     */
+    function setCygnusPillars(address newPillars) external override cygnusAdmin {
+        /// @custom:error PillarsCantBeZero
+        if (newPillars == address(0)) revert Hangar18__PillarsCantBeZero();
+
+        // Old pillars
+        address oldPillars = cygnusPillars;
+
+        // New pillars
+        cygnusPillars = newPillars;
+
+        /// @custom:event NewPillarsOfCreation
+        emit NewPillarsOfCreation(oldPillars, newPillars);
+    }
+
+    /**
+     *  @inheritdoc IHangar18
+     *  @custom:security only-admin 👽
+     */
+    function setCygnusAltair(address newAltair) external override cygnusAdmin { 
+        /// @custom:error PillarsCantBeZero
+        if (newAltair == address(0)) revert Hangar18__AltairCantBeZero();
+
+        // Old pillars
+        address oldAltair = cygnusAltair;
+
+        // New pillars
+        cygnusAltair = newAltair;
+
+        /// @custom:event NewPillarsOfCreation
+        emit NewAltairRouter(oldAltair, cygnusAltair);
+
     }
 }

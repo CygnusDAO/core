@@ -80,20 +80,18 @@ interface IHangar18 {
     error Hangar18__LiquidityTokenNotSupported();
 
     /**
-     *  @dev Reverts when attempting to switch off orbiters that don't exist
+     *  @dev Reverts when the CYG rewarder contract is zero
      *
-     *  @param orbiterId The ID of the non-existent Orbiter
-     *
-     *  @custom:error OrbitersNotSet
+     *  @custom:error PillarsCantBeZero
      */
-    error Hangar18__OrbitersNotSet(uint256 orbiterId);
+    error Hangar18__PillarsCantBeZero();
 
     /**
-     *  @dev Reverts when the new oracle is the zero address
+     *  @dev Reverts when the CYG rewarder contract is zero
      *
-     *  @custom:error CygnusNebulaCantBeZero
+     *  @custom:error PillarsCantBeZero
      */
-    error Hangar18__CygnusNebulaCantBeZero();
+    error Hangar18__AltairCantBeZero();
 
     /**
      *  @dev Reverts when the oracle set is the same as the new one we are assigning
@@ -213,6 +211,27 @@ interface IHangar18 {
      *  @custom:event NewDaoReserves
      */
     event NewDaoReserves(address oldDaoReserves, address daoReserves);
+
+    /**
+     *  @dev Logs when a new pillars is confirmed
+     *
+     *  @param oldPillars Address of old `pillars` contract
+     *  @param newPillars Address of the new pillars contract
+     *
+     *  @custom:event NewPillarsOfCreation
+     */
+    event NewPillarsOfCreation(address oldPillars, address newPillars);
+
+    /**
+     *  @dev Logs when a new router is confirmed
+     *
+     *  @param oldRouter Address of the old base router contract
+     *  @param newRouter Address of the new router contract
+     *
+     *  @custom:event NewAltairRouter
+     */
+    event NewAltairRouter(address oldRouter, address newRouter);
+
 
     /**
      *  @dev Logs when orbiters are initialized in the factory
@@ -418,16 +437,28 @@ interface IHangar18 {
     function daoReserves() external view returns (address);
 
     /**
-     * @dev Returns the address of the contract to be the new DAO reserves.
-     * @return pendingDaoReserves The address of the requested contract to be the new DAO reserves.
+     *  @dev Returns the address of the contract to be the new DAO reserves.
+     *  @return pendingDaoReserves The address of the requested contract to be the new DAO reserves.
      */
     function pendingDaoReserves() external view returns (address);
 
     /**
-     * @dev Returns the address of the CygnusDAO revenue vault.
-     * @return cygnusX1Vault The address of the CygnusDAO revenue vault.
+     *  @dev Returns the address of the CygnusDAO revenue vault.
+     *  @return cygnusX1Vault The address of the CygnusDAO revenue vault.
      */
     function cygnusX1Vault() external view returns (address);
+
+    /**
+     *  @dev Returns the address of the CygnusDAO base router.
+     *  @return cygnusAltair Latest address of the base router on this chain.
+     */
+    function cygnusAltair() external view returns (address);
+
+    /**
+     *  @dev Returns the address of the CYG rewarder
+     *  @return cygnusPillars The address of the CYG rewarder on this chain
+     */
+    function cygnusPillars() external view returns (address);
 
     /**
      * @dev Returns the total number of orbiter pairs deployed (1 collateral + 1 borrow = 1 orbiter).
@@ -436,8 +467,8 @@ interface IHangar18 {
     function orbitersDeployed() external view returns (uint256);
 
     /**
-     * @dev Returns the total number of shuttles deployed.
-     * @return shuttlesDeployed The total number of shuttles deployed.
+     *  @dev Returns the total number of shuttles deployed.
+     *  @return shuttlesDeployed The total number of shuttles deployed.
      */
     function shuttlesDeployed() external view returns (uint256);
 
@@ -447,65 +478,65 @@ interface IHangar18 {
     function chainId() external view returns (uint256);
 
     /**
-     * @dev Returns the borrowable TVL (Total Value Locked) in USD for a specific shuttle.
-     * @param shuttleId The ID of the shuttle for which the borrowable TVL is requested.
-     * @return The borrowable TVL in USD for the specified shuttle.
+     *  @dev Returns the borrowable TVL (Total Value Locked) in USD for a specific shuttle.
+     *  @param shuttleId The ID of the shuttle for which the borrowable TVL is requested.
+     *  @return The borrowable TVL in USD for the specified shuttle.
      */
     function borrowableTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     * @dev Returns the collateral TVL (Total Value Locked) in USD for a specific shuttle.
-     * @param shuttleId The ID of the shuttle for which the collateral TVL is requested.
-     * @return The collateral TVL in USD for the specified shuttle.
+     *  @dev Returns the collateral TVL (Total Value Locked) in USD for a specific shuttle.
+     *  @param shuttleId The ID of the shuttle for which the collateral TVL is requested.
+     *  @return The collateral TVL in USD for the specified shuttle.
      */
     function collateralTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     * @dev Returns the total TVL (Total Value Locked) in USD for a specific shuttle.
-     * @param shuttleId The ID of the shuttle for which the total TVL is requested.
-     * @return The total TVL in USD for the specified shuttle.
+     *  @dev Returns the total TVL (Total Value Locked) in USD for a specific shuttle.
+     *  @param shuttleId The ID of the shuttle for which the total TVL is requested.
+     *  @return The total TVL in USD for the specified shuttle.
      */
     function shuttleTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     * @dev Returns the USD value of the DAO Cyg LP reserves.
-     * @return The USD value of the DAO Cyg LP reserves.
+     *  @dev Returns the USD value of the DAO Cyg LP reserves.
+     *  @return The USD value of the DAO Cyg LP reserves.
      */
     function daoCygLPReservesUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the USD value of the DAO Cyg USD reserves.
-     * @return The USD value of the DAO Cyg USD reserves.
+     *  @dev Returns the USD value of the DAO Cyg USD reserves.
+     *  @return The USD value of the DAO Cyg USD reserves.
      */
     function daoCygUsdReservesUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the total USD value of CygnusDAO reserves.
-     * @return The total USD value of CygnusDAO reserves.
+     *  @dev Returns the total USD value of CygnusDAO reserves.
+     *  @return The total USD value of CygnusDAO reserves.
      */
     function cygnusTotalReservesUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the total amount borrowed in USD.
-     * @return The total amount borrowed in USD.
+     *  @dev Returns the total amount borrowed in USD.
+     *  @return The total amount borrowed in USD.
      */
     function totalBorrowsUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the total borrowable TVL (Total Value Locked) in USD for all shuttles.
-     * @return The total borrowable TVL in USD.
+     *  @dev Returns the total borrowable TVL (Total Value Locked) in USD for all shuttles.
+     *  @return The total borrowable TVL in USD.
      */
     function allBorrowablesTvlUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the total collateral TVL (Total Value Locked) in USD for all shuttles.
-     * @return The total collateral TVL in USD.
+     *  @dev Returns the total collateral TVL (Total Value Locked) in USD for all shuttles.
+     *  @return The total collateral TVL in USD.
      */
     function allCollateralsTvlUsd() external view returns (uint256);
 
     /**
-     * @dev Returns the total TVL (Total Value Locked) in USD for CygnusDAO.
-     * @return The total TVL in USD for CygnusDAO.
+     *  @dev Returns the total TVL (Total Value Locked) in USD for CygnusDAO.
+     *  @return The total TVL in USD for CygnusDAO.
      */
     function cygnusTvlUsd() external view returns (uint256);
 
@@ -591,4 +622,20 @@ interface IHangar18 {
      *  @custom:security only-admin
      */
     function setCygnusX1Vault(address newX1Vault) external;
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Sets the address of the new pillars of creation
+     *
+     *  @custom:security only-admin
+     */
+    function setCygnusPillars(address newPillars) external;
+
+    /**
+     *  @notice Admin 👽
+     *  @notice Sets the address of the new base router
+     *
+     *  @custom:security only-admin
+     */
+    function setCygnusAltair(address newAltair) external;
 }

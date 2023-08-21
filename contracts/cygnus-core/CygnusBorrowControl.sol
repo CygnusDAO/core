@@ -38,8 +38,8 @@ import {ERC20} from "./ERC20.sol";
  *  @author CygnusDAO
  *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygUSD Token.
  *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
- *          borrow tracker which tracks individual borrows to reward users in any token (if there is any),
- *          the reserve factor and the kink utilization rate.
+ *          borrow tracker which tracks individual borrows to reward users with CYG. Admin also sets the interest
+ *          rate model used for this pool in this contract along with the reserve rate.
  *
  *          The constructor stores the collateral address this pool is linked with, and only this address can
  *          be used as collateral to borrow this contract`s underlying.

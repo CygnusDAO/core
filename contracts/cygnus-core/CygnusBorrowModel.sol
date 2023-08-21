@@ -39,6 +39,17 @@ import {CygnusTerminal, ICygnusTerminal} from "./CygnusTerminal.sol";
  *          liquidation or repay. The Accrue function uses 1 memory slot per accrual. This contract is also used
  *          by CygnusCollateral contracts to get the latest borrow balance of a borrower to calculate current debt
  *          ratio, liquidity or shortfall.
+ *
+ *          The interest accrual mechanism is similar to Compound Finance's with the exception of reserves.
+ *          If the reserveRate is set (> 0) then the contract mints the vault token (CygUSD) to the daoReserves
+ *          contract set at the factory.
+ *
+ *          There's also 2 functions `trackLender` & `trackBorrower` which are used to give out rewards to lenders
+ *          and borrowers respectively. The way rewards are calculated is by querying the latest balance of
+ *          CygUSD for lenders and the latest borrow balance for borrowers. See the `_afterTokenTransfer` function
+ *          in CygnusBorrow.sol. After any token transfer of CygUSD we pass the balance of CygUSD of the `from`
+ *          and `to` address. After any borrow, repay or liquidate we track the latest borrow balance of the
+ *          borrower.
  */
 contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -121,10 +132,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      *  @param cash Total current balance of assets this contract holds
      *  @param borrows Total amount of borrowed funds
      */
-    function _latestBorrowRate(uint256 cash, uint256 borrows) private view returns (uint256) {
-        // Utilization rate = borrows / (cash + borrows)
-        // We don't take into account reserves since we mint CygUSD
-        uint256 util = borrows.divWad(cash + borrows);
+    function borrowRatePrivate(uint256 cash, uint256 borrows) private view returns (uint256) {
+        // Utilization rate = borrows / (cash + borrows). We don't take into account reserves since we mint CygUSD
+        uint256 util = borrows == 0 ? 0 : borrows.divWad(cash + borrows);
 
         // If utilization <= kink return normal rate
         if (util <= interestRateModel.kink) {
@@ -146,6 +156,15 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
+     *  @notice Overrides the previous totalAssets from CygnusTerminal
+     *  @inheritdoc CygnusTerminal
+     */
+    function totalAssets() public view override(ICygnusTerminal, CygnusTerminal) returns (uint256) {
+        // The total stablecoins we own including borrows
+        return totalBalance + totalBorrows;
+    }
+
+    /**
      *  @notice Overrides the previous exchange rate from CygnusTerminal
      *  @inheritdoc CygnusTerminal
      */
@@ -155,7 +174,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
 
         // Compute the exchange rate as the total balance plus the total borrows of the underlying asset
         // Unlike cTokens we don't take into account totalReserves since our reserves are minted CygUSD
-        return _totalSupply == 0 ? 1e18 : (uint256(totalBalance) + totalBorrows).divWad(_totalSupply);
+        return _totalSupply == 0 ? 1e18 : totalAssets().divWad(_totalSupply);
     }
 
     /**
@@ -186,7 +205,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         uint256 _totalBorrows = totalBorrows;
 
         // Return the current pool utilization rate - we don't take into account reserves since we mint CygUSD
-        return _totalBorrows == 0 ? 0 : _totalBorrows.divWad(totalBalance + _totalBorrows);
+        return _totalBorrows == 0 ? 0 : _totalBorrows.divWad(totalAssets());
     }
 
     /**
@@ -196,8 +215,8 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Current burrow rate taking into account the reserve factor
         uint256 rateToPool = uint256(borrowRate).mulWad(1e18 - reserveFactor);
 
-        // Current balance of USDC + owed with interest
-        uint256 balance = totalBalance + totalBorrows;
+        // Current balance of USDC + owed, with interest (ie cash + borrows)
+        uint256 balance = totalAssets();
 
         // Avoid divide by 0
         if (balance == 0) return 0;
@@ -244,7 +263,7 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
      */
     function mintReservesPrivate(uint256 interestAccumulated) private returns (uint256 newReserves) {
         // Calculate new reserves to mint based on the reserve factor and latest exchange rate
-        newReserves = interestAccumulated.fullMulDiv(reserveFactor, exchangeRate());
+        newReserves = _convertToShares(interestAccumulated.mulWad(reserveFactor));
 
         // Check to mint new reserves
         if (newReserves > 0) {
@@ -286,6 +305,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Time elapsed between present timestamp and last accrued period
         uint256 timeElapsed = currentTimestamp - accrualTimestampStored;
 
+        // Escape if no time has past since last accrue
+        if (timeElapsed == 0) return;
+
         // ──────────────────── Load values from storage ────────────────────────
         // Total borrows stored
         uint256 totalBorrowsStored = totalBorrows;
@@ -296,12 +318,9 @@ contract CygnusBorrowModel is ICygnusBorrowModel, CygnusBorrowControl {
         // Current borrow index
         uint256 borrowIndexStored = borrowIndex;
 
-        // Escape if no time has past since last accrue
-        if (currentTimestamp == accrualTimestampStored || totalBorrowsStored == 0) return;
-
         // ──────────────────────────────────────────────────────────────────────
         // 1. Get per-second BorrowRate
-        uint256 borrowRateStored = _latestBorrowRate(cashStored, totalBorrowsStored);
+        uint256 borrowRateStored = borrowRatePrivate(cashStored, totalBorrowsStored);
 
         // 2. BorrowRate by the time elapsed
         uint256 interestFactor = borrowRateStored * timeElapsed;

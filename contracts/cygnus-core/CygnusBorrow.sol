@@ -84,21 +84,22 @@ import {CygnusTerminal} from "./CygnusTerminal.sol";
 import {ERC20} from "./ERC20.sol";
 
 /**
- *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, liquidations and reserves.
+ *  @title  CygnusBorrow Main borrow contract for Cygnus which handles borrows, repays, liquidations & flash liqudiations
  *  @author CygnusDAO
  *  @notice This is the main Borrow contract which is used for borrowing stablecoins and liquidating shortfall
  *          positions.
- *
- *          It also overrides the `exchangeRate` function at CygnusTerminal and we add the accrue modifiers,
- *          to accrue interest during deposits and redeems.
- *
- *          Reserves are also minted to the address `daoReserves` of the CygnusFactory (`hangar18`). The way
- *          the DAO accumulates reserves is not through underlying but through the minting of CygUSD.
  *
  *          The `borrow` function allows anyone to borrow or leverage USD to buy more LP Tokens. If calldata is
  *          passed, then the function calls the `altairBorrow` function on the sender, which should be used to
  *          leverage positions. If there is no calldata, the user can simply borrow instead of leveraging. The
  *          same borrow function is used to repay a loan, by checking the totalBalance held of underlying.
+ *
+ *          The `liquidate` function allows anyone to liquidate or flash liquidate a position. When using 
+ *          this function with no calldata then the liquidator must have sent an amount of USDC to repay the loan.
+ *          When using the function with calldata it allows the user to liquidate a position, and pass this data
+ *          to a periphery contract, where it should implement the logic to sell the collateral to the market,
+ *          receive USDC and finally repay this contract. The function does the check at the end to ensure 
+ *          we have received a correct amount of USDC.
  */
 contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -157,7 +158,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             // Withdraw `borrowAmount` from strategy
             _beforeWithdraw(borrowAmount);
 
-            // Transfer
+            // Transfer stablecoin to receiver
             underlying.safeTransfer(receiver, borrowAmount);
         }
 
@@ -168,7 +169,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             // Pass data to router, liquidity is the amount of LP received
             liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
         } 
-        // If no data then liquidity is just the borrowed amount
+        // If no data then liquidity is just the borrowed amount, in case of repay tx this is 0 liquidity
         else liquidity = borrowAmount;
 
         // ────────── 3. Get the repay amount (if any)
@@ -218,7 +219,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 repayAmount,
         bytes calldata data
     ) external override nonReentrant update returns (uint256 amountUsd) {
-        // ────────── 1. Get borrower's USD debt
+        // ────────── 1. Get borrower's USD debt - The `update` modifier will accrue interest before this call
         // Latest borrow balance
         (, uint256 borrowBalance) = getBorrowBalance(borrower);
 
@@ -248,7 +249,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         /// @custom:error InsufficientUsdReceived Avoid liquidating if we received less usd than declared
         if (amountUsd < actualRepayAmount) revert CygnusBorrow__InsufficientUsdReceived();
 
-        // ────────── 5. Update borrow internally with 0 borrow amount
+        // ────────── 5. Update borrow internally with 0 borrow amount and the amount of usd received
         // Pass to CygnusBorrowModel
         _updateBorrow(borrower, 0, amountUsd);
 

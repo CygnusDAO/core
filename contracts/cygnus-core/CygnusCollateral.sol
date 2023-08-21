@@ -154,8 +154,11 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Get price from oracle
         uint256 lpTokenPrice = getLPTokenPrice();
 
-        // Factor in liquidation incentive and current exchange rate to get the equivalent of the USDC repaid + profit in CygLP
-        cygLPAmount = (repayAmount.divWad(lpTokenPrice)).fullMulDiv(liquidationIncentive, exchangeRate());
+        // Get the equivalent of the repaid amount + liquidation bonus, in the underlying LP
+        uint256 seizedLPs = repayAmount.fullMulDiv(liquidationIncentive, lpTokenPrice);
+
+        // Convert the LP amount seized to CygLP shares to seize this amount
+        cygLPAmount = _convertToShares(seizedLPs);
 
         // Transfer the repaid amount + liq. incentive to the liquidator, escapes canRedeem
         _transfer(borrower, liquidator, cygLPAmount);
@@ -202,22 +205,20 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         underlying.safeTransfer(redeemer, assets);
 
         // Pass data to router
-        if (data.length > 0) {
-            usdAmount = ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
-        }
+        if (data.length > 0) usdAmount = ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
 
-        // CygLP tokens received by thsi contract
-        uint256 cygLPTokens = balanceOf(address(this));
+        // CygLP tokens received by this contract
+        uint256 cygLPReceived = balanceOf(address(this));
 
-        // Calculate the equivalent of the flash-redeemed assets in shares, rounding up
-        uint256 shares = assets.divWadUp(exchangeRate());
+        // Calculate the equivalent of the flash-redeemed assets in shares
+        uint256 shares = _convertToShares(assets);
 
         /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared
-        if (cygLPTokens < shares) revert CygnusCollateral__InsufficientCygLPReceived();
+        if (cygLPReceived < shares) revert CygnusCollateral__InsufficientCygLPReceived();
 
         // Burn tokens and emit a Transfer event
         // Escapes `canRedeem` since we are burning tokens from this address
-        _burn(address(this), cygLPTokens);
+        _burn(address(this), cygLPReceived);
     }
 
     /**
