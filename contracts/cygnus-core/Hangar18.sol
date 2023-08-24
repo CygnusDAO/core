@@ -113,7 +113,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    string public override name = "Cygnus: Hangar18";
+    string public override name = "CygnusDAO: Hangar18";
 
     /**
      *  @inheritdoc IHangar18
@@ -176,18 +176,13 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
     /**
      *  @notice Sets the important addresses which pools report back here to check for
-     *  @param _admin Address of the Cygnus Admin to update important protocol parameters
-     *  @param _daoReserves Address of the contract that handles weighted forwarding of Erc20 tokens
      *  @param _usd Address of the borrowable`s underlying (stablecoins USDC, DAI, BUSD, etc.).
      *  @param _nativeToken The address of this chain's native token
      *  @param _registry The Cygnus oracle registry which keeps track of all initialized LP oracles
      */
-    constructor(address _admin, address _daoReserves, address _usd, address _nativeToken, ICygnusNebulaRegistry _registry) {
+    constructor(address _usd, address _nativeToken, ICygnusNebulaRegistry _registry) {
         // Assign cygnus admin, has access to special functions
-        admin = _admin;
-
-        // Assign reserves manager
-        daoReserves = _daoReserves;
+        admin = msg.sender;
 
         // Address of the native token for this chain (ie WETH)
         nativeToken = _nativeToken;
@@ -199,10 +194,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         nebulaRegistry = _registry;
 
         /// @custom:event NewCygnusAdmin
-        emit NewCygnusAdmin(address(0), _admin);
-
-        /// @custom:event NewDaoReserves
-        emit NewDaoReserves(address(0), _daoReserves);
+        emit NewCygnusAdmin(address(0), msg.sender);
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

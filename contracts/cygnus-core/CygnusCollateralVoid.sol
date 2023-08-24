@@ -27,10 +27,10 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
 // Strategy
-import {IDQuick, IMiniChefV2, IRewarder} from "./interfaces/CollateralVoid/IMiniChef.sol";
+import {IMiniChefV2} from "./interfaces/CollateralVoid/IMiniChef.sol";
+import {IDQuick} from "./interfaces/CollateralVoid/IDQuick.sol";
 
 // Overrides
 import {CygnusTerminal} from "./CygnusTerminal.sol";
@@ -102,6 +102,18 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
+
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Preview total balance from the LP strategy
+     *  @notice Cygnus Terminal Override
+     *  @inheritdoc CygnusTerminal
+     */
+    function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
+        // Get this contracts deposited LP amount from Velo gauge
+        (balance, ) = REWARDER.userInfo(gammaId, address(this));
+    }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
@@ -208,15 +220,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
-    /**
-     *  @notice Preview total balance from the LP strategy
-     *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
-     */
-    function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
-        // Get this contracts deposited LP amount from Velo gauge
-        (balance, ) = REWARDER.userInfo(gammaId, address(this));
-    }
 
     /**
      *  @notice Cygnus Terminal Override
@@ -312,11 +315,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
         // Allow new harvester to access the new reward tokens passed
         addHarvesterPrivate(newHarvester, rewardTokens);
 
-        // Store new reward tokens
-        allRewardTokens = rewardTokens;
-
         /// @custom:event NewHarvester
-        emit NewHarvester(oldHarvester, harvester = newHarvester, rewardTokens);
+        emit NewHarvester(oldHarvester, harvester = newHarvester, allRewardTokens = rewardTokens);
     }
 
     /**

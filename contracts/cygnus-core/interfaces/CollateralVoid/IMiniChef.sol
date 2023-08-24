@@ -87,7 +87,3 @@ interface IRewarder {
 
     function rewardToken() external view returns (address);
 }
-
-interface IDQuick { 
-    function leave(uint256 amount) external; 
-}

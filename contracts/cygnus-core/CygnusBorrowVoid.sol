@@ -117,6 +117,18 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Preview total balance from the Stargate strategy
+     *  @notice Cygnus Terminal Override
+     *  @inheritdoc CygnusTerminal
+     */
+    function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
+        // Return latest balance of Comet
+        balance = COMET_USDC.balanceOf(address(this));
+    }
+
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
@@ -217,16 +229,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Preview total balance from the Stargate strategy
-     *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
-     */
-    function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
-        // Return latest balance of Comet
-        balance = COMET_USDC.balanceOf(address(this));
-    }
-
-    /**
      *  @notice Deposits underlying assets in the strategy
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
@@ -299,11 +301,8 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
         // Allow new harvester to access the new reward tokens passed
         addHarvesterPrivate(newHarvester, rewardTokens);
 
-        // Store new reward tokens
-        allRewardTokens = rewardTokens;
-
         /// @custom:event NewHarvester
-        emit NewHarvester(oldHarvester, harvester = newHarvester, rewardTokens);
+        emit NewHarvester(oldHarvester, harvester = newHarvester, allRewardTokens = rewardTokens);
     }
 
     /**

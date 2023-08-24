@@ -20,14 +20,13 @@ pragma solidity >=0.8.17;
 
 // Dependencies
 import {ICygnusCollateralControl} from "./interfaces/ICygnusCollateralControl.sol";
-import {ICygnusTerminal, CygnusTerminal} from "./CygnusTerminal.sol";
+import {CygnusTerminal} from "./CygnusTerminal.sol";
 
 // Libraries
 import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
 // Overrides
 import {ERC20} from "./ERC20.sol";
@@ -138,7 +137,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
         // Symbol of the Collateral (ie `CygLP: ETH/OP`)
-        return string.concat("CygLP: ", IERC20(underlying).symbol());
+        return string(abi.encodePacked("CygLP: ", IERC20(underlying).symbol()));
     }
 
     /**

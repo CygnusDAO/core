@@ -28,7 +28,6 @@ import {SafeCastLib} from "./libraries/SafeCastLib.sol";
 
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
-import {IOrbiter} from "./interfaces/IOrbiter.sol";
 
 // Overrides
 import {ERC20} from "./ERC20.sol";
@@ -145,7 +144,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      */
     function symbol() public view override(ERC20, IERC20) returns (string memory) {
         // Symbol of the Borrowable (ie `CygUSD: USDC`)
-        return string.concat("CygUSD: ", IERC20(underlying).symbol());
+        return string(abi.encodePacked("CygUSD: ", IERC20(underlying).symbol()));
     }
 
     /**
@@ -163,7 +162,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ICygnusBorrowControl
      */
     function collateral() external view override returns (address) {
-        // Return the whole array
+        // Read the stored internal variable from terminal
         return twinstar;
     }
 
