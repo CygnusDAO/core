@@ -195,13 +195,17 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         uint256 assets,
         bytes calldata data
     ) external override nonReentrant update returns (uint256 usdAmount) {
-        /// @custom:error CantRedeemZero Avoid redeem unless is positive amount
+        /// @custom:error CantRedeemZero Avoid redeem no LP
         if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
+
+        // Compute shares of assets redeemed, rounding up
+        // Total supply and total assets are both cached (totalAssets = totalBalance)
+        uint256 shares = assets.fullMulDivUp(totalSupply(), totalAssets());
 
         // Withdraw hook to withdraw from the strategy (if any)
         _beforeWithdraw(assets);
 
-        // Optimistically transfer funds
+        // Optimistically transfer LP amount to redeemer
         underlying.safeTransfer(redeemer, assets);
 
         // Pass data to router
@@ -209,9 +213,6 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // CygLP tokens received by this contract
         uint256 cygLPReceived = balanceOf(address(this));
-
-        // Calculate the equivalent of the flash-redeemed assets in shares
-        uint256 shares = _convertToShares(assets);
 
         /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared
         if (cygLPReceived < shares) revert CygnusCollateral__InsufficientCygLPReceived();

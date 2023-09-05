@@ -215,6 +215,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     function totalAssets() public view virtual override returns (uint256) {
         // NOTE: This is overriden by borrowable arm to include total borrows.
+        // totalBalance is always stored as a uint160, any overflow would have caused the tx to revert
         return uint256(totalBalance);
     }
 
@@ -248,16 +249,13 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         emit Sync(totalBalance = SafeCastLib.toUint160(balance));
     }
 
-    // Overridden in strategy contract (BorrowVoid.sol & CollateralVoid.sol), note `virtual`
+    // Overridden in strategy contracts (BorrowVoid.sol & CollateralVoid.sol)
 
     /**
      *  @notice Preview the total balance of the underlying we own from the strategy (if any)
      *  @return balance This contract's balance of the underlying asset
      */
-    function _previewTotalBalance() internal virtual returns (uint256 balance) {
-        // Get current balanceOf this contract
-        balance = _checkBalance(underlying);
-    }
+    function _previewTotalBalance() internal virtual returns (uint256 balance) {}
 
     /**
      *  @notice Internal hook for deposits into strategies

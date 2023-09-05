@@ -92,13 +92,15 @@ import {ERC20} from "./ERC20.sol";
  *          The `borrow` function allows anyone to borrow or leverage USD to buy more LP Tokens. If calldata is
  *          passed, then the function calls the `altairBorrow` function on the sender, which should be used to
  *          leverage positions. If there is no calldata, the user can simply borrow instead of leveraging. The
- *          same borrow function is used to repay a loan, by checking the totalBalance held of underlying.
+ *          same borrow function is used to repay a loan, by checking the totalBalance held of underlying. 
+ *          The function also allows anyone to perform a flash loan, as long as the amount repaid is greater
+ *          than or equal the borrowed amount.
  *
- *          The `liquidate` function allows anyone to liquidate or flash liquidate a position. When using 
+ *          The `liquidate` function allows anyone to liquidate or flash liquidate a position. When using
  *          this function with no calldata then the liquidator must have sent an amount of USDC to repay the loan.
  *          When using the function with calldata it allows the user to liquidate a position, and pass this data
  *          to a periphery contract, where it should implement the logic to sell the collateral to the market,
- *          receive USDC and finally repay this contract. The function does the check at the end to ensure 
+ *          receive USDC and finally repay this contract. The function does the check at the end to ensure
  *          we have received a correct amount of USDC.
  */
 contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
@@ -124,7 +126,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
     /**
      *  @notice ERC20 Override
-     *  @notice Tracks lender rewards after any transfer/mint/burn/etc. CygUSD is the lender token and should always
+     *  @notice Tracks lender's position AFTER any transfer/mint/burn/etc. CygUSD is the lender token and should always
      *          be tracked at core and updated on any interaction.
      */
     function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
@@ -151,8 +153,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Check if msg.sender can borrow on behalf of borrower, we use the same spend allowance as redeem
         if (borrower != msg.sender) _spendAllowance(borrower, msg.sender, borrowAmount);
 
-        // ────────── 1. Optimistically send `borrowAmount` to `receiver`
-        // Check for borrow amount, if a repay transaction this should be 0, else reverts at the end.
+        // ────────── 1. Check amount and optimistically send `borrowAmount` to `receiver`
         // We optimistically transfer borrow amounts and check in step 5 if borrower has enough liquidity to borrow.
         if (borrowAmount > 0) {
             // Withdraw `borrowAmount` from strategy
@@ -163,17 +164,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         }
 
         // ────────── 2. Pass data to the router if needed
-        // Check for data.length for leverage.
-        // If it's a simple borrow tx then data should be empty
-        if (data.length > 0) {
-            // Pass data to router, liquidity is the amount of LP received
-            liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
-        } 
-        // If no data then liquidity is just the borrowed amount, in case of repay tx this is 0 liquidity
-        else liquidity = borrowAmount;
+        // Check data for leverage transaction, if any pass data to router. `liquidity` is the amount of LP received
+        if (data.length > 0) liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
 
         // ────────── 3. Get the repay amount (if any)
-        // Amount of USD sent to the contract which is not deposited in the strategy.
+        // Borrow/Repay use this same function. To repay the loan the user must have sent back stablecoins to this contract.
+        // Any stablecoin sent directly here is not deposited in the strategy yet.
         uint256 repayAmount = _checkBalance(underlying);
 
         // ────────── 4. Update borrow internally with borrowAmount and repayAmount
@@ -194,15 +190,9 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
             /// @custom:error InsufficientLiquidity Avoid if borrower has insufficient liquidity for this amount
             if (!userCanBorrow) revert CygnusBorrow__InsufficientLiquidity();
         }
-        // Repay transaction. Check that the `borrowAmount` calldata is always 0. If received underlying
-        // amount then deposit in the strategy (does not mint shares)
-        else {
-            /// @custom:error BorrowAndRepayOverload Avoid borrow and repay in same transaction
-            if (borrowAmount > 0) revert CygnusBorrow__BorrowRepayOverload();
 
-            // Deposit USD in strategy
-            _afterDeposit(repayAmount);
-        }
+        // Deposit repay amount (if any) in strategy
+        if (repayAmount > 0) _afterDeposit(repayAmount);
 
         /// @custom:event Borrow
         emit Borrow(msg.sender, borrower, receiver, borrowAmount, repayAmount);
@@ -223,42 +213,39 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Latest borrow balance
         (, uint256 borrowBalance) = getBorrowBalance(borrower);
 
-        // Adjust declared amount to max liquidatable
-        uint256 actualRepayAmount = borrowBalance < repayAmount ? borrowBalance : repayAmount;
+        // Adjust declared amount to max liquidatable, this is the actual repaid amount
+        uint256 max = borrowBalance < repayAmount ? borrowBalance : repayAmount;
 
         // ────────── 2. Seize CygLP from borrower
-        // CygLP = (actualRepayAmount * liq. incentive). Reverts at Collateral if:
-        // - `actualRepayAmount` is 0.
+        // CygLP = (max * liq. incentive) / lp price.
+        // Reverts at Collateral if:
+        // - `max` is 0.
         // - `borrower`'s position is not in liquidatable state
-        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, actualRepayAmount);
+        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, max);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
-        // Pass call to router
-        if (data.length > 0) {
-            // If the `receiver` was the router used to flash liquidate then we call the router with the data passed,
-            // allowing the collateral to be sold to the market
-            ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, actualRepayAmount, data);
-        }
+        // If the `receiver` was the router used to flash liquidate then we call the router with the data passed,
+        // allowing the collateral to be sold to the market
+        if (data.length > 0) ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, max, data);
 
         // ────────── 4. Get the repaid amount of USD
         // Current balance of USD not deposited in strategy (if sell to market then router must have sent back USD).
-        // The amount received back would have to be equal at least to `actualRepayAmount`, allowing liquidator
-        // to keep the liquidation incentive
+        // The amount received back would have to be equal at least to `max`, allowing liquidator to keep the liquidation incentive
         amountUsd = _checkBalance(underlying);
 
         /// @custom:error InsufficientUsdReceived Avoid liquidating if we received less usd than declared
-        if (amountUsd < actualRepayAmount) revert CygnusBorrow__InsufficientUsdReceived();
+        if (amountUsd < max) revert CygnusBorrow__InsufficientUsdReceived();
 
         // ────────── 5. Update borrow internally with 0 borrow amount and the amount of usd received
         // Pass to CygnusBorrowModel
         _updateBorrow(borrower, 0, amountUsd);
 
         // ────────── 6. Deposit in strategy
-        // Deposit underlying in strategy
+        // Deposit underlying in strategy, if 0 then would've reverted by now
         _afterDeposit(amountUsd);
 
         /// @custom:event Liquidate
-        emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, actualRepayAmount, amountUsd);
+        emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, max, amountUsd);
     }
 
     /**
