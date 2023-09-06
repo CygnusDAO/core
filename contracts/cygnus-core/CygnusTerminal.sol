@@ -242,14 +242,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      *          state-changing function is called.
      */
     function _update() internal {
-        // Get current balanceOf this contract
+        // Preview the total assets of stablecoin or LP we own
         uint256 balance = _previewTotalBalance();
 
         /// @custom:event Sync
         emit Sync(totalBalance = SafeCastLib.toUint160(balance));
     }
 
-    // Overridden in strategy contracts (BorrowVoid.sol & CollateralVoid.sol)
+    // Overridden in strategy contract (BorrowVoid.sol & CollateralVoid.sol)
 
     /**
      *  @notice Preview the total balance of the underlying we own from the strategy (if any)

@@ -113,7 +113,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    string public override name = "CygnusDAO: Hangar18";
+    string public override name = "Cygnus: Hangar18";
 
     /**
      *  @inheritdoc IHangar18
