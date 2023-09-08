@@ -150,13 +150,13 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
      *          This makes totalBalance increase in this contract, increasing the exchangeRate between
      *          CygUSD and underlying and thus lowering utilization rate and borrow rate
      *
-     *  @custom:security only-harvester
+     *  @custom:security non-reentrant only-harvester
      */
     function reinvestRewards_y7b(uint256 liquidity) external;
 
     /**
      *  @notice Admin 👽
-     *  @notice Can be called by anyone. Charges approvals needed for deposits and withdrawals, and any other function
+     *  @notice Charges approvals needed for deposits and withdrawals, and any other function
      *          needed to get the vault started. ie, setting a pool ID from a MasterChef, a gauge, etc.
      *  @custom:security only-admin
      */
