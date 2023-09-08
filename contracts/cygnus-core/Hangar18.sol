@@ -48,6 +48,7 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 import {ICygnusNebulaRegistry} from "./interfaces/ICygnusNebulaRegistry.sol";
 import {IDenebOrbiter} from "./interfaces/IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./interfaces/IAlbireoOrbiter.sol";
+import {ICygnusDAOReserves} from "./interfaces/ICygnusDAOReserves.sol";
 
 // For TVLs
 import {ICygnusBorrow} from "./interfaces/ICygnusBorrow.sol";
@@ -149,11 +150,6 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      */
     address public override daoReserves;
-
-    /**
-     *  @inheritdoc IHangar18
-     */
-    address public override pendingDaoReserves;
 
     /**
      *  @inheritdoc IHangar18
@@ -449,8 +445,11 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         uint256 orbiterId
     ) external override cygnusAdmin returns (address borrowable, address collateral) {
         //  ─────────────────────────────── Phase 1 ───────────────────────────────
-        // Load orbiter to storage for gas savings (throws if not set)
+        // Load orbiter to storage for gas savings (throws if doesn't exist)
         Orbiter storage orbiter = allOrbiters[orbiterId];
+
+        // @custom:error OrbiterInactive
+        if (!orbiter.status) revert Hangar18__OrbiterInactive();
 
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
         // Prepare shuttle for deployment, reverts if lpTokenPair already exists
@@ -495,6 +494,9 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Push the lending pool struct to the object array
         allShuttles.push(shuttle);
 
+        // Add shuttle to reserves contract. `addShuttle` can only be called by this contract
+        ICygnusDAOReserves(daoReserves).addShuttle(shuttle.shuttleId, borrowable, collateral);
+
         /// @custom:event NewShuttleLaunched
         emit NewShuttle(lpTokenPair, orbiterId, shuttle.shuttleId, shuttle.borrowable, shuttle.collateral);
     }
@@ -503,7 +505,11 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function initializeOrbiter(string memory _name, IAlbireoOrbiter albireo, IDenebOrbiter deneb) external override cygnusAdmin {
+    function initializeOrbiter(
+        string memory _name,
+        IAlbireoOrbiter albireo,
+        IDenebOrbiter deneb
+    ) external override cygnusAdmin {
         // Borrowable init code hash
         bytes32 borrowableInitCodeHash = albireo.borrowableInitCodeHash();
 
@@ -550,7 +556,13 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         orbiter.status = !orbiter.status;
 
         /// @custom:event SwitchOrbiterStatus
-        emit SwitchOrbiterStatus(orbiter.status, orbiter.orbiterId, orbiter.albireoOrbiter, orbiter.denebOrbiter, orbiter.orbiterName);
+        emit SwitchOrbiterStatus(
+            orbiter.status,
+            orbiter.orbiterId,
+            orbiter.albireoOrbiter,
+            orbiter.denebOrbiter,
+            orbiter.orbiterName
+        );
     }
 
     /**
@@ -573,11 +585,11 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
     /**
      *  @inheritdoc IHangar18
-     *  @custom:security only-admin 👽
+     *  @custom:security only-pending-admin
      */
-    function setNewCygnusAdmin() external override cygnusAdmin {
+    function acceptCygnusAdmin() external override {
         /// @custom:error PendingAdminCantBeZero
-        if (pendingAdmin == address(0)) revert Hangar18__PendingAdminCantBeZero();
+        if (msg.sender != pendingAdmin) revert Hangar18__SenderNotPendingAdmin();
 
         // Address of the Admin until this point
         address oldAdmin = admin;
@@ -596,39 +608,18 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function setPendingDaoReserves(address newPendingDaoReserves) external override cygnusAdmin {
-        /// @custom:error DaoReservesAlreadySet
-        if (newPendingDaoReserves == daoReserves) revert Hangar18__DaoReservesAlreadySet();
-
-        // Pending dao reserves until this point
-        address oldPendingDaoReserves = pendingDaoReserves;
-
-        // Assign the new pending dao reserves
-        pendingDaoReserves = newPendingDaoReserves;
-
-        /// @custom:event NewPendingDaoReserves
-        emit NewPendingDaoReserves(oldPendingDaoReserves, pendingDaoReserves);
-    }
-
-    /**
-     *  @inheritdoc IHangar18
-     *  @custom:security only-admin 👽
-     */
-    function setNewDaoReserves() external override cygnusAdmin {
+    function setDaoReserves(address reserves) external override cygnusAdmin {
         /// @custom:error DaoReservesCantBeZero
-        if (pendingDaoReserves == address(0)) revert Hangar18__DaoReservesCantBeZero();
+        if (reserves == address(0)) revert Hangar18__DaoReservesCantBeZero();
 
-        // Address of the reserves admin up until now
+        // Address of the DAO reserves until now
         address oldDaoReserves = daoReserves;
 
-        // Assign the pending admin as admin
-        daoReserves = pendingDaoReserves;
-
-        // Gas refund
-        delete pendingDaoReserves;
+        // Assign the new reserves
+        daoReserves = reserves;
 
         /// @custom:event NewDaoReserves
-        emit NewDaoReserves(oldDaoReserves, daoReserves);
+        emit NewDaoReserves(oldDaoReserves, reserves);
     }
 
     /**
@@ -671,7 +662,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function setCygnusAltair(address newAltair) external override cygnusAdmin { 
+    function setCygnusAltair(address newAltair) external override cygnusAdmin {
         /// @custom:error PillarsCantBeZero
         if (newAltair == address(0)) revert Hangar18__AltairCantBeZero();
 
@@ -683,6 +674,5 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
         /// @custom:event NewPillarsOfCreation
         emit NewAltairRouter(oldAltair, cygnusAltair);
-
     }
 }

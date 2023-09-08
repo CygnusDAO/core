@@ -135,11 +135,11 @@ interface IHangar18 {
     error Hangar18__PendingDaoReservesAlreadySet();
 
     /**
-     *  @dev Reverts when pending Cygnus admin is the zero address
+     *  @dev Reverts when msg.sender is not the pending admin
      *
-     *  @custom:error PendingCygnusAdmin
+     *  @custom:error SenderNotPendingAdmin
      */
-    error Hangar18__PendingAdminCantBeZero();
+    error Hangar18__SenderNotPendingAdmin();
 
     /**
      *  @dev Reverts when pending reserves contract address is the zero address
@@ -154,6 +154,13 @@ interface IHangar18 {
      *  @custom:error X1VaultCantBeZero
      */
     error Hangar18__X1VaultCantBeZero();
+
+    /**
+     *  @dev Reverts when deploying a pool with an inactive orbiter
+     *
+     *  @custom:error OrbiterInactive
+     */
+    error Hangar18__OrbiterInactive();
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS
@@ -437,12 +444,6 @@ interface IHangar18 {
     function daoReserves() external view returns (address);
 
     /**
-     *  @dev Returns the address of the contract to be the new DAO reserves.
-     *  @return pendingDaoReserves The address of the requested contract to be the new DAO reserves.
-     */
-    function pendingDaoReserves() external view returns (address);
-
-    /**
      *  @dev Returns the address of the CygnusDAO revenue vault.
      *  @return cygnusX1Vault The address of the CygnusDAO revenue vault.
      */
@@ -592,28 +593,21 @@ interface IHangar18 {
     function setPendingAdmin(address newCygnusAdmin) external;
 
     /**
-     *  @notice Admin 👽
      *  @notice Approves the pending admin and is the new Cygnus admin
      *
-     *  @custom:security only-admin
+     *  @custom:security only-pending-admin
      */
-    function setNewCygnusAdmin() external;
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Sets the address for the future reserves manger if accepted
-     *  @param newDaoReserves The address of the requested contract to be the new daoReserves
-     *  @custom:security only-admin
-     */
-    function setPendingDaoReserves(address newDaoReserves) external;
+    function acceptCygnusAdmin() external;
 
     /**
      *  @notice Admin 👽
      *  @notice Accepts the new implementation contract
      *
+     *  @param newReserves The address of the new DAO reserves
+     *
      *  @custom:security only-admin
      */
-    function setNewDaoReserves() external;
+    function setDaoReserves(address newReserves) external;
 
     /**
      *  @notice Admin 👽
