@@ -64,15 +64,16 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+    /*  ────────────────────────────────────────────── Private ────────────────────────────────────────────────  */
 
     /**
      *  @notice Calculate collateral needed for a loan factoring in debt ratio and liq incentive
      *  @param amountCollateral The collateral amount the borrower has deposited (CygLP * exchangeRate)
      *  @param borrowedAmount The total amount of stablecoins the user has borrowed (can be 0)
      */
-    function _collateralNeeded(uint256 amountCollateral, uint256 borrowedAmount) internal view returns (uint256, uint256) {
-        // Collateral Deposited * LP Token price
+    function collateralNeededPrivate(uint256 amountCollateral, uint256 borrowedAmount) private view returns (uint256, uint256) {
+        // User LP deposited * LP Token price
+        // ie. convertToAssets(cygLPBalance) * lpPrice
         uint256 collateralInUsd = amountCollateral.mulWad(getLPTokenPrice());
 
         // Adjust the collateral by the pool`s debt ratio and liquidation incentives to get the max liquidity
@@ -87,6 +88,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         }
     }
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
     /**
      *  @notice Called by CygnusCollateral when a liquidation takes place
      *  @param borrower Address of the borrower
@@ -96,20 +99,20 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function _accountLiquidity(address borrower, uint256 borrowBalance) internal view returns (uint256, uint256) {
         // Borrower can never be address zero or Collateral. When doing a `borrow` from the borrowable contract, this function
-        // gets called to check for account liquidity. If the borrower passed is either, we revert the tx.
-        /// @custom:error BorrowerCantBeAddressZero Avoid borrower zero address
-        if (borrower == address(0)) revert CygnusCollateralModel__BorrowerCantBeAddressZero();
-        /// @custom:error BorrowerCantBeCollateral Avoid borrower collateral
-        else if (borrower == address(this)) revert CygnusCollateralModel__BorrowerCantBeCollateral();
+        // gets called to check for account liquidity. If the borrower passed is either, we revert the tx
+        /// @custom:error InvalidBorrower Avoid borrower zero address or this contract
+        if (borrower == address(0) || borrower == address(this)) revert CygnusCollateralModel__InvalidBorrower();
 
-        // Check if called externally or from borrowable. If called externally then borrowedAmount is always MaxUint256
+        // Check if called externally or from borrowable. If called externally (via `getAccountLiquidity`) then borrowedAmount 
+        // is always MaxUint256. If called by borrowable ( `borrow` function calls the `canBorrow` function brlow) then its the 
+        // account's total borrows (including the new tx borrow amount if any).
         if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
         uint256 amountCollateral = _convertToAssets(balanceOf(borrower));
 
         // Calculate user's liquidity or shortfall internally
-        return _collateralNeeded(amountCollateral, borrowBalance);
+        return collateralNeededPrivate(amountCollateral, borrowBalance);
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
@@ -150,7 +153,7 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the LP price and calculate the needed collateral
-        (, uint256 shortfall) = _collateralNeeded(amountCollateral, borrowBalance);
+        (, uint256 shortfall) = collateralNeededPrivate(amountCollateral, borrowBalance);
 
         // If user has no shortfall after redeeming return true
         return shortfall == 0;

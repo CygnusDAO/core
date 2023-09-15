@@ -39,9 +39,6 @@ import {ERC20} from "./ERC20.sol";
  *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
  *          borrow tracker which tracks individual borrows to reward users with CYG. Admin also sets the interest
  *          rate model used for this pool in this contract along with the reserve rate.
- *
- *          The constructor stores the collateral address this pool is linked with, and only this address can
- *          be used as collateral to borrow this contract`s underlying.
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -84,7 +81,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @notice Maximum Kink multiplier
      */
-    uint256 private constant KINK_MULTIPLIER_MAX = 10;
+    uint256 private constant KINK_MULTIPLIER_MAX = 20;
 
     /**
      *  @notice Used to calculate the per second interest rates

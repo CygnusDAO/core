@@ -208,13 +208,17 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Optimistically transfer LP amount to redeemer
         underlying.safeTransfer(redeemer, assets);
 
-        // Pass data to router
+        // If data exists then pass to router - `usdAmount` return var is helpful when flash redeeming via a router
+        // with a staticCall before hand, it has no effect on the function itself. In case of deleveraging
+        // (converting LP to USDC), the router would first call this function and flashRedeem the LP, sell the LP for USDC, 
+        // repay user loans (if any) and transfer back the equivalent of the LP redeemed in CygLP to this contract. 
+        // Doing a static call on a deleverage will give us an estimate of the USDC received 
         if (data.length > 0) usdAmount = ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
 
         // CygLP tokens received by this contract
         uint256 cygLPReceived = balanceOf(address(this));
 
-        /// @custom:error InsufficientRedeemAmount Avoid if we have received less CygLP than declared
+        /// @custom:error InsufficientCygLPReceived Avoid if we have received less CygLP than declared
         if (cygLPReceived < shares) revert CygnusCollateral__InsufficientCygLPReceived();
 
         // Burn tokens and emit a Transfer event

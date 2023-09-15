@@ -262,7 +262,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
 
     /**
      *  @inheritdoc ICygnusBorrowVoid
-     *  @custom:security non-reentrant
+     *  @custom:security non-reentrant only-harvester
      */
     function reinvestRewards_y7b(uint256 liquidity) external override nonReentrant update {
         /// @custom:error OnlyHarvesterAllowed Avoid call if msg.sender is not the harvester

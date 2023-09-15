@@ -164,7 +164,8 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         }
 
         // ────────── 2. Pass data to the router if needed
-        // Check data for leverage transaction, if any pass data to router. `liquidity` is the amount of LP received
+        // Check data for leverage transaction, if any pass data to router. `liquidity` is the amount of LP received.
+        // Useful return var to work with a router, has no effect on this function itself.
         if (data.length > 0) liquidity = ICygnusAltairCall(msg.sender).altairBorrow_O9E(msg.sender, borrowAmount, data);
 
         // ────────── 3. Get the repay amount (if any)

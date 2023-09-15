@@ -148,6 +148,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *  @notice Admin 👽
      *  @notice Charges approvals needed for deposits and withdrawals, and any other function
      *          needed to get the vault started. ie, setting a pool ID from a MasterChef, a gauge, etc.
+     *
      *  @custom:security only-admin
      */
     function chargeVoid() external;
@@ -166,6 +167,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
      *  @notice Admin 👽
      *  @notice Sweeps a token that was sent to this address by mistake, or a bonus reward token we are not tracking. Cannot
      *          sweep the underlying LP
+     *
      *  @custom:security only-admin
      */
     function sweepToken(address token, address to) external;

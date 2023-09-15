@@ -30,18 +30,11 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /**
-     *  @dev Reverts when the borrower is the zero address
+     *  @dev Reverts when the borrower is the zero address or this collateral
      *
-     *  @custom:error BorrowerCantBeAddressZero
+     *  @custom:error InvalidBorrower
      */
-    error CygnusCollateralModel__BorrowerCantBeAddressZero();
-
-    /**
-     *  @dev Reverts when the borrower is the collateral address
-     *
-     *  @custom:error BorrowerCantBeCollateral
-     */
-    error CygnusCollateralModel__BorrowerCantBeCollateral();
+    error CygnusCollateralModel__InvalidBorrower();
 
     /**
      *  @dev Reverts when the price returned from the oracle is 0

@@ -33,15 +33,6 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
             1. CUSTOM ERRORS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    error CygnusBorrow__InvalidCollateral();
-
-    /**
-     *  @dev Reverts when the borrow amount is higher than total balance
-     *
-     *  @custom:error BorrowExceedsTotalBalance
-     */
-    error CygnusBorrow__BorrowExceedsTotalBalance();
-
     /**
      *  @dev Reverts if the borrower has insufficient liquidity for this borrow
      *
@@ -50,32 +41,11 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
     error CygnusBorrow__InsufficientLiquidity();
 
     /**
-     *  @dev Reverts if borrowAmount is higher than 0 during a repay tx
-     *
-     *  @custom:error BorrowAndRepayOverload
-     */
-    error CygnusBorrow__BorrowRepayOverload();
-
-    /**
      *  @dev Reverts if usd received is less than repaid after liquidating
      *
      *  @custom:error InsufficientUsdReceived
      */
     error CygnusBorrow__InsufficientUsdReceived();
-
-    /**
-     *  @dev Reverts if liquidating 0 USD
-     *
-     *  @custom:error CantRepayZero Reverts if liquidating 0 USD
-     */
-    error CygnusBorrow__CantRepayZero();
-
-    /**
-     *  @dev Reverts if repay is more than total borrows
-     *
-     *  @custom:error InvalidRepayAmount
-     */
-    error CygnusBorrow__InvalidRepayAmount();
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. CUSTOM EVENTS

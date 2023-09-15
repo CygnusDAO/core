@@ -66,13 +66,6 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
     error CygnusCollateral__NotLiquidatable();
 
     /**
-     *  @dev Reverts when redeeming more than pool's totalBalance
-     *
-     *  @custom:error RedeemAmountInvalid
-     */
-    error CygnusCollateral__RedeemAmountInvalid();
-
-    /**
      *  @dev Reverts when redeeming more shares than CygLP in this contract
      *
      *  @custom:error InsufficientRedeemAmount
@@ -130,7 +123,7 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
     /**
      *  @notice Force the internal balance of this contract to match underlying's balanceOf
      *
-     *  @custom:security non-reentrant only-eoa
+     *  @custom:security non-reentrant
      */
     function sync() external;
 }

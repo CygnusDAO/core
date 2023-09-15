@@ -318,12 +318,10 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s borrowable
             address borrowable = shuttles[i].borrowable;
-            // Total reserves owned by the DAO
-            uint256 cygUsdBalance = ICygnusBorrow(borrowable).balanceOf(daoReserves);
-            // current exchange rate of CygUSD to USD
-            uint256 exchangeRate = ICygnusBorrow(borrowable).exchangeRate();
-            // Current reserves in USD
-            reserves += cygUsdBalance.mulWad(exchangeRate);
+            // Get the current USD holding of the DAO for this shuttle
+            (, , uint256 positionUsd) = ICygnusBorrow(borrowable).getLenderPosition(daoReserves);
+            // Add to reserves
+            reserves += positionUsd;
         }
     }
 
@@ -494,7 +492,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Push the lending pool struct to the object array
         allShuttles.push(shuttle);
 
-        // Add shuttle to reserves contract. `addShuttle` can only be called by this contract
+        // Add shuttle to reserves
         ICygnusDAOReserves(daoReserves).addShuttle(shuttle.shuttleId, borrowable, collateral);
 
         /// @custom:event NewShuttleLaunched
@@ -672,7 +670,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // New pillars
         cygnusAltair = newAltair;
 
-        /// @custom:event NewPillarsOfCreation
+        /// @custom:event NewAltairRouter
         emit NewAltairRouter(oldAltair, cygnusAltair);
     }
 }
