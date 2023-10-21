@@ -74,8 +74,10 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
     for (let i = 0; i < tokens.length; i++) {
         // Check if token received is already usdc
         if (tokens[i].toLowerCase() != usdc.toLowerCase()) {
+            const amount = (BigInt(amounts[i]) * BigInt(0.999999999999e18)) / BigInt(1e18);
+
             // Call 1inch api
-            const swapdata = await paraswap(tokens[i], usdc, amounts[i].toString(), router.address);
+            const swapdata = await paraswap(tokens[i], usdc, amount.toString(), router.address);
 
             // Add to calls array
             calls = [...calls, swapdata];

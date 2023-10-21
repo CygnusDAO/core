@@ -3,20 +3,13 @@ const path = require("path");
 const hre = require("hardhat");
 const ethers = hre.ethers;
 
-/**
- *  @notice Build 1inch swaps using AggregationRouterV5 for deleverage. The router has already received
- *          `deleverageLpAmount` from the collateral contract. We must convert this amount to USDC using
- *          multiple swaps.
- */
+/// TODO: Dex ID by chain
+/// @notice Build swaps using OpenOcean's Router to convert LP to USDC
+/// @notice This is a legacy method which disables dex id so we don't have to reduce amounts[i]
 module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, router, deleverageLpAmount, difference) {
     // Get tokens and amounts out given an LP token and amount
     const [tokens, amounts] = await router.getAssetsForShares(lpToken.address, deleverageLpAmount, difference);
 
-    /// @notice OpenOcean swagger API call
-    /// @param {String} fromToken - The address of the token we are swapping
-    /// @param {String} toToken - The address of the token we are receiving
-    /// @param {String} amount - The amount of `fromToken` we are swapping
-    /// @param {String} router - The address of the owner of the USDC (router)
     const openOcean = async (fromToken, toToken, amount, router) => {
         const tokenAbi = fs.readFileSync(path.resolve(__dirname, "../../abis/erc20.json")).toString();
         const _srcToken = new ethers.Contract(fromToken, tokenAbi, ethers.provider);
@@ -25,16 +18,16 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
         // const gasPrice = (await ethers.provider.getFeeData()).gasPrice;
         // const _gasPrice = ethers.utils.formatUnits(gasPrice, "gwei");
 
-        amount = +amount / +_scalar;
+        amount = +amount / +_scalar - 1;
 
         // Api URL
-        const apiUrl = `https://open-api.openocean.finance/v3/${chainId}/swap_quote?inTokenAddress=${fromToken}&outTokenAddress=${toToken}&amount=${amount}&slippage=0.5&gasPrice=${5}&account=${router}&disabledDexIds=33`;
+        const apiUrl = `https://open-api.openocean.finance/v3/${chainId}/swap_quote?inTokenAddress=${fromToken}&outTokenAddress=${toToken}&amount=${amount}&slippage=5&gasPrice=${5}&account=${router}&disabledDexIds=33`;
 
         // Fetch from 1inch api
         const swapdata = await fetch(apiUrl).then((response) => response.json());
 
         // Return response
-        return swapdata.data.data;
+        return swapdata.data.data.toString().replace("0x90411a32", "0x");
     };
 
     // 1Inch call array to pass to periphery

@@ -10,15 +10,19 @@ const ethers = hre.ethers;
 /// @notice Build swaps using Paraswap's Augustus Swapper to leverage. The router has already received
 ///         `deleverageLpAmount` from the collateral contract. We must convert this amount to USDC to get the best
 ///         amount possible.
-module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount) {
+module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount, nebula) {
     // Construct minimal SDK with fetcher only
     const paraSwapMin = constructSimpleSDK({ chainId: chainId, axios });
 
-    const ext = await router.getAltairExtension(lpToken.address);
-    const _router = await ethers.getContractAt("CygnusAltairX", ext);
+    // Get LP info
+    const { tokens, reservesUsd } = await nebula.lpTokenInfo(lpToken.address);
 
-    // Get tokens and weights
-    const { token0, token1, token0Weight, token1Weight } = await _router.getTokenWeights(lpToken.address);
+    // TVL
+    const tvl = reservesUsd[0].add(reservesUsd[1]);
+
+    // Weight of each token
+    const token0Weight = reservesUsd[0].mul(BigInt(1e18)).div(tvl);
+    const token1Weight = BigInt(1e18) - BigInt(token0Weight);
 
     /// @notice 1inch swagger API call
     /// @param {String} fromToken - The address of the token we are swapping
@@ -53,7 +57,7 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
             destDecimals: _dstDecimals,
             destToken: toToken,
             srcAmount: amount,
-            slippage: "20",
+            slippage: "30",
             priceRoute,
             userAddress: router,
             ignoreChecks: "true",
@@ -68,12 +72,12 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
     let calls = [];
 
     // Check if token0 is already usdc
-    if (token0.toLowerCase() != usdc.toLowerCase()) {
+    if (tokens[0].toLowerCase() != usdc.toLowerCase()) {
         // weight of token0 in the pool
         const adjustedAmount0 = (BigInt(leverageUsdcAmount) * BigInt(token0Weight)) / BigInt(1e18);
 
         // Swap USDC to Native
-        const swapdata = await paraswap(usdc, token0, adjustedAmount0.toString(), router.address);
+        const swapdata = await paraswap(usdc, tokens[0], adjustedAmount0.toString(), router.address);
 
         // Add to call array
         calls = [...calls, swapdata];
@@ -82,12 +86,12 @@ module.exports = async function paraswapLeverage(chainId, lpToken, nativeToken, 
     else calls = [...calls, "0x"];
 
     // Check if token1 is already usdc
-    if (token1.toLowerCase() != usdc.toLowerCase()) {
+    if (tokens[1].toLowerCase() != usdc.toLowerCase()) {
         // Weight of toekn1 in the pool
         const adjustedAmount1 = (BigInt(leverageUsdcAmount) * BigInt(token1Weight)) / BigInt(1e18);
 
         // Swap USDC to Native
-        const swapdata = await paraswap(usdc, token1, adjustedAmount1.toString(), router.address);
+        const swapdata = await paraswap(usdc, tokens[1], adjustedAmount1.toString(), router.address);
 
         // Add to call array
         calls = [...calls, swapdata];

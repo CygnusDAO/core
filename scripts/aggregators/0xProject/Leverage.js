@@ -1,51 +1,47 @@
-const hre = require("hardhat");
-const ethers = hre.ethers;
+/// For the API calls
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../../../.env") });
 
 /// @notice Build swaps using 0xProject's Swap API to leverage.
-module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount) {
-    const ext = await router.getAltairExtension(lpToken.address);
-    const _router = await ethers.getContractAt("CygnusAltairX", ext);
+module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, usdc, router, leverageUsdcAmount, nebula) {
+    // Get LP info
+    const { tokens, reservesUsd } = await nebula.lpTokenInfo(lpToken.address);
 
-    // Get tokens and weights
-    const { token0, token1, token0Weight, token1Weight } = await _router.getTokenWeights(lpToken.address);
+    // TVL
+    let tvl = reservesUsd[0].add(reservesUsd[1]);
 
-    /// @notice 0xProject swap api call
-    /// @param {Number} chainId - The id of this chain
-    /// @param {String} fromToken - The address of the token we are swapping
-    /// @param {String} toToken - The address of the token we are receiving
-    /// @param {String} amount - The amount of `fromToken` we are swapping
-    /// @param {String} router - The address of the owner of the USDC (router)
-    const _0xProjectSwap = async (chainId, fromToken, toToken, amount, router) => {
-        // The API uses chain name instead of chainID so ocnvert
+    // Weight of each token
+    let token0Weight = reservesUsd[0].mul(BigInt(1e18)).div(tvl);
+    let token1Weight = BigInt(1e18) - BigInt(token0Weight);
+
+    // Perform api call and return the data we need to pass to the CygnusAltair router
+    const zeroExProjectSwap = async (chainId, fromToken, toToken, amount) => {
+        // The API uses chain name instead of chainID so convert
         let chain;
 
-        // update chain
         switch (chainId) {
             case 1:
                 chain = "";
                 break;
             case 137:
-                chain = "polygon";
+                chain = "polygon.";
                 break;
             case 10:
-                chain = "optimism";
+                chain = "optimism.";
                 break;
             case 56:
-                chain = "bsc";
+                chain = "bsc.";
                 break;
             case 42161:
-                chain = "arbitrum";
+                chain = "arbitrum.";
                 break;
         }
 
-        // 0xProject Api call
-        const apiUrl = `https://${chain}.api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.01&skipValidation=true&takerAddress=${router}`;
+        // 0xProject API call (exclude woofi we cannot replicate call in test environment, remove in prod)
+        const apiUrl = `https://${chain}api.0x.org/swap/v1/quote?sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amount}&slippagePercentage=0.01&skipValidation=true&excludedSources=WOOFi`;
 
-        console.log(apiUrl);
-
-        const headers = {
-            "0x-api-key": "02a575e5-685a-464d-98d4-71431f79489a",
-        };
+        // https://0x.org/docs/0x-swap-api/introduction
+        const headers = { "0x-api-key": process.env.ZERO_EX_API_KEY };
 
         // Fetch from 0xProject api
         const swapdata = await fetch(apiUrl, { headers }).then((response) => response.json());
@@ -58,12 +54,12 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
     let calls = [];
 
     // Check if token0 is already usdc
-    if (token0.toLowerCase() != usdc.toLowerCase()) {
+    if (tokens[0].toLowerCase() != usdc.toLowerCase()) {
         // weight of token0 in the pool
         const adjustedAmount0 = (BigInt(leverageUsdcAmount) * BigInt(token0Weight)) / BigInt(1e18);
 
         // Swap USDC to Native
-        const swapdata = await _0xProjectSwap(chainId, usdc, token0, adjustedAmount0.toString(), router.address);
+        const swapdata = await zeroExProjectSwap(chainId, usdc, tokens[0], adjustedAmount0.toString());
 
         // Add to call array
         calls = [...calls, swapdata];
@@ -72,12 +68,12 @@ module.exports = async function leverageSwapdata(chainId, lpToken, nativeToken, 
     else calls = [...calls, "0x"];
 
     // Check if token1 is already usdc
-    if (token1.toLowerCase() != usdc.toLowerCase()) {
+    if (tokens[1].toLowerCase() != usdc.toLowerCase()) {
         // Weight of toekn1 in the pool
         const adjustedAmount1 = (BigInt(leverageUsdcAmount) * BigInt(token1Weight)) / BigInt(1e18);
 
         // Swap USDC to Native
-        const swapdata = await _0xProjectSwap(chainId, usdc, token1, adjustedAmount1.toString(), router.address);
+        const swapdata = await zeroExProjectSwap(chainId, usdc, tokens[1], adjustedAmount1.toString());
 
         // Add to call array
         calls = [...calls, swapdata];

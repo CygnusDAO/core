@@ -25,10 +25,10 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
         // const gasPrice = (await ethers.provider.getFeeData()).gasPrice;
         // const _gasPrice = ethers.utils.formatUnits(gasPrice, "gwei");
 
-        amount = +amount / +_scalar;
+        amount = (Number(amount) - 1) / +_scalar;
 
         // Api URL
-        const apiUrl = `https://open-api.openocean.finance/v3/${chainId}/swap_quote?inTokenAddress=${fromToken}&outTokenAddress=${toToken}&amount=${amount}&slippage=0.5&gasPrice=${5}&account=${router}&disabledDexIds=33`;
+        const apiUrl = `https://open-api.openocean.finance/v3/${chainId}/swap_quote?inTokenAddress=${fromToken}&outTokenAddress=${toToken}&amount=${amount}&slippage=0.5&gasPrice=${5}&account=${router}`;
 
         // Fetch from 1inch api
         const swapdata = await fetch(apiUrl).then((response) => response.json());
@@ -44,8 +44,11 @@ module.exports = async function deleverageSwapdata(chainId, lpToken, usdc, route
     for (let i = 0; i < tokens.length; i++) {
         // Check if token received is already usdc
         if (tokens[i].toLowerCase() != usdc.toLowerCase()) {
+            /// Make sure we swap less than we have in contract to never revert, cleans dust at the end
+            const amount = (BigInt(amounts[i]) * BigInt(0.999999999999e18)) / BigInt(1e18);
+
             // Call 1inch api
-            const swap = await openOcean(tokens[i], usdc, amounts[i], router.address);
+            const swap = await openOcean(tokens[i], usdc, amount, router.address);
 
             // Add to calls array
             calls = [...calls, swap];
