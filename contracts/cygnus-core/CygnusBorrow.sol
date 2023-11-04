@@ -222,12 +222,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Reverts at Collateral if:
         // - `max` is 0.
         // - `borrower`'s position is not in liquidatable state
-        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, max);
+        uint256 liquidatorAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, max);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
         // If the `receiver` was the router used to flash liquidate then we call the router with the data passed,
         // allowing the collateral to be sold to the market
-        if (data.length > 0) ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, max, data);
+        if (data.length > 0) ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, liquidatorAmount, max, data);
 
         // ────────── 4. Get the repaid amount of USD
         // Current balance of USD not deposited in strategy (if sell to market then router must have sent back USD).
@@ -246,6 +246,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         _afterDeposit(amountUsd);
 
         /// @custom:event Liquidate
-        emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, max, amountUsd);
+        emit Liquidate(msg.sender, borrower, receiver, liquidatorAmount, max, amountUsd);
     }
 }

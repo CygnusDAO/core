@@ -85,7 +85,13 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *  @param daoFee The amount of CygLP sent to the DAO Reserves
      *  @param seized The total amount of CygLP seized from the borrower
      */
-    event SeizeCygLP(address indexed liquidator, address indexed borrower, uint256 cygLPAmount, uint256 daoFee, uint256 seized);
+    event SeizeCygLP(
+        address indexed liquidator,
+        address indexed borrower,
+        uint256 cygLPAmount,
+        uint256 daoFee,
+        uint256 seized
+    );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -103,9 +109,13 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *  @param borrower The address of the borrower
      *  @param repayAmount The number of collateral tokens to seize
      *
-     *  @return cygLPAmount The amount of CygLP seized
+     *  @return liquidatorAmount The amount of CygLP that the liquidator received for liquidating the position
      */
-    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external returns (uint256 cygLPAmount);
+    function seizeCygLP(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount
+    ) external returns (uint256 liquidatorAmount);
 
     /**
      *  @notice Flash redeems the underlying LP Token
@@ -118,5 +128,9 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external returns (uint256 usdAmount);
+    function flashRedeemAltair(
+        address redeemer,
+        uint256 assets,
+        bytes calldata data
+    ) external returns (uint256 usdAmount);
 }

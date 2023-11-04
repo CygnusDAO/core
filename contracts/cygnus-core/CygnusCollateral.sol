@@ -145,7 +145,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         address liquidator,
         address borrower,
         uint256 repayAmount
-    ) external override nonReentrant returns (uint256 cygLPAmount) {
+    ) external override nonReentrant returns (uint256 liquidatorAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         if (msg.sender != twinstar) revert CygnusCollateral__MsgSenderNotBorrowable();
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
@@ -160,21 +160,24 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Get price from oracle
         uint256 lpTokenPrice = getLPTokenPrice();
 
-        // Get the equivalent of the repaid amount + liquidation bonus, in the underlying LP
-        uint256 seizedLPs = repayAmount.fullMulDiv(liquidationIncentive, lpTokenPrice);
+        // Get the equivalent of the repaid amount in the underlying LP
+        uint256 lpEquivalent = repayAmount.divWad(lpTokenPrice);
 
-        // Convert the LP amount seized to CygLP shares to seize this amount
-        cygLPAmount = _convertToShares(seizedLPs);
+        // The equivalent of the LP in CygLP to seize from bororwers
+        uint256 cygLPAmount = _convertToShares(lpEquivalent);
 
-        // Transfer the repaid amount + liq. incentive to the liquidator, escapes canRedeem
-        _transfer(borrower, liquidator, cygLPAmount);
+        // Add the liquidation incentive to the CygLP seized
+        liquidatorAmount = cygLPAmount.mulWad(liquidationIncentive);
+
+        // Transfer amount + incentive to liquidator, escapes canRedeem
+        _transfer(borrower, liquidator, liquidatorAmount);
 
         // Initialize and check if liquidation fee is set
         uint256 daoFee;
 
         // Check for protocol fee
         if (liquidationFee > 0) {
-            // Get the liquidation fee amount that is kept by the protocol
+            // Get the liquidation fee amount that is kept by the protocol from the `cygLPAmount`
             daoFee = cygLPAmount.mulWad(liquidationFee);
 
             // Assign reserves account
@@ -185,7 +188,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         }
 
         // Total CygLP seized from the borrower
-        uint256 totalSeized = cygLPAmount + daoFee;
+        uint256 totalSeized = liquidatorAmount + daoFee;
 
         /// @custom:event SeizeCygLP
         emit SeizeCygLP(liquidator, borrower, cygLPAmount, daoFee, totalSeized);
