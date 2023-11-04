@@ -119,11 +119,4 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *  @custom:security non-reentrant
      */
     function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external returns (uint256 usdAmount);
-
-    /**
-     *  @notice Force the internal balance of this contract to match underlying's balanceOf
-     *
-     *  @custom:security non-reentrant
-     */
-    function sync() external;
 }

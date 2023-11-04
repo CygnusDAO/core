@@ -147,7 +147,7 @@ interface ICygnusBorrowVoid is ICygnusBorrowModel {
     /**
      *  @notice Only the harvester can reinvest
      *  @notice Reinvests all rewards from the rewarder to buy more USD to then deposit back into the rewarder
-     *          This makes totalBalance increase in this contract, increasing the exchangeRate between
+     *          This makes underlying balance increase in this contract, increasing the exchangeRate between
      *          CygUSD and underlying and thus lowering utilization rate and borrow rate
      *
      *  @custom:security non-reentrant only-harvester

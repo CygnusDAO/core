@@ -129,7 +129,7 @@ interface ICygnusTerminal is IERC20Permit {
     /**
      *  @return totalBalance Total available cash (USDC for borrowable, LPs by collateral) owned by this shuttle
      */
-    function totalBalance() external view returns (uint160);
+    function totalBalance() external view returns (uint256);
 
     /**
      *  @return totalAssets The total assets (including those not in this contract, ie. borrows) owned by this shuttle

@@ -104,8 +104,9 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         if (borrower == address(0) || borrower == address(this)) revert CygnusCollateralModel__InvalidBorrower();
 
         // Check if called externally or from borrowable. If called externally (via `getAccountLiquidity`) then borrowedAmount 
-        // is always MaxUint256. If called by borrowable ( `borrow` function calls the `canBorrow` function brlow) then its the 
+        // is always MaxUint256. If called by borrowable ( `borrow` function calls the `canBorrow` function below) then its the 
         // account's total borrows (including the new tx borrow amount if any).
+        // Simulate accrue as borrowable calls this function with borrower's account borrows and not max uint256
         if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // Get the CygLP balance of `borrower` and adjust with exchange rate
@@ -173,7 +174,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      *  @inheritdoc ICygnusCollateralModel
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
-        // Called by CygnusBorrow at the end of the `borrow` function to check if an `borrower` can borrow `borrowAmount`
+        // Called by CygnusBorrow at the end of the `borrow` function to check if a `borrower` can borrow `borrowAmount`
+        // This escapes accruing again since we are passing actual account borrows
         (, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
 
         // User has no shortfall and can borrow
@@ -203,7 +205,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         // Collateral balance of the borrower (CygLP)
         cygLPBalance = balanceOf(borrower);
 
-        // The original borrowed amount without interest and the current owed amount
+        // The original borrowed amount without interest and the current owed amount with interest.
+        // Simulate accrual.
         (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
         // The LP Token price

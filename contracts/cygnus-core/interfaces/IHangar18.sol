@@ -45,11 +45,11 @@ interface IHangar18 {
     error Hangar18__CygnusAdminOnly(address sender, address admin);
 
     /**
-     *  @dev Reverts when the borrow orbiter already exists
+     *  @dev Reverts when the orbiter pair already exists
      *
-     *  @custom:error OrbiterAlreadySet
+     *  @custom:error OrbitersAlreadySet
      */
-    error Hangar18__OrbiterAlreadySet();
+    error Hangar18__OrbitersAlreadySet();
 
     /**
      *  @dev Reverts when trying to deploy a shuttle that already exists
@@ -239,7 +239,6 @@ interface IHangar18 {
      */
     event NewAltairRouter(address oldRouter, address newRouter);
 
-
     /**
      *  @dev Logs when orbiters are initialized in the factory
      *
@@ -387,6 +386,13 @@ interface IHangar18 {
     function allShuttles(
         uint256 _shuttleId
     ) external view returns (bool launched, uint88 shuttleId, address borrowable, address collateral, uint96 orbiterId);
+
+    /**
+     *  @notice Checks if a pair of orbiters has been added to the Hangar
+     *  @param orbiterHash The keccak hash of the creation code of each orbiter
+     *  @return Whether this par of orbiters has been added or not
+     */
+    function orbitersExist(bytes32 orbiterHash) external view returns (bool);
 
     /**
      *  @notice Official record of all lending pools deployed
@@ -580,7 +586,7 @@ interface IHangar18 {
      *
      *  @custom:security non-reentrant only-admin
      */
-    function initializeOrbiter(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
+    function initializeOrbiters(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
 
     /**
      *  @notice Admin 👽

@@ -95,37 +95,28 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     constructor() {}
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            4. MODIFIERS
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @notice Overrides the previous modifier from CygnusTerminal to update before interactions too
-     *  @notice CygnusTerminal override
-     *  @custom:modifier update Updates the total balance var in terms of its underlying
-     */
-    modifier update() override(CygnusTerminal) {
-        // Accrue interest before any state changing action
-        _accrueInterest();
-        // Update before deposit to prevent deposit spam for yield bearing tokens
-        _update();
-        _;
-        // Update after deposit
-        _update();
-    }
-
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Preview total balance from the Stargate strategy
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return amount This contract's `token` balance
+     */
+    function _checkBalance(address token) internal view returns (uint256) {
+        // Our balance of `token`
+        return token.balanceOf(address(this));
+    }
+
+    /**
+     *  @notice Preview total balance from Comet
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
      */
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
-        // Return latest balance of Comet
+        // Return latest balance of Comet (rebase token)
         balance = COMET_USDC.balanceOf(address(this));
     }
 
@@ -261,6 +252,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     }
 
     /**
+     *  @notice Updates `_totalBalance` increasing amount of underlying liquidity tokens we own
      *  @inheritdoc ICygnusBorrowVoid
      *  @custom:security non-reentrant only-harvester
      */
@@ -280,7 +272,7 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
      *  @custom:security only-admin 👽
      */
     function chargeVoid() external override cygnusAdmin {
-        // Allow Stargate router to use our USDC to deposits
+        // Allow Compound's Comet contract to use our USDC
         underlying.safeApprove(address(COMET_USDC), type(uint256).max);
 
         /// @custom:event ChargeVoid

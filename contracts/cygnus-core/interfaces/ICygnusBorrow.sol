@@ -115,11 +115,4 @@ interface ICygnusBorrow is ICygnusBorrowVoid {
      *  @custom:security non-reentrant
      */
     function liquidate(address borrower, address receiver, uint256 repayAmount, bytes calldata data) external returns (uint256 usdAmount);
-
-    /**
-     *  @notice Syncs internal balance with totalBalance
-     *
-     *  @custom:security non-reentrant
-     */
-    function sync() external;
 }

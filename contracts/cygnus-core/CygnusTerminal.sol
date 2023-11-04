@@ -57,6 +57,20 @@ import {IAllowanceTransfer} from "./interfaces/IAllowanceTransfer.sol";
  *  @author CygnusDAO
  *  @notice Contract used to mint Collateral and Borrow tokens. Both Collateral/Borrow arms of Cygnus mint here
  *          to get the vault token (CygUSD for stablecoin deposits and CygLP for Liquidity deposits).
+ *  @notice As the borrowable arm is a stablecoin vault which has assets deposited in strategies, the exchange
+ *          rate for CygUSD should be the cash deposited in the strategy + current borrows. Therefore we use an 
+ *          internal `_totalAssets(bool)` to take into account latest borrows. The bool dictates whether we should 
+ *          simulate accruals or not, helpful for the contract to always display data in real time.
+ *
+ *  @notice Functions overridden in Strategy contracts (CygnusBorrowVoid.sol & CygnusCollateralVoid.sol):
+ *            _afterDeposit        - borrowable/collateral - Deposits underlying into a strategy
+ *            _beforeWithdraw      - borrowable/collateral - Withdraws underlying from a strategy
+ *            _previewTotalBalance - borrowable/collateral - Previews available cash (USDC or LP) without updating storage
+ *
+ *          Functions overriden in the Borrow Model contract (CygnusBorrowModel.sol)
+ *            _totalAssets         - borrowable            - Includes borrows in the total assets calculation (cash + borrows)
+ *            update (modifier)    - borrowable            - Includes accruals before any payable actions
+ *
  */
 abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -78,6 +92,12 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @notice Total balance of the underlying (USDC for borrowable, LP's for collateral) updated after
+     *          every state changing action
+     */
+    uint160 internal _totalBalance;
 
     /**
      *  @notice The address of this contract`s opposite arm. For collateral pools, this is the borrowable address.
@@ -112,12 +132,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
      */
     uint256 public immutable override shuttleId;
 
-    /**
-     *  @notice The contract's totalBalance is stored as a uint160 which is the max transfer Permit2 allows
-     *  @inheritdoc ICygnusTerminal
-     */
-    uint160 public override totalBalance;
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTRUCTOR
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -144,12 +158,12 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     }
 
     /**
-     *  @notice We mark as virtual in case need we need to also update before interaction (ie interest bearing tokens)
-     *  @custom:modifier update Updates the total balance var in terms of its underlying
+     *  @notice We override in borrowable arm to accrue interest before any state changing action.
+     *  @custom:modifier update Updates `_totalBalance` in terms of its underlying
+     *  @custom:override CygnusBorrowModel
      */
     modifier update() virtual {
         _;
-        // Update `totalBalance` after interaction
         _update();
     }
 
@@ -173,62 +187,82 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks the `token` balance of this contract
-     *  @param token The token to view balance of
-     *  @return amount This contract's `token` balance
-     */
-    function _checkBalance(address token) internal view returns (uint256) {
-        // Our balance of `token`
-        return token.balanceOf(address(this));
-    }
-
-    /**
      *  @notice Converts assets to shares
-     *  @notice Overridden by CygnusBorrow.sol
+     *  @notice We always pass false to `_totalAssets()` to not get borrow indices as stored variables are in sync.
+     *          This is because this function is only called during deposits/redeems/accruals which accrue interest
+     *          beforehand with the `update` modifier.
      */
     function _convertToShares(uint256 assets) internal view returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply();
 
         // Compute shares given an amount of stablecoin of LP token assets
-        return _totalSupply == 0 ? assets : assets.fullMulDiv(_totalSupply, totalAssets());
+        return _totalSupply == 0 ? assets : assets.fullMulDiv(_totalSupply, _totalAssets(false));
     }
 
     /**
-     *  @notice Convert shares to assets
-     *  @notice Override by CygnusBorrow.sol
+     *  @notice Convert shares to assets. Same as above, pass false to `_totalAssets()` as we have already accrued
      */
     function _convertToAssets(uint256 shares) internal view returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply();
 
         // Compute assets given an amount of CygUSD or CygLP shares
-        return _totalSupply == 0 ? shares : shares.fullMulDiv(totalAssets(), _totalSupply);
+        return _totalSupply == 0 ? shares : shares.fullMulDiv(_totalAssets(false), _totalSupply);
+    }
+
+    /**
+     *  @notice Previews our balance of the underlying asset
+     *  @custom:override CygnusBorrowVoid
+     *  @custom:override CygnusCollateralVoid
+     */
+    function _previewTotalBalance() internal view virtual returns (uint256) {}
+
+    /**
+     *  @notice Previews the total assets owned by the vault. Overridden by the borrowable arm.
+     *          For collateral = LPs in the strategy.
+     *          For borrowable = USDC in the strategy + Borrows.
+     *  @notice The bool argument is to check if we should simulate interest accrual or not.
+     *  @custom:override CygnusBorrowModel
+     */
+    function _totalAssets(bool) internal view virtual returns (uint256) {
+        // The bool is only necessary in Borrowable which is overridden
+        return _totalBalance;
     }
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
-    // Overridden in `BorrowModel.sol`, note `virtual`
-
     /**
+     *  @notice This is overriden by borrowable arm to include total borrows in the shares calculation
      *  @inheritdoc ICygnusTerminal
      */
-    function totalAssets() public view virtual override returns (uint256) {
-        // NOTE: This is overriden by borrowable arm to include total borrows.
-        // totalBalance is always stored as a uint160, any overflow would have caused the tx to revert
-        return uint256(totalBalance);
+    function totalAssets() public view override returns (uint256) {
+        // Internal _totalAssets dictates whether we should simulate interest accruals or not in borrowable.
+        // For collateral this has no effect.
+        return _totalAssets(true);
     }
 
     /**
+     *  @notice Computes the exchange rate between 1 unit of the vault token and the underlying asset
      *  @inheritdoc ICygnusTerminal
      */
-    function exchangeRate() public view virtual override returns (uint256) {
+    function exchangeRate() public view override returns (uint256) {
         // Gas savings if non-zero
         uint256 _totalSupply = totalSupply();
 
-        // Compute the exchange rate as the total balance of the underlying asset divided by the total supply of
-        // the vault token. If there is no supply for this token, return the initial exchange rate of 1:1.
+        // Borrowable uses internal `_totalAssets` to get the borrow indices which takes into account latest borrows
         return _totalSupply == 0 ? 1e18 : totalAssets().divWad(_totalSupply);
+    }
+
+    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
+
+    /**
+     *  @inheritdoc ICygnusTerminal
+     */
+    function totalBalance() external view override returns (uint256) {
+        // For collateral it's the same as totalAssets()
+        // For borrowable it's the USDC balance deposited in the strategy
+        return _previewTotalBalance();
     }
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -246,26 +280,22 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         uint256 balance = _previewTotalBalance();
 
         /// @custom:event Sync
-        emit Sync(totalBalance = SafeCastLib.toUint160(balance));
+        emit Sync(_totalBalance = SafeCastLib.toUint160(balance));
     }
-
-    // Overridden in strategy contract (BorrowVoid.sol & CollateralVoid.sol)
-
-    /**
-     *  @notice Preview the total balance of the underlying we own from the strategy (if any)
-     *  @return balance This contract's balance of the underlying asset
-     */
-    function _previewTotalBalance() internal virtual returns (uint256 balance) {}
 
     /**
      *  @notice Internal hook for deposits into strategies
      *  @param assets The amount of assets to deposit in the strategy
+     *  @custom:override CygnusBorrowVoid
+     *  @custom:override CygnusCollateralVoid
      */
     function _afterDeposit(uint256 assets) internal virtual {}
 
     /**
      *  @notice Internal hook for withdrawals from strategies
      *  @param assets The amount of assets to withdraw from the strategy
+     *  @custom:override CygnusBorrowVoid
+     *  @custom:override CygnusCollateralVoid
      */
     function _beforeWithdraw(uint256 assets) internal virtual {}
 
@@ -280,11 +310,14 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         IAllowanceTransfer.PermitSingle calldata _permit,
         bytes calldata signature
     ) external override nonReentrant update returns (uint256 shares) {
-        // Get balance before depositing in case of deposit fees
-        uint256 balanceBefore = _previewTotalBalance();
+        // Convert assets deposited to shares
+        shares = _convertToShares(assets);
+
+        /// @custom:error CantMintZeroShares Avoid minting no shares
+        if (shares == 0) revert CygnusTerminal__CantMintZeroShares();
 
         // Check for permit to approve and deposit in 1 tx. Users can just approve this contract in
-        // permit2 and skip this by passing an empty `signature`).
+        // permit2 and skip this by passing an empty signature).
         if (signature.length > 0) {
             // Set allowance using permit
             PERMIT2.permit(
@@ -303,18 +336,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         // Transfer underlying to vault
         PERMIT2.transferFrom(msg.sender, address(this), SafeCastLib.toUint160(assets), underlying);
 
-        // Deposit in strategy
-        _afterDeposit(assets);
-
-        // Balance after (does not update totalBalance)
-        uint256 balanceAfter = _previewTotalBalance();
-
-        // Check for deposit fee
-        shares = _convertToShares(balanceAfter - balanceBefore);
-
-        /// @custom:error CantMintZeroShares Avoid minting no shares
-        if (shares == 0) revert CygnusTerminal__CantMintZeroShares();
-
         // Avoid inflation attack on the vault - This is only for the first pool depositor as after there will always
         // be 1000 shares locked in zero address
         if (totalSupply() == 0) {
@@ -327,6 +348,9 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
 
         // Mint shares and emit Transfer event
         _mint(recipient, shares);
+
+        // Deposit in strategy
+        _afterDeposit(assets);
 
         /// @custom:event Deposit
         emit Deposit(msg.sender, recipient, assets, shares);
@@ -343,7 +367,7 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         assets = _convertToAssets(shares);
 
         /// @custom:error CantRedeemZeroAssets Avoid redeeming no assets
-        if (assets <= 0) revert CygnusTerminal__CantRedeemZeroAssets();
+        if (assets == 0) revert CygnusTerminal__CantRedeemZeroAssets();
 
         // Withdraw assets from the strategy (if any)
         _beforeWithdraw(assets);

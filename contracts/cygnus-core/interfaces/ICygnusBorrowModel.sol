@@ -33,14 +33,14 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /**
      *  @dev Logs when interest is accrued to borrows and reserves
      *
-     *  @param cashStored Total balance of this lending pool's asset (USDC)
-     *  @param totalBorrowsStored Total borrow balances of this lending pool
-     *  @param interestAccumulated Interest accumulated since last accrual
-     *  @param reservesAdded The amount of CygUSD minted to the DAO
+     *  @param cash Total balance of the underlying in the strategy
+     *  @param borrows Latest total borrows stored
+     *  @param interest Interest accumulated since last accrual
+     *  @param reserves The amount of CygUSD minted to the DAO
      *
      *  @custom:event AccrueInterest
      */
-    event AccrueInterest(uint256 cashStored, uint256 totalBorrowsStored, uint256 interestAccumulated, uint256 reservesAdded);
+    event AccrueInterest(uint256 cash, uint256 borrows, uint256 interest, uint256 reserves);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -51,25 +51,20 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /**
      *  @return totalBorrows Total borrows stored in the lending pool
      */
-    function totalBorrows() external view returns (uint96);
+    function totalBorrows() external view returns (uint256);
 
     /**
      *  @return borrowIndex Borrow index stored of this lending pool, starts at 1e18
      */
-    function borrowIndex() external view returns (uint80);
-
-    /**
-     *  @return borrowRate The current per-second borrow rate stored for this pool.
-     */
-    function borrowRate() external view returns (uint48);
+    function borrowIndex() external view returns (uint256);
 
     /**
      *  @return lastAccrualTimestamp The unix timestamp stored of the last interest rate accrual
      */
-    function lastAccrualTimestamp() external view returns (uint32);
+    function lastAccrualTimestamp() external view returns (uint256);
 
     /**
-     *  @notice This public view function is used to get the borrow balance of users based on stored data
+     *  @notice This public view function is used to get the borrow balance of users and their principal.
      *
      *  @param borrower The address whose balance should be calculated
      *
@@ -86,14 +81,19 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     function utilizationRate() external view returns (uint256);
 
     /**
+     *  @return borrowRate The current per-second borrow rate stored for this pool.
+     */
+    function borrowRate() external view returns (uint256);
+
+    /**
      *  @return supplyRate The current APR for lenders
      */
     function supplyRate() external view returns (uint256);
 
     /**
-     *  @return getDenominationPrice the price of the denomination token
+     *  @return getBorrowTokenPrice the price of the denomination token
      */
-    function getDenominationPrice() external view returns (uint256);
+    function getBorrowTokenPrice() external view returns (uint256);
 
     /**
      *  @notice Get the lender`s full position

@@ -137,7 +137,7 @@ interface ICygnusCollateralVoid is ICygnusCollateralModel {
     /**
      *  @notice Only the harvester can reinvest
      *  @notice Reinvests all rewards from the rewarder to buy more LP to then deposit back into the rewarder
-     *          This makes totalBalance increase in this contract, increasing the exchangeRate between
+     *          This makes underlying LP balance increase in this contract, increasing the exchangeRate between
      *          CygLP and underlying and thus lowering debt ratio for all borrwers in the pool as they own more LP.
      *
      *  @custom:security non-reentrant only-harvester

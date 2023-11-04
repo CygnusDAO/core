@@ -69,8 +69,8 @@ import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
  *          Each orbiter has the bytecode of the collateral/borrow contracts being deployed, and they may differ
  *          slighlty due to the strategy deployed (for example each masterchef is different, requiring different
  *          harvest strategy, staking mechanism, etc.). The only contract that may differ between core contracts
- *          is the `CygnusCollateralVoid`, where all functions are private or external, meaning no other contract
- *          relies on it and can be left blank.
+ *          is the strategy contracts `CygnusCollateralVoid` and `CygnusBorrowVoid`, where all functions are 
+ *          private or external, meaning no other contract relies on them for the core system to work.
  *
  *          Ideally there should only be 1 orbiter per DEX (1 borrow && 1 collateral orbiter) or 1 per strategy.
  *
@@ -109,7 +109,12 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles; // LP Address => Orbiter ID = Lending Pool
+    mapping(bytes32 => bool) public override orbitersExist;
+
+    /**
+     *  @inheritdoc IHangar18
+     */
+    mapping(address => mapping(uint256 => Shuttle)) public override getShuttles; // LP Address -> Orbiter ID = Lending Pool
 
     /**
      *  @inheritdoc IHangar18
@@ -218,22 +223,6 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         /// @custom:error CygnusAdminOnly
         if (msg.sender != admin) {
             revert Hangar18__CygnusAdminOnly({sender: msg.sender, admin: admin});
-        }
-    }
-
-    /**
-     *  @notice Checks if the same pair of collateral & borrowable deployers and oracle we are setting already exist
-     *  @param uniqueHash The keccak256 hash of the borrowableInitCodeHash, collateralInitCodeHash and oracle address
-     *  @param orbitersLength How many orbiter pairs we have deployed
-     */
-    function checkOrbitersPrivate(bytes32 uniqueHash, uint256 orbitersLength) private view {
-        // Load orbiter to memory
-        Orbiter[] memory orbiters = allOrbiters;
-
-        // Loop through all orbiters
-        for (uint256 i = 0; i < orbitersLength; i++) {
-            /// @custom:error OrbiterAlreadySet
-            if (uniqueHash == orbiters[i].uniqueHash) revert Hangar18__OrbiterAlreadySet();
         }
     }
 
@@ -492,7 +481,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Push the lending pool struct to the object array
         allShuttles.push(shuttle);
 
-        // Add shuttle to reserves
+        // Add shuttle to reserves, dao reserves is never zero
         ICygnusDAOReserves(daoReserves).addShuttle(shuttle.shuttleId, borrowable, collateral);
 
         /// @custom:event NewShuttleLaunched
@@ -503,11 +492,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function initializeOrbiter(
-        string memory _name,
-        IAlbireoOrbiter albireo,
-        IDenebOrbiter deneb
-    ) external override cygnusAdmin {
+    function initializeOrbiters(string memory _name, IAlbireoOrbiter albireo, IDenebOrbiter deneb) external override cygnusAdmin {
         // Borrowable init code hash
         bytes32 borrowableInitCodeHash = albireo.borrowableInitCodeHash();
 
@@ -517,17 +502,17 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Unique hash of both orbiters by hashing their respective init code hash
         bytes32 uniqueHash = keccak256(abi.encode(borrowableInitCodeHash, collateralInitCodeHash));
 
-        // Total orbiters
-        uint256 totalOrbiters = allOrbiters.length;
+        /// @custom:error OrbitersAlreadySet
+        if (orbitersExist[uniqueHash]) revert Hangar18__OrbitersAlreadySet();
 
-        // Check if we already initialized these orbiter pair, reverts if we have
-        checkOrbitersPrivate(uniqueHash, totalOrbiters);
+        // Set this pair of orbiters as unique, cannot be initialized again
+        orbitersExist[uniqueHash] = true;
 
         // Has not been initialized yet, create struct and push to orbiter array
         allOrbiters.push(
             Orbiter({
-                orbiterId: uint88(totalOrbiters), // Orbiter ID
-                orbiterName: _name, // Friendly name
+                orbiterId: uint88(allOrbiters.length), // Orbiter ID
+                orbiterName: _name, // Friendly name for these orbiters (ie. `Compound-UniswapV3`)
                 albireoOrbiter: albireo, // Borrowable deployer
                 denebOrbiter: deneb, // Collateral deployer
                 borrowableInitCodeHash: borrowableInitCodeHash, // Borrowable code hash
@@ -538,7 +523,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         );
 
         /// @custom:event InitializeOrbiters
-        emit InitializeOrbiters(true, totalOrbiters, albireo, deneb, uniqueHash, _name);
+        emit InitializeOrbiters(true, allOrbiters.length, albireo, deneb, uniqueHash, _name);
     }
 
     /**
@@ -554,13 +539,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         orbiter.status = !orbiter.status;
 
         /// @custom:event SwitchOrbiterStatus
-        emit SwitchOrbiterStatus(
-            orbiter.status,
-            orbiter.orbiterId,
-            orbiter.albireoOrbiter,
-            orbiter.denebOrbiter,
-            orbiter.orbiterName
-        );
+        emit SwitchOrbiterStatus(orbiter.status, orbiter.orbiterId, orbiter.albireoOrbiter, orbiter.denebOrbiter, orbiter.orbiterName);
     }
 
     /**

@@ -122,11 +122,14 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
      *  @notice Before any token transfer we check whether the user has sufficient liquidity (no debt) to transfer
      *  @inheritdoc ERC20
      */
-    function _beforeTokenTransfer(address from, address, uint256 amount) internal view override(ERC20) {
-        // Escape in case of `flashRedeemAltair()` and `mint()`
-        // 1. This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
+    function _beforeTokenTransfer(address from, address, uint256 amount) internal override(ERC20) {
+        // Escape in case of `flashRedeemAltair()`
+        // This contract should never have CygLP outside of flash redeeming. If a user is flash redeeming it requires them
         // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem` before transfer.
         if (from == address(this)) return;
+
+        // Even though we use borrow indices we still accrue first
+        ICygnusBorrow(twinstar).accrueInterest();
 
         /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
         if (!canRedeem(from, amount)) revert CygnusCollateral__InsufficientLiquidity();
@@ -135,11 +138,14 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @dev No reason to update since there are no new balance updates
-     *  @notice Not marked as non-reentrant since only the borrowable can call it through the non-reentrant `liquidate()`
+     *  @notice No reason to update since there are no new balance updates
      *  @inheritdoc ICygnusCollateral
      */
-    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external override returns (uint256 cygLPAmount) {
+    function seizeCygLP(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount
+    ) external override nonReentrant returns (uint256 cygLPAmount) {
         /// @custom:error MsgSenderNotBorrowable Avoid unless msg sender is this shuttle's CygnusBorrow contract
         if (msg.sender != twinstar) revert CygnusCollateral__MsgSenderNotBorrowable();
         /// @custom:erro CantLiquidateZero Avoid liquidating 0 repayAmount
@@ -196,10 +202,9 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         bytes calldata data
     ) external override nonReentrant update returns (uint256 usdAmount) {
         /// @custom:error CantRedeemZero Avoid redeem no LP
-        if (assets <= 0) revert CygnusCollateral__CantRedeemZero();
+        if (assets == 0) revert CygnusCollateral__CantRedeemZero();
 
         // Compute shares of assets redeemed, rounding up
-        // Total supply and total assets are both cached (totalAssets = totalBalance)
         uint256 shares = assets.fullMulDivUp(totalSupply(), totalAssets());
 
         // Withdraw hook to withdraw from the strategy (if any)
@@ -210,9 +215,8 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
 
         // If data exists then pass to router - `usdAmount` return var is helpful when flash redeeming via a router
         // with a staticCall before hand, it has no effect on the function itself. In case of deleveraging
-        // (converting LP to USDC), the router would first call this function and flashRedeem the LP, sell the LP for USDC, 
-        // repay user loans (if any) and transfer back the equivalent of the LP redeemed in CygLP to this contract. 
-        // Doing a static call on a deleverage will give us an estimate of the USDC received 
+        // (converting LP to USDC), the router would first call this function and flashRedeem the LP, sell the LP for USDC,
+        // repay user loans (if any) and transfer back the equivalent of the LP redeemed in CygLP to this contract.
         if (data.length > 0) usdAmount = ICygnusAltairCall(msg.sender).altairRedeem_u91A(msg.sender, assets, data);
 
         // CygLP tokens received by this contract
@@ -225,10 +229,4 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // Escapes `canRedeem` since we are burning tokens from this address
         _burn(address(this), cygLPReceived);
     }
-
-    /**
-     *  @inheritdoc ICygnusCollateral
-     *  @custom:security non-reentrant
-     */
-    function sync() external override nonReentrant update {}
 }

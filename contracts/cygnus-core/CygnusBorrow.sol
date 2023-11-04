@@ -210,9 +210,9 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         uint256 repayAmount,
         bytes calldata data
     ) external override nonReentrant update returns (uint256 amountUsd) {
-        // ────────── 1. Get borrower's USD debt - The `update` modifier will accrue interest before this call
-        // Latest borrow balance
-        (, uint256 borrowBalance) = getBorrowBalance(borrower);
+        // ────────── 1. Get borrower's USD debt
+        // Latest borrow balance, already accrued
+        (, uint256 borrowBalance) = _latestBorrowBalance(borrower, false);
 
         // Adjust declared amount to max liquidatable, this is the actual repaid amount
         uint256 max = borrowBalance < repayAmount ? borrowBalance : repayAmount;
@@ -248,10 +248,4 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         /// @custom:event Liquidate
         emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, max, amountUsd);
     }
-
-    /**
-     *  @inheritdoc ICygnusBorrow
-     *  @custom:security non-reentrant
-     */
-    function sync() external override nonReentrant update {}
 }
