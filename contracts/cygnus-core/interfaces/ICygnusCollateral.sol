@@ -81,16 +81,18 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
      *
      *  @param liquidator The address of the liquidator
      *  @param borrower The address of the borrower being liquidated
-     *  @param cygLPAmount The amount of CygLP seized and sent to the liquidator
+     *  @param cygLPAmount The amount of CygLP seized without taking into account incentive or fee
+     *  @param liquidatorAmount The aamount of CygLP seized sent to the liquidator (with the liq. incentive)
      *  @param daoFee The amount of CygLP sent to the DAO Reserves
-     *  @param seized The total amount of CygLP seized from the borrower
+     *  @param totalSeized The total amount of CygLP seized from the borrower
      */
     event SeizeCygLP(
         address indexed liquidator,
         address indexed borrower,
         uint256 cygLPAmount,
+        uint256 liquidatorAmount,
         uint256 daoFee,
-        uint256 seized
+        uint256 totalSeized
     );
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 

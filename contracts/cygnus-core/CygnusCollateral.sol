@@ -191,7 +191,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         uint256 totalSeized = liquidatorAmount + daoFee;
 
         /// @custom:event SeizeCygLP
-        emit SeizeCygLP(liquidator, borrower, liquidatorAmount, daoFee, totalSeized);
+        emit SeizeCygLP(liquidator, borrower, cygLPAmount, liquidatorAmount, daoFee, totalSeized);
     }
 
     /**
