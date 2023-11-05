@@ -76,11 +76,8 @@ import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
 // Interfaces
 import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
 import {ICygnusAltairCall} from "./interfaces/ICygnusAltairCall.sol";
-import {ICygnusTerminal} from "./interfaces/ICygnusTerminal.sol";
-import {IPillarsOfCreation} from "./interfaces/IPillarsOfCreation.sol";
 
 // Overrides
-import {CygnusTerminal} from "./CygnusTerminal.sol";
 import {ERC20} from "./ERC20.sol";
 
 /**
@@ -92,7 +89,7 @@ import {ERC20} from "./ERC20.sol";
  *          The `borrow` function allows anyone to borrow or leverage USD to buy more LP Tokens. If calldata is
  *          passed, then the function calls the `altairBorrow` function on the sender, which should be used to
  *          leverage positions. If there is no calldata, the user can simply borrow instead of leveraging. The
- *          same borrow function is used to repay a loan, by checking the totalBalance held of underlying. 
+ *          same borrow function is used to repay a loan, by checking the totalBalance held of underlying.
  *          The function also allows anyone to perform a flash loan, as long as the amount repaid is greater
  *          than or equal the borrowed amount.
  *
@@ -126,7 +123,7 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
 
     /**
      *  @notice ERC20 Override
-     *  @notice Tracks lender's position AFTER any transfer/mint/burn/etc. CygUSD is the lender token and should always
+     *  @notice Tracks lender's position after any transfer/mint/burn/etc. CygUSD is the lender token and should always
      *          be tracked at core and updated on any interaction.
      */
     function _afterTokenTransfer(address from, address to, uint256) internal override(ERC20) {
@@ -222,12 +219,12 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         // Reverts at Collateral if:
         // - `max` is 0.
         // - `borrower`'s position is not in liquidatable state
-        uint256 liquidatorAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, max);
+        uint256 cygLPAmount = ICygnusCollateral(twinstar).seizeCygLP(receiver, borrower, max);
 
         // ────────── 3. Check for data length in case sender sells the collateral to market
         // If the `receiver` was the router used to flash liquidate then we call the router with the data passed,
         // allowing the collateral to be sold to the market
-        if (data.length > 0) ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, liquidatorAmount, max, data);
+        if (data.length > 0) ICygnusAltairCall(msg.sender).altairLiquidate_f2x(msg.sender, cygLPAmount, max, data);
 
         // ────────── 4. Get the repaid amount of USD
         // Current balance of USD not deposited in strategy (if sell to market then router must have sent back USD).
@@ -246,6 +243,6 @@ contract CygnusBorrow is ICygnusBorrow, CygnusBorrowVoid {
         _afterDeposit(amountUsd);
 
         /// @custom:event Liquidate
-        emit Liquidate(msg.sender, borrower, receiver, liquidatorAmount, max, amountUsd);
+        emit Liquidate(msg.sender, borrower, receiver, cygLPAmount, max, amountUsd);
     }
 }

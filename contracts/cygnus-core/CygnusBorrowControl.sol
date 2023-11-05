@@ -36,9 +36,8 @@ import {ERC20} from "./ERC20.sol";
  *  @title  CygnusBorrowControl Contract for controlling borrow settings
  *  @author CygnusDAO
  *  @notice Initializes Borrow Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygUSD Token.
- *          This contract should be the only contract the Cygnus admin has control of, specifically to set the
- *          borrow tracker which tracks individual borrows to reward users with CYG. Admin also sets the interest
- *          rate model used for this pool in this contract along with the reserve rate.
+ *          This contract should be the only contract the Admin has control of (along with the strateyg contract)
+ *          specifically to set the CYG rewarder, reserve factor and interest rate model for this pool.
  */
 contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -81,7 +80,7 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @notice Maximum Kink multiplier
      */
-    uint256 private constant KINK_MULTIPLIER_MAX = 20;
+    uint256 private constant KINK_MULTIPLIER_MAX = 40;
 
     /**
      *  @notice Used to calculate the per second interest rates
@@ -93,19 +92,17 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
-    address public override pillarsOfCreation;
+    InterestRateModel public override interestRateModel;
 
-    // ───────────────────────────── Current pool rates
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     */
+    address public override pillarsOfCreation;
 
     /**
      *  @inheritdoc ICygnusBorrowControl
      */
     uint256 public override reserveFactor = 0.1e18;
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     */
-    InterestRateModel public override interestRateModel;
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             5. CONSTANT FUNCTIONS
@@ -217,24 +214,6 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      *  @inheritdoc ICygnusBorrowControl
      *  @custom:security only-admin 👽
      */
-    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
-        // Check if parameter is within range allowed
-        _validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
-
-        // Old reserve factor
-        uint256 oldReserveFactor = reserveFactor;
-
-        // Update reserve factor
-        reserveFactor = newReserveFactor;
-
-        /// @custom:event NewReserveFactor
-        emit NewReserveFactor(oldReserveFactor, newReserveFactor);
-    }
-
-    /**
-     *  @inheritdoc ICygnusBorrowControl
-     *  @custom:security only-admin 👽
-     */
     function setInterestRateModel(
         uint256 baseRatePerYear_,
         uint256 multiplierPerYear_,
@@ -251,13 +230,25 @@ contract CygnusBorrowControl is ICygnusBorrowControl, CygnusTerminal {
      */
     function setPillarsOfCreation(address newCygRewarder) external override cygnusAdmin {
         // Need the option of setting to address(0) as child contract checks for 0 address in case it's inactive
-        // Old CYG rewarder
+        // Pillars address until now
         address oldCygRewarder = pillarsOfCreation;
 
-        // Assign new rewarder
-        pillarsOfCreation = newCygRewarder;
-
         /// @custom:event NewPillarsOfCreation
-        emit NewPillarsOfCreation(oldCygRewarder, newCygRewarder);
+        emit NewPillarsOfCreation(oldCygRewarder, pillarsOfCreation = newCygRewarder);
+    }
+
+    /**
+     *  @inheritdoc ICygnusBorrowControl
+     *  @custom:security only-admin 👽
+     */
+    function setReserveFactor(uint256 newReserveFactor) external override cygnusAdmin {
+        // Checks if parameter is within bounds
+        _validRange(0, RESERVE_FACTOR_MAX, newReserveFactor);
+
+        // Reserve factor until now
+        uint256 oldReserveFactor = reserveFactor;
+
+        /// @custom:event NewReserveFactor
+        emit NewReserveFactor(oldReserveFactor, reserveFactor = newReserveFactor);
     }
 }

@@ -45,10 +45,11 @@ import {CygnusBorrow} from "./CygnusBorrow.sol";
 /**
  *  @title  AlbireoOrbiter Contract that deploys the Cygnus Borrow arm of the lending pool
  *  @author CygnusDAO
- *  @notice The Borrow Deployer contract which starts the borrow arm of the lending pool. It deploys the borrow
- *          contract with the corresponding Cygnus collateral contract address. We pass structs to avoid having
- *          to set constructors in the core contracts, being able to calculate addresses of lending pools with
- *          CREATE2
+ *  @notice The Borrowable Deployer which deploys the borrowable arm of the lending pool. It deploys the borrowable
+ *          contract with the factory, underlying stablecoin, corresponding Cygnus Collateral contract address, the
+ *          oracle for this lending pool and the unique shuttle ID.
+ *          We pass structs to avoid having to set constructors in the core contracts, being able to calculate
+ *          addresses of lending pools with CREATE2
  */
 contract AlbireoOrbiter is IAlbireoOrbiter {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -62,6 +63,7 @@ contract AlbireoOrbiter is IAlbireoOrbiter {
      *  @custom:member factory The address of the Cygnus factory assigned to `Hangar18`
      *  @custom:member underlying The address of the underlying borrow token (address of USDC)
      *  @custom:member collateral The address of the Cygnus collateral contract for this borrowable
+     *  @custom:member oracle The address of the oracle for this lending pool
      *  @custom:member shuttleId The ID for the shuttle we are deployin (shared by collateral)
      */
     struct BorrowParameters {

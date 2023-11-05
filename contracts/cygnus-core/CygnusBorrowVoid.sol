@@ -101,16 +101,6 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks the `token` balance of this contract
-     *  @param token The token to view balance of
-     *  @return amount This contract's `token` balance
-     */
-    function _checkBalance(address token) internal view returns (uint256) {
-        // Our balance of `token`
-        return token.balanceOf(address(this));
-    }
-
-    /**
      *  @notice Preview total balance from Comet
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
@@ -118,6 +108,16 @@ contract CygnusBorrowVoid is ICygnusBorrowVoid, CygnusBorrowModel {
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // Return latest balance of Comet (rebase token)
         balance = COMET_USDC.balanceOf(address(this));
+    }
+
+    /**
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return amount This contract's `token` balance
+     */
+    function _checkBalance(address token) internal view returns (uint256) {
+        // Our balance of `token`
+        return token.balanceOf(address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */

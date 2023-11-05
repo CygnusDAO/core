@@ -103,8 +103,8 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
         /// @custom:error InvalidBorrower Avoid borrower zero address or this contract
         if (borrower == address(0) || borrower == address(this)) revert CygnusCollateralModel__InvalidBorrower();
 
-        // Check if called externally or from borrowable. If called externally (via `getAccountLiquidity`) then borrowedAmount 
-        // is always MaxUint256. If called by borrowable ( `borrow` function calls the `canBorrow` function below) then its the 
+        // Check if called externally or from borrowable. If called externally (via `getAccountLiquidity`) then borrowedAmount
+        // is always MaxUint256. If called by borrowable ( `borrow` function calls the `canBorrow` function below) then its the
         // account's total borrows (including the new tx borrow amount if any).
         // Simulate accrue as borrowable calls this function with borrower's account borrows and not max uint256
         if (borrowBalance == type(uint256).max) (, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
@@ -175,7 +175,6 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view override returns (bool) {
         // Called by CygnusBorrow at the end of the `borrow` function to check if a `borrower` can borrow `borrowAmount`
-        // This escapes accruing again since we are passing actual account borrows
         (, uint256 shortfall) = _accountLiquidity(borrower, borrowAmount);
 
         // User has no shortfall and can borrow
@@ -185,44 +184,20 @@ contract CygnusCollateralModel is ICygnusCollateralModel, CygnusCollateralContro
     /**
      *  @inheritdoc ICygnusCollateralModel
      */
-    function getBorrowerPosition(
-        address borrower
-    )
-        external
-        view
-        override
-        returns (
-            uint256 cygLPBalance,
-            uint256 principal,
-            uint256 borrowBalance,
-            uint256 price,
-            uint256 rate,
-            uint256 positionUsd,
-            uint256 positionLp,
-            uint256 health
-        )
-    {
-        // Collateral balance of the borrower (CygLP)
-        cygLPBalance = balanceOf(borrower);
+    function getBorrowerPosition(address borrower) external view override returns (uint256 lpBalance, uint256 positionUsd, uint256 health) {
+        // The amount of LP tokens that is owned by the borrower's position
+        lpBalance = balanceOf(borrower).mulWad(exchangeRate());
 
-        // The original borrowed amount without interest and the current owed amount with interest.
-        // Simulate accrual.
-        (principal, borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
+        // Borrower's position in USD
+        positionUsd = lpBalance.mulWad(getLPTokenPrice());
 
-        // The LP Token price
-        price = getLPTokenPrice();
+        // Max user's liquidity (in USD) = The position's USD adjusted by the debt ratio and liquidation incentives
+        uint256 maxLiquidity = positionUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee);
 
-        // Current CygLP to LP exchange rate
-        rate = exchangeRate();
+        // Get the latest borrow balance (uses borrow indices)
+        (, uint256 borrowBalance) = ICygnusBorrow(twinstar).getBorrowBalance(borrower);
 
-        // LP Tokens balance = balance of CygLP Tokens * current exchange Rate
-        // Position in USD = LP Tokens balance * LP Token Price
-        positionUsd = cygLPBalance.mulWad(rate).mulWad(price);
-
-        // LP tokens owned
-        positionLp = cygLPBalance.mulWad(rate);
-
-        // Current borrower's health adjusted by the debt ratio variable (liquidatable at 100%)
-        health = positionUsd == 0 ? 0 : borrowBalance.divWad(positionUsd.fullMulDiv(debtRatio, liquidationIncentive + liquidationFee));
+        // The position's health is borrowBalance / maxLiquidity, liquidatable at 100% (ie 1e18)
+        health = positionUsd == 0 ? 0 : borrowBalance.divWad(maxLiquidity);
     }
 }

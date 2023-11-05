@@ -32,42 +32,36 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
 
     /**
      *  @dev Reverts when the user doesn't have enough liquidity to redeem
-     *
      *  @custom:error InsufficientLiquidity
      */
     error CygnusCollateral__InsufficientLiquidity();
 
     /**
      *  @dev Reverts when the msg.sender of the liquidation is not this contract`s borrowable
-     *
      *  @custom:error MsgSenderNotBorrowable
      */
     error CygnusCollateral__MsgSenderNotBorrowable();
 
     /**
      *  @dev Reverts when the repayAmount in a liquidation is 0
-     *
      *  @custom:error CantLiquidateZero
      */
     error CygnusCollateral__CantLiquidateZero();
 
     /**
      *  @dev Reverts when trying to redeem 0 tokens
-     *
      *  @custom:error CantRedeemZero
      */
     error CygnusCollateral__CantRedeemZero();
 
     /**
      * @dev Reverts when liquidating an account that has no shortfall
-     *
      * @custom:error NotLiquidatable
      */
     error CygnusCollateral__NotLiquidatable();
 
     /**
      *  @dev Reverts when redeeming more shares than CygLP in this contract
-     *
      *  @custom:error InsufficientRedeemAmount
      */
     error CygnusCollateral__InsufficientCygLPReceived();
@@ -78,7 +72,6 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
 
     /**
      *  @dev Logs when collateral is seized from the borrower and sent to the liquidator
-     *
      *  @param liquidator The address of the liquidator
      *  @param borrower The address of the borrower being liquidated
      *  @param cygLPAmount The amount of CygLP seized without taking into account incentive or fee
@@ -102,37 +95,22 @@ interface ICygnusCollateral is ICygnusCollateralVoid {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Seizes CygLP from borrower and adds it to the liquidator's account.
-     *  @notice Not marked as non-reentrant
-     *
-     *  @dev This should be called from `borrowable` contract, else it reverts
-     *
-     *  @param liquidator The address repaying the borrow and seizing the collateral
+     *  @notice Seizes CygLP from borrower and adds it to the liquidator's account. This function can only be called 
+     *          from the borrowable contract, else it reverts.
+     *  @param liquidator The address repaying the borrow amount and seizing the collateral
      *  @param borrower The address of the borrower
      *  @param repayAmount The number of collateral tokens to seize
-     *
      *  @return liquidatorAmount The amount of CygLP that the liquidator received for liquidating the position
+     *  @custom:security non-reentrant
      */
-    function seizeCygLP(
-        address liquidator,
-        address borrower,
-        uint256 repayAmount
-    ) external returns (uint256 liquidatorAmount);
+    function seizeCygLP(address liquidator, address borrower, uint256 repayAmount) external returns (uint256 liquidatorAmount);
 
     /**
-     *  @notice Flash redeems the underlying LP Token
-     *
-     *  @dev This should be called from `Altair` contract
-     *
+     *  @notice Flash redeems the underlying LP Token - Low level function which should only be called by a router.
      *  @param redeemer The address redeeming the tokens (Altair contract)
      *  @param assets The amount of the underlying assets to redeem
      *  @param data Calldata passed from and back to router contract
-     *
      *  @custom:security non-reentrant
      */
-    function flashRedeemAltair(
-        address redeemer,
-        uint256 assets,
-        bytes calldata data
-    ) external returns (uint256 usdAmount);
+    function flashRedeemAltair(address redeemer, uint256 assets, bytes calldata data) external returns (uint256 usdAmount);
 }

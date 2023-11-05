@@ -22,7 +22,7 @@ pragma solidity >=0.8.17;
 import {ICygnusCollateralControl} from "./ICygnusCollateralControl.sol";
 
 /**
- *  @title ICygnusCollateralModel The interface for querying any borrower's positions and find liquidity/shortfalls
+ *  @title ICygnusCollateralModel The contract that implements the collateralization model
  */
 interface ICygnusCollateralModel is ICygnusCollateralControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -31,14 +31,12 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
 
     /**
      *  @dev Reverts when the borrower is the zero address or this collateral
-     *
      *  @custom:error InvalidBorrower
      */
     error CygnusCollateralModel__InvalidBorrower();
 
     /**
      *  @dev Reverts when the price returned from the oracle is 0
-     *
      *  @custom:error PriceCantBeZero
      */
     error CygnusCollateralModel__PriceCantBeZero();
@@ -51,7 +49,6 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
 
     /**
      *  @notice Checks if the given user is able to redeem the specified amount of LP tokens.
-     *
      *  @param borrower The address of the user to check.
      *  @param redeemAmount The amount of LP tokens to be redeemed.
      *  @return True if the user can redeem, false otherwise.
@@ -63,8 +60,7 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
      *  @notice Get the price of 1 amount of the underlying in stablecoins. Note: It returns the price in the borrowable`s
      *          decimals. ie If USDC, returns price in 6 deicmals, if DAI/BUSD in 18
      *  @notice Calls the oracle to return the price of 1 unit of the underlying LP Token of this shuttle
-     *
-     *  @return lpTokenPrice The price of 1 LP Token in USDC
+     *  @return The price of 1 LP Token denominated in the Borrowable's underlying stablecoin
      */
     function getLPTokenPrice() external view returns (uint256);
 
@@ -72,53 +68,27 @@ interface ICygnusCollateralModel is ICygnusCollateralControl {
 
     /**
      *  @notice Gets an account's liquidity or shortfall
-     *
      *  @param borrower The address of the borrower
-     *  @return liquidity The account's liquidity in USDC
-     *  @return shortfall If user has no liquidity, return the shortfall in USDC
+     *  @return liquidity The account's liquidity denominated in the borrowable's underlying stablecoin.
+     *  @return shortfall The account's shortfall denominated in the borrowable's underlying stablecoin. If positive 
+     *                    then the account can be liquidated.
      */
     function getAccountLiquidity(address borrower) external view returns (uint256 liquidity, uint256 shortfall);
 
     /**
-     *  @notice Gets the account's total position value in USD (LP Tokens owned multiplied by LP price). It uses the oracle to get the
-     *          price of the LP Token and uses the current exchange rate.
-     *
+     *  @notice Check if a borrower can borrow a specified amount of stablecoins from the borrowable contract.
      *  @param borrower The address of the borrower
-     *
-     *  @return cygLPBalance The user's balance of collateral (CygLP)
-     *  @return principal The original loaned USDC amount (without interest)
-     *  @return borrowBalance The original loaned USDC amount plus interest (ie. what the user must pay back)
-     *  @return price The current liquidity token price
-     *  @return rate The current exchange rate between CygLP and LP Token
-     *  @return positionUsd The borrower's position in USD. position = CygLP Balance * Exchange Rate * LP Token Price
-     *  @return positionLp The borrower`s position in LP Tokens
-     *  @return health The user's current loan health (once it reaches 100% the user becomes liquidatable)
-     */
-    function getBorrowerPosition(
-        address borrower
-    )
-        external
-        view
-        returns (
-            uint256 cygLPBalance,
-            uint256 principal,
-            uint256 borrowBalance,
-            uint256 price,
-            uint256 rate,
-            uint256 positionUsd,
-            uint256 positionLp,
-            uint256 health
-        );
-
-    /**
-     *  @notice Check if a borrower can borrow a specified amount of an asset from CygnusBorrow.
-     *  @dev Throws a custom error message if the borrowableToken is invalid.
-     *  @dev Calls the internal accountLiquidityInternal function to calculate the borrower's liquidity and shortfall.
-     *
-     *  @param borrower The address of the borrower to check.
-     *  @param borrowAmount The amount the borrower wishes to borrow.
-     *
-     *  @return A boolean indicating whether the borrower can borrow the specified amount.
+     *  @param borrowAmount The amount of stablecoins that borrower wants to borrow.
+     *  @return A boolean indicating whether the borrower can borrow the specified amount
      */
     function canBorrow(address borrower, uint256 borrowAmount) external view returns (bool);
+
+    /**
+     *  @notice Quick view function to get a borrower's latest position
+     *  @param borrower The address of the borrower
+     *  @return lpBalance The borrower`s position in LP Tokens
+     *  @return positionUsd The borrower's position in USD (ie. CygLP Balance * Exchange Rate * LP Token Price)
+     *  @return health The user's current loan health (once it reaches 100% the user becomes liquidatable)
+     */
+    function getBorrowerPosition(address borrower) external view returns (uint256 lpBalance, uint256 positionUsd, uint256 health);
 }

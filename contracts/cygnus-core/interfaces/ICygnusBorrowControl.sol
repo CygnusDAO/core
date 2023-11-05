@@ -32,21 +32,18 @@ interface ICygnusBorrowControl is ICygnusTerminal {
 
     /**
      *  @dev Reverts when attempting to set a parameter outside the min/max ranges allowed in the Control contract
-     *
      *  @custom:error ParameterNotInRange
      */
     error CygnusBorrowControl__ParameterNotInRange();
 
     /**
      *  @dev Reverts when setting the collateral if the msg.sender is not the hangar18 contract
-     *
      *  @custom:error MsgSenderNotHangar
      */
     error CygnusBorrowControl__MsgSenderNotHangar();
 
     /**
      *  @dev Reverts wehn attempting to set a collateral that has already been set
-     *
      *  @custom:error CollateralAlreadySet
      */
     error CygnusBorrowControl__CollateralAlreadySet();
@@ -55,39 +52,36 @@ interface ICygnusBorrowControl is ICygnusTerminal {
             2. CUSTOM EVENTS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
-    event NewCollateralAdded(address sender, address collateral, uint256 collateralsLength);
+    /**
+     *  @dev Logs when a new interest rate curve is set for this shuttle
+     *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
+     *  @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
+     *  @param kinkMultiplier_ The increase to multiplier per year once kink utilization is reached
+     *  @param kinkUtilizationRate_ The rate at which the jump interest rate takes effect
+     *  custom:event NewInterestRateParameters
+     */
+    event NewInterestRateParameters(
+        uint256 baseRatePerYear,
+        uint256 multiplierPerYear,
+        uint256 kinkMultiplier_,
+        uint256 kinkUtilizationRate_
+    );
 
     /**
-     *  @dev Logs when a new contract is set that rewards users in CYG
-     *
+     *  @dev Logs when a new rewarder contract is set to reward borrowers and lenders.
      *  @param oldRewarder The address of the rewarder up until this point used for CYG distribution
      *  @param newRewarder The address of the new rewarder
-     *
      *  @custom:event NewCygnusBorrowRewarder
      */
     event NewPillarsOfCreation(address oldRewarder, address newRewarder);
 
     /**
-     *  @dev Logs when a new reserve factory is set by admin
-     *
+     *  @dev Logs when a new reserve factor is set.
      *  @param oldReserveFactor The reserve factor used in this shuttle until this point
      *  @param newReserveFactor The new reserve factor set
-     *
      *  @custom:event NewReserveFactor
      */
     event NewReserveFactor(uint256 oldReserveFactor, uint256 newReserveFactor);
-
-    /**
-     *  @dev Logs when a new interest rate curve is set for this shuttle
-     *
-     *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
-     *  @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     *  @param kinkMultiplier_ The increase to multiplier per year once kink utilization is reached
-     *  @param kinkUtilizationRate_ The rate at which the jump interest rate takes effect
-     *
-     *  custom:event NewInterestRateParameters
-     */ // prettier-ignore
-    event NewInterestRateParameters( uint256 baseRatePerYear, uint256 multiplierPerYear, uint256 kinkMultiplier_, uint256 kinkUtilizationRate_);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             3. CONSTANT FUNCTIONS
@@ -96,7 +90,7 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @custom:struct InterestRateModel The structwith the interest rate params for this pool
+     *  @custom:struct InterestRateModel The interest rate params for this pool
      *  @custom:member baseRatePerSecond The base interest rate which is the y-intercept when utilization rate is 0
      *  @custom:member multiplierPerSecond The multiplier of utilization rate that gives the slope of the interest rate
      *  @custom:member jumpMultiplierPerSecond The multiplierPerSecond after hitting a specified utilization point
@@ -112,16 +106,14 @@ interface ICygnusBorrowControl is ICygnusTerminal {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @return collateral The address of the collateral
+     *  @return The address of the Cygnus Collateral contract for this borrowable
      */
     function collateral() external view returns (address);
 
     /**
-     *  @return pillarsOfCreation Address of the contract that rewards both borrowers and lenders in CYG
+     *  @return Address that rewards borrowers and lenders in CYG
      */
     function pillarsOfCreation() external view returns (address);
-
-    // ────────────── Current Pool Rates ──────────────
 
     /**
      *  @notice The current interest rate params set for this pool
@@ -130,8 +122,10 @@ interface ICygnusBorrowControl is ICygnusTerminal {
      *  @return jumpMultiplierPerSecond The multiplierPerSecond after hitting a specified utilization point
      *  @return kink The utilization point at which the jump multiplier is applied
      */
-    // prettier-ignore
-    function interestRateModel() external view returns (uint64 baseRatePerSecond, uint64 multiplierPerSecond, uint64 jumpMultiplierPerSecond, uint64 kink);
+    function interestRateModel()
+        external
+        view
+        returns (uint64 baseRatePerSecond, uint64 multiplierPerSecond, uint64 jumpMultiplierPerSecond, uint64 kink);
 
     /**
      *  @return reserveFactor Percentage of interest that is routed to this market's Reserve Pool
@@ -143,26 +137,13 @@ interface ICygnusBorrowControl is ICygnusTerminal {
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
     /**
      *  @notice Admin 👽
-     *  @notice Updates the reserve factor
-     *
-     *  @param newReserveFactor The new reserve factor for this shuttle
-     *
-     *  @custom:security only-admin
-     */
-    function setReserveFactor(uint256 newReserveFactor) external;
-
-    /**
-     *  @notice Admin 👽
-     *  @notice Internal function to update the parameters of the interest rate model
-     *
-     *  @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
-     *  @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     *  @param kinkMultiplier_ The increase to farmApy once kink utilization is reached
-     *  @param kinkUtilizationRate_ The new utilization rate
-     *
+     *  @notice Updates the interest rate model with annualized rates, scaled by 1e18 (ie 1% = 0.01e18)
+     *  @param baseRatePerYear The new annualized base rate
+     *  @param multiplierPerYear The new annualized rate of increase in interest rate wrt utilization
+     *  @param kinkMultiplier_ The increase to the slope once kink utilization is reached
+     *  @param kinkUtilizationRate_ The new max utilization rate
      *  @custom:security only-admin
      */
     function setInterestRateModel(
@@ -174,11 +155,17 @@ interface ICygnusBorrowControl is ICygnusTerminal {
 
     /**
      *  @notice Admin 👽
+     *  @notice Updates the reserve factor
+     *  @param newReserveFactor The new reserve factor for this shuttle
+     *  @custom:security only-admin
+     */
+    function setReserveFactor(uint256 newReserveFactor) external;
+
+    /**
+     *  @notice Admin 👽
      *  @notice Updates the pillars of creation contract. This can be updated to the zero address in case we need
      *          to remove rewards from pools saving us gas instead of calling the contract.
-     *
      *  @param newPillars The address of the new CYG rewarder
-     *
      *  @custom:security only-admin
      */
     function setPillarsOfCreation(address newPillars) external;

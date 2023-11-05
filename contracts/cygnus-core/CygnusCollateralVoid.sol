@@ -106,16 +106,6 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Checks the `token` balance of this contract
-     *  @param token The token to view balance of
-     *  @return amount This contract's `token` balance
-     */
-    function _checkBalance(address token) internal view returns (uint256) {
-        // Our balance of `token`
-        return token.balanceOf(address(this));
-    }
-
-    /**
      *  @notice Preview total balance from the LP strategy
      *  @notice Cygnus Terminal Override
      *  @inheritdoc CygnusTerminal
@@ -123,6 +113,16 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
     function _previewTotalBalance() internal view override(CygnusTerminal) returns (uint256 balance) {
         // Get this contracts deposited LP amount from Velo gauge
         (balance, ) = REWARDER.userInfo(gammaId, address(this));
+    }
+
+    /**
+     *  @notice Checks the `token` balance of this contract
+     *  @param token The token to view balance of
+     *  @return amount This contract's `token` balance
+     */
+    function _checkBalance(address token) internal view returns (uint256) {
+        // Our balance of `token`
+        return token.balanceOf(address(this));
     }
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
@@ -230,11 +230,10 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
     /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
 
-
     /**
      *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
      *  @param assets The amount of assets to deposit in the strategy
+     *  @inheritdoc CygnusTerminal
      */
     function _afterDeposit(uint256 assets) internal override(CygnusTerminal) {
         // Deposit assets into the strategy
@@ -243,8 +242,8 @@ contract CygnusCollateralVoid is ICygnusCollateralVoid, CygnusCollateralModel {
 
     /**
      *  @notice Cygnus Terminal Override
-     *  @inheritdoc CygnusTerminal
      *  @param assets The amount of assets to withdraw from the strategy
+     *  @inheritdoc CygnusTerminal
      */
     function _beforeWithdraw(uint256 assets) internal override(CygnusTerminal) {
         // Withdraw assets from the strategy

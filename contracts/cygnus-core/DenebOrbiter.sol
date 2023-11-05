@@ -45,8 +45,9 @@ import {CygnusCollateral} from "./CygnusCollateral.sol";
 /**
  *  @title  DenebOrbiter Contract that deploys the Cygnus Collateral arm of the lending pool
  *  @author CygnusDAO
- *  @notice The Collateral Deployer which starts the collateral arm of the lending pool. It deploys the collateral
- *          contract with the corresponding Cygnus borrow contract address, the factory and the underlying LP Token.
+ *  @notice The Collateral Deployer which deploys the collateral arm of the lending pool. It deploys the collateral
+ *          contract with the factory, underlying LP token, corresponding Cygnus Borrow contract address, the 
+ *          oracle for this lending pool and the unique shuttle ID.
  *          We pass structs to avoid having to set constructors in the core contracts, being able to calculate
  *          addresses of lending pools with CREATE2
  */
@@ -62,6 +63,7 @@ contract DenebOrbiter is IDenebOrbiter {
      *  @custom:member factory The address of the Cygnus factory
      *  @custom:member underlying The address of the underlying LP Token
      *  @custom:member borrowable The address of the Cygnus borrow contract for this collateral
+     *  @custom:member oracle The address of the oracle for this lending pool
      *  @custom:member shuttleId The unique id of this lending pool (shared by borrowable)
      */
     struct CollateralParameters {

@@ -22,8 +22,7 @@ pragma solidity >=0.8.17;
 import {ICygnusBorrowControl} from "./ICygnusBorrowControl.sol";
 
 /**
- *  @title ICygnusBorrowModel
- *  @notice Interface for the Borrowable's model which takes into account interest accruals and borrow snapshots
+ *  @title ICygnusBorrowModel Interface of the contract that implements the interest rate model and interest accruals
  */
 interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -32,12 +31,10 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
 
     /**
      *  @dev Logs when interest is accrued to borrows and reserves
-     *
      *  @param cash Total balance of the underlying in the strategy
      *  @param borrows Latest total borrows stored
      *  @param interest Interest accumulated since last accrual
      *  @param reserves The amount of CygUSD minted to the DAO
-     *
      *  @custom:event AccrueInterest
      */
     event AccrueInterest(uint256 cash, uint256 borrows, uint256 interest, uint256 reserves);
@@ -46,63 +43,72 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
             3. CONSTANT FUNCTIONS
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
 
+    /*  ────────────────────────────────────────────── Internal ───────────────────────────────────────────────  */
+
+    /**
+     *  @custom:struct BorrowSnapshot Container for individual user's borrow balance information
+     *  @custom:member principal The total borrowed amount without interest accrued
+     *  @custom:member interestIndex Borrow index as of the most recent balance-changing action
+     */
+    struct BorrowSnapshot {
+        uint128 principal;
+        uint128 interestIndex;
+    }
+
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
 
     /**
-     *  @return totalBorrows Total borrows stored in the lending pool
+     *  @return Total borrows of the lending pool (uses borrow indices to simulate interest rate accruals)
      */
     function totalBorrows() external view returns (uint256);
 
     /**
-     *  @return borrowIndex Borrow index stored of this lending pool, starts at 1e18
+     *  @return Borrow index stored of this lending pool (uses borrow indices)
      */
     function borrowIndex() external view returns (uint256);
 
     /**
-     *  @return lastAccrualTimestamp The unix timestamp stored of the last interest rate accrual
+     *  @return The unix timestamp stored of the last interest rate accrual
      */
     function lastAccrualTimestamp() external view returns (uint256);
-
-    /**
-     *  @notice This public view function is used to get the borrow balance of users and their principal.
-     *
-     *  @param borrower The address whose balance should be calculated
-     *
-     *  @return principal The USD amount borrowed without interest accrual
-     *  @return borrowBalance The USD amount borrowed with interest accrual (ie. USD amount the borrower must repay)
-     */
-    function getBorrowBalance(address borrower) external view returns (uint256 principal, uint256 borrowBalance);
 
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @return utilizationRate The total amount of borrowed funds divided by the total cash the pool has available
+     *  @return The price of the denomination token in 18 decimals, used for reporting purposes only
+     */
+    function getUsdPrice() external view returns (uint256);
+
+    /**
+     *  @return The total amount of borrowed funds divided by the total vault assets
      */
     function utilizationRate() external view returns (uint256);
 
     /**
-     *  @return borrowRate The current per-second borrow rate stored for this pool.
+     *  @return The current per-second borrow rate
      */
     function borrowRate() external view returns (uint256);
 
     /**
-     *  @return supplyRate The current APR for lenders
+     *  @return The current per-second supply rate
      */
     function supplyRate() external view returns (uint256);
 
     /**
-     *  @return getBorrowTokenPrice the price of the denomination token
+     *  @notice Function used to get the borrow balance of users and their principal.
+     *  @param borrower The address whose balance should be calculated
+     *  @return principal The stablecoin amount borrowed without interests
+     *  @return borrowBalance The stablecoin amount borrowed with interests  (ie. what borrowers must pay back)
      */
-    function getBorrowTokenPrice() external view returns (uint256);
+    function getBorrowBalance(address borrower) external view returns (uint256 principal, uint256 borrowBalance);
 
     /**
-     *  @notice Get the lender`s full position
+     *  @notice Gets the lender`s full position
      *  @param lender The address of the lender
-     *  @return cygUsdBalance The `lender's` balance of CygUSD
-     *  @return rate The currente exchange rate
-     *  @return positionInUsd The lender's position in USD
+     *  @return usdBalance The amount of stablecoins that the lender owns
+     *  @return positionInUsd The position of the lender in USD
      */
-    function getLenderPosition(address lender) external view returns (uint256 cygUsdBalance, uint256 rate, uint256 positionInUsd);
+    function getLenderPosition(address lender) external view returns (uint256 usdBalance, uint256 positionInUsd);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -111,20 +117,18 @@ interface ICygnusBorrowModel is ICygnusBorrowControl {
     /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
 
     /**
-     *  @notice Manually track the user's deposited USD
-     *
-     *  @param lender The address of the lender
-     */
-    function trackLender(address lender) external;
-
-    /**
      *  @notice Applies interest accruals to borrows and reserves
      */
     function accrueInterest() external;
 
     /**
+     *  @notice Manually track the user's CygUSD shares to pass to the rewarder contract
+     *  @param lender The address of the lender
+     */
+    function trackLender(address lender) external;
+
+    /**
      *  @notice Manually track the user's borrows
-     *
      *  @param borrower The address of the borrower
      */
     function trackBorrower(address borrower) external;

@@ -22,9 +22,6 @@ pragma solidity >=0.8.17;
 import {ICygnusCollateralControl} from "./interfaces/ICygnusCollateralControl.sol";
 import {CygnusTerminal} from "./CygnusTerminal.sol";
 
-// Libraries
-import {FixedPointMathLib} from "./libraries/FixedPointMathLib.sol";
-
 // Interfaces
 import {IERC20} from "./interfaces/IERC20.sol";
 
@@ -35,19 +32,11 @@ import {ERC20} from "./ERC20.sol";
  *  @title  CygnusCollateralControl Contract for controlling collateral settings like debt ratios/liq. incentives
  *  @author CygnusDAO
  *  @notice Initializes Collateral Arm. Assigns name, symbol and decimals to CygnusTerminal for the CygLP Token.
- *          This contract should be the only contract the Admin has control of specifically to set liquidation fees 
- *          for the protocol, liquidation incentives for the liquidators and setting and the max debt ratio.
+ *          This contract should be the only contract the Admin has control of (along with the strateyg contract)
+ *          specifically to set liquidation fees for the protocol, liquidation incentives for the liquidators and
+ *          setting and the max debt ratio.
  */
 contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
-    /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
-            1. LIBRARIES
-        ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
-
-    /**
-     *  @custom:library SafeTransferLib ERC20 transfer library that gracefully handles missing return values.
-     */
-    using FixedPointMathLib for uint256;
-
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             2. STORAGE
         ═══════════════════════════════════════════════════════════════════════════════════════════════════════  */
@@ -64,7 +53,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     /**
      *  @notice Maximum debt ratio at which the collateral becomes liquidatable
      */
-    uint256 private constant DEBT_RATIO_MAX = 1.00e18;
+    uint256 private constant DEBT_RATIO_MAX = 0.99e18;
 
     /**
      *  @notice Minimum liquidation incentive for liquidators that can be set
@@ -82,8 +71,6 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
     uint256 private constant LIQUIDATION_FEE_MAX = 0.10e18;
 
     /*  ─────────────────────────────────────────────── Public ────────────────────────────────────────────────  */
-
-    // ───────────────────────────── Current pool rates
 
     /**
      *  @inheritdoc ICygnusCollateralControl
@@ -142,7 +129,7 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @inheritdoc ERC20
      */
     function decimals() public view override(ERC20, IERC20) returns (uint8) {
-        // Override decimals in case LPs use a different denom
+        // Override decimals for LP tokens
         return IERC20(underlying).decimals();
     }
 
@@ -167,17 +154,14 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @custom:security only-admin 👽
      */
     function setDebtRatio(uint256 newDebtRatio) external override cygnusAdmin {
-        // Checks if new value is within ranges allowed. If false, reverts with custom error
+        // Checks if parameter is within bounds
         _validRange(DEBT_RATIO_MIN, DEBT_RATIO_MAX, newDebtRatio);
 
-        // Valid, update
+        // Debt ratio until now
         uint256 oldDebtRatio = debtRatio;
 
-        // Update debt ratio
-        debtRatio = newDebtRatio;
-
         /// @custom:event newDebtRatio
-        emit NewDebtRatio(oldDebtRatio, newDebtRatio);
+        emit NewDebtRatio(oldDebtRatio, debtRatio = newDebtRatio);
     }
 
     /**
@@ -188,14 +172,11 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
         // Checks if parameter is within bounds
         _validRange(LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX, newLiquidationIncentive);
 
-        // Valid, update
+        // Liquidation incentive until now
         uint256 oldLiquidationIncentive = liquidationIncentive;
 
-        // Update liquidation incentive
-        liquidationIncentive = newLiquidationIncentive;
-
         /// @custom:event NewLiquidationIncentive
-        emit NewLiquidationIncentive(oldLiquidationIncentive, newLiquidationIncentive);
+        emit NewLiquidationIncentive(oldLiquidationIncentive, liquidationIncentive = newLiquidationIncentive);
     }
 
     /**
@@ -203,16 +184,13 @@ contract CygnusCollateralControl is ICygnusCollateralControl, CygnusTerminal {
      *  @custom:security only-admin 👽
      */
     function setLiquidationFee(uint256 newLiquidationFee) external override cygnusAdmin {
-        // Checks if parameter is within bounds, 0 is allowed since collateral contract checks for 0 fee
+        // Checks if parameter is within bounds
         _validRange(0, LIQUIDATION_FEE_MAX, newLiquidationFee);
 
-        // Valid, update
+        // Liquidation fee until now
         uint256 oldLiquidationFee = liquidationFee;
 
-        // Update liquidation fee
-        liquidationFee = newLiquidationFee;
-
         /// @custom:event newLiquidationFee
-        emit NewLiquidationFee(oldLiquidationFee, newLiquidationFee);
+        emit NewLiquidationFee(oldLiquidationFee, liquidationFee = newLiquidationFee);
     }
 }

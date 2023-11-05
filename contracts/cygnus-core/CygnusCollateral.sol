@@ -128,7 +128,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         // to `transfer()` or `transferFrom()` to this address first, and it will check `canRedeem` before transfer.
         if (from == address(this)) return;
 
-        // Even though we use borrow indices we still accrue first
+        // Even though we use borrow indices we still try to accrue on any transfer
         ICygnusBorrow(twinstar).accrueInterest();
 
         /// @custom:error InsufficientLiquidity Avoid transfers or burns if there's shortfall
@@ -140,6 +140,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
     /**
      *  @notice No reason to update since there are no new balance updates
      *  @inheritdoc ICygnusCollateral
+     *  @custom:security non-reentrant
      */
     function seizeCygLP(
         address liquidator,
@@ -180,7 +181,7 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
             // Get the liquidation fee amount that is kept by the protocol from the `cygLPAmount`
             daoFee = cygLPAmount.mulWad(liquidationFee);
 
-            // Assign reserves account
+            // Get latest DAO reserves from Hangar18
             address daoReserves = hangar18.daoReserves();
 
             // If applicable, seize daoFee from the borrower, escapes can redeem
@@ -207,10 +208,10 @@ contract CygnusCollateral is ICygnusCollateral, CygnusCollateralVoid {
         /// @custom:error CantRedeemZero Avoid redeem no LP
         if (assets == 0) revert CygnusCollateral__CantRedeemZero();
 
-        // Compute shares of assets redeemed, rounding up
-        uint256 shares = assets.fullMulDivUp(totalSupply(), totalAssets());
+        // Compute shares of assets redeemed. Same as `_convertToShares` rounding up
+        uint256 shares = assets.fullMulDivUp(totalSupply(), _totalAssets(false));
 
-        // Withdraw hook to withdraw from the strategy (if any)
+        // Withdraw assets from the strategy
         _beforeWithdraw(assets);
 
         // Optimistically transfer LP amount to redeemer

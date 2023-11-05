@@ -506,10 +506,16 @@ interface IHangar18 {
     function shuttleTvlUsd(uint256 shuttleId) external view returns (uint256);
 
     /**
-     *  @dev Returns the USD value of the DAO Cyg LP reserves.
-     *  @return The USD value of the DAO Cyg LP reserves.
+     *  @dev Returns the total borrowable TVL in USD for all shuttles.
+     *  @return The total borrowable TVL in USD.
      */
-    function daoCygLPReservesUsd() external view returns (uint256);
+    function allBorrowablesTvlUsd() external view returns (uint256);
+
+    /**
+     *  @dev Returns the total collateral TVL in USD for all shuttles.
+     *  @return The total collateral TVL in USD.
+     */
+    function allCollateralsTvlUsd() external view returns (uint256);
 
     /**
      *  @dev Returns the USD value of the DAO Cyg USD reserves.
@@ -518,34 +524,28 @@ interface IHangar18 {
     function daoCygUsdReservesUsd() external view returns (uint256);
 
     /**
+     *  @dev Returns the USD value of the DAO Cyg LP reserves.
+     *  @return The USD value of the DAO Cyg LP reserves.
+     */
+    function daoCygLPReservesUsd() external view returns (uint256);
+
+    /**
      *  @dev Returns the total USD value of CygnusDAO reserves.
      *  @return The total USD value of CygnusDAO reserves.
      */
     function cygnusTotalReservesUsd() external view returns (uint256);
 
     /**
-     *  @dev Returns the total amount borrowed in USD.
-     *  @return The total amount borrowed in USD.
-     */
-    function totalBorrowsUsd() external view returns (uint256);
-
-    /**
-     *  @dev Returns the total borrowable TVL (Total Value Locked) in USD for all shuttles.
-     *  @return The total borrowable TVL in USD.
-     */
-    function allBorrowablesTvlUsd() external view returns (uint256);
-
-    /**
-     *  @dev Returns the total collateral TVL (Total Value Locked) in USD for all shuttles.
-     *  @return The total collateral TVL in USD.
-     */
-    function allCollateralsTvlUsd() external view returns (uint256);
-
-    /**
-     *  @dev Returns the total TVL (Total Value Locked) in USD for CygnusDAO.
+     *  @dev Returns the total TVL in USD for CygnusDAO.
      *  @return The total TVL in USD for CygnusDAO.
      */
     function cygnusTvlUsd() external view returns (uint256);
+
+    /**
+     *  @dev Returns the total amount borrowed for all shuttles
+     *  @return The total amount borrowed in USD.
+     */
+    function cygnusTotalBorrows() external view returns (uint256);
 
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
             4. NON-CONSTANT FUNCTIONS
@@ -586,7 +586,7 @@ interface IHangar18 {
      *
      *  @custom:security non-reentrant only-admin
      */
-    function initializeOrbiters(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
+    function initializeOrbiter(string memory name, IAlbireoOrbiter albireoOrbiter, IDenebOrbiter denebOrbiter) external;
 
     /**
      *  @notice Admin 👽

@@ -29,7 +29,6 @@ interface IDenebOrbiter {
 
     /**
      *  @notice Passing the struct parameters to the collateral contract avoids setting constructor
-     *
      *  @return factory The address of the Cygnus factory
      *  @return underlying The address of the underlying LP Token
      *  @return borrowable The address of the Cygnus borrow contract for this collateral
@@ -41,18 +40,16 @@ interface IDenebOrbiter {
         returns (address factory, address underlying, address borrowable, address oracle, uint256 shuttleId);
 
     /**
-     *  @return collateralInitCodeHash The init code hash of the collateral contract for this deployer
+     *  @return The init code hash of the collateral contract for this deployer
      */
     function collateralInitCodeHash() external view returns (bytes32);
 
     /**
      *  @notice Function to deploy the collateral contract of a lending pool
-     *
      *  @param underlying The address of the underlying LP Token
      *  @param borrowable The address of the Cygnus borrow contract for this collateral
      *  @param oracle The address of the oracle for this lending pool
      *  @param shuttleId The ID of the lending pool
-     *
      *  @return collateral The address of the new deployed Cygnus collateral contract
      */
     function deployDeneb(address underlying, address borrowable, address oracle, uint256 shuttleId) external returns (address collateral);

@@ -69,8 +69,8 @@ import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
  *          Each orbiter has the bytecode of the collateral/borrow contracts being deployed, and they may differ
  *          slighlty due to the strategy deployed (for example each masterchef is different, requiring different
  *          harvest strategy, staking mechanism, etc.). The only contract that may differ between core contracts
- *          is the strategy contracts `CygnusCollateralVoid` and `CygnusBorrowVoid`, where all functions are 
- *          private or external, meaning no other contract relies on them for the core system to work.
+ *          is the `CygnusCollateralVoid`, where all functions are private or external, meaning no other contract
+ *          relies on it and can be left blank.
  *
  *          Ideally there should only be 1 orbiter per DEX (1 borrow && 1 collateral orbiter) or 1 per strategy.
  *
@@ -241,12 +241,15 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     function borrowableTvlUsd(uint256 shuttleId) public view override returns (uint256 totalUsd) {
         // Get shuttleId's borrowable
         address borrowable = allShuttles[shuttleId].borrowable;
-        // Borrows
-        uint256 totalBorrows = ICygnusBorrow(borrowable).totalBorrows();
-        // Current balance of USD
-        uint256 totalBalance = ICygnusBorrow(borrowable).totalBalance();
-        // Total USD value of pool = borrows + balance
-        totalUsd = totalBorrows + totalBalance;
+
+        // Price of the stablecoin in 18 decimals (DAI, USDC, etc.)
+        uint256 price = ICygnusBorrow(borrowable).getUsdPrice();
+
+        // Total Balance + Total Borrows of borrowable
+        uint256 totalAssets = ICygnusBorrow(borrowable).totalAssets();
+
+        // TVL = Price of stablecoin * total stablecoin assets
+        totalUsd = totalAssets.mulWad(price);
     }
 
     /**
@@ -255,12 +258,15 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     function collateralTvlUsd(uint256 shuttleId) public view override returns (uint256 totalUsd) {
         // Get shuttleId's collateral
         address collateral = allShuttles[shuttleId].collateral;
-        // LP Price
+
+        // Price of the LP in borrowable's decimals
         uint256 price = ICygnusCollateral(collateral).getLPTokenPrice();
+
         // Total LP assets
-        uint256 totalBalance = ICygnusCollateral(collateral).totalBalance();
-        // TVL = Price of LP * Balance of LP
-        totalUsd = totalBalance.mulWad(price); // Denom in USDC
+        uint256 totalAssets = ICygnusCollateral(collateral).totalAssets();
+
+        // TVL = Price of LP * total LP assets
+        totalUsd = totalAssets.mulWad(price); // Denom in USDC
     }
 
     /**
@@ -301,14 +307,18 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     function daoCygUsdReservesUsd() public view override returns (uint256 reserves) {
         // Array of pools deployed
         Shuttle[] memory shuttles = allShuttles;
+
         // Total pools deployed
         uint256 poolsDeployed = shuttles.length;
+
         // Loop through each pool deployed, get borrowable and add to total TVL
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s borrowable
             address borrowable = shuttles[i].borrowable;
+
             // Get the current USD holding of the DAO for this shuttle
-            (, , uint256 positionUsd) = ICygnusBorrow(borrowable).getLenderPosition(daoReserves);
+            (, uint256 positionUsd) = ICygnusBorrow(borrowable).getLenderPosition(daoReserves);
+
             // Add to reserves
             reserves += positionUsd;
         }
@@ -320,15 +330,19 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     function daoCygLPReservesUsd() public view override returns (uint256 reserves) {
         // Array of pools deployed
         Shuttle[] memory shuttles = allShuttles;
+
         // Total pools deployed
         uint256 poolsDeployed = allShuttles.length;
+
         // Loop through each pool deployed, get collateral and query the DAO's positionUsd:
         // positionUsd = (CygLP * Exchange Rate) * LP Price
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s collateral
             address collateral = shuttles[i].collateral;
+
             // Position in USD
-            (, , , , , uint256 positionUsd, , ) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
+            (, uint256 positionUsd, ) = ICygnusCollateral(collateral).getBorrowerPosition(daoReserves);
+
             // Add to reserves
             reserves += positionUsd;
         }
@@ -345,17 +359,20 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    function totalBorrowsUsd() public view override returns (uint256 totalUsd) {
+    function cygnusTotalBorrows() public view override returns (uint256 totalBorrows) {
         // Array of pools deployed
         Shuttle[] memory shuttles = allShuttles;
+
         // Total pools deployed
         uint256 poolsDeployed = shuttles.length;
+
         // Loop through each pool deployed, get borrowable and add to total TVL
         for (uint256 i = 0; i < poolsDeployed; i++) {
             // This pool`s borrowable
             address borrowable = shuttles[i].borrowable;
+
             // Current total borrows
-            totalUsd += ICygnusBorrow(borrowable).totalBorrows();
+            totalBorrows += ICygnusBorrow(borrowable).totalBorrows();
         }
     }
 
@@ -492,7 +509,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @inheritdoc IHangar18
      *  @custom:security only-admin 👽
      */
-    function initializeOrbiters(string memory _name, IAlbireoOrbiter albireo, IDenebOrbiter deneb) external override cygnusAdmin {
+    function initializeOrbiter(string calldata _name, IAlbireoOrbiter albireo, IDenebOrbiter deneb) external override cygnusAdmin {
         // Borrowable init code hash
         bytes32 borrowableInitCodeHash = albireo.borrowableInitCodeHash();
 
@@ -504,9 +521,6 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
 
         /// @custom:error OrbitersAlreadySet
         if (orbitersExist[uniqueHash]) revert Hangar18__OrbitersAlreadySet();
-
-        // Set this pair of orbiters as unique, cannot be initialized again
-        orbitersExist[uniqueHash] = true;
 
         // Has not been initialized yet, create struct and push to orbiter array
         allOrbiters.push(
@@ -521,6 +535,9 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
                 status: true // Mark as true
             })
         );
+
+        // Set this pair of orbiters as unique, cannot be initialized again
+        orbitersExist[uniqueHash] = true;
 
         /// @custom:event InitializeOrbiters
         emit InitializeOrbiters(true, allOrbiters.length, albireo, deneb, uniqueHash, _name);
@@ -553,11 +570,8 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Address of the pending admin until this point
         address oldPendingAdmin = pendingAdmin;
 
-        // Assign the new pending admin as the pending admin
-        pendingAdmin = newPendingAdmin;
-
         /// @custom:event NewPendingCygnusAdmin
-        emit NewPendingCygnusAdmin(oldPendingAdmin, newPendingAdmin);
+        emit NewPendingCygnusAdmin(oldPendingAdmin, pendingAdmin = newPendingAdmin);
     }
 
     /**
@@ -592,11 +606,8 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Address of the DAO reserves until now
         address oldDaoReserves = daoReserves;
 
-        // Assign the new reserves
-        daoReserves = reserves;
-
         /// @custom:event NewDaoReserves
-        emit NewDaoReserves(oldDaoReserves, reserves);
+        emit NewDaoReserves(oldDaoReserves, daoReserves = reserves);
     }
 
     /**
@@ -610,11 +621,8 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Old vault
         address oldVault = cygnusX1Vault;
 
-        // Assign new vault
-        cygnusX1Vault = newX1Vault;
-
         /// @custom:event NewX1Vault
-        emit NewX1Vault(oldVault, newX1Vault);
+        emit NewX1Vault(oldVault, cygnusX1Vault = newX1Vault);
     }
 
     /**
@@ -628,11 +636,8 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         // Old pillars
         address oldPillars = cygnusPillars;
 
-        // New pillars
-        cygnusPillars = newPillars;
-
         /// @custom:event NewPillarsOfCreation
-        emit NewPillarsOfCreation(oldPillars, newPillars);
+        emit NewPillarsOfCreation(oldPillars, cygnusPillars = newPillars);
     }
 
     /**
@@ -643,13 +648,10 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         /// @custom:error PillarsCantBeZero
         if (newAltair == address(0)) revert Hangar18__AltairCantBeZero();
 
-        // Old pillars
+        // Old router
         address oldAltair = cygnusAltair;
 
-        // New pillars
-        cygnusAltair = newAltair;
-
         /// @custom:event NewAltairRouter
-        emit NewAltairRouter(oldAltair, cygnusAltair);
+        emit NewAltairRouter(oldAltair, cygnusAltair = newAltair);
     }
 }
