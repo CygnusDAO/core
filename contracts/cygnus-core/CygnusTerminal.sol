@@ -237,8 +237,6 @@ abstract contract CygnusTerminal is ICygnusTerminal, ERC20, ReentrancyGuard {
         return _totalSupply == 0 ? 1e18 : totalAssets().divWad(_totalSupply);
     }
 
-    /*  ────────────────────────────────────────────── External ───────────────────────────────────────────────  */
-
     /**
      *  @notice Total assets managed by the vault. For borrowable this is the stablecoin balance deposited in
      *          the strategy + the current borrows (simulates accruals). For collateral this is the LP token
