@@ -68,17 +68,14 @@ import {ICygnusCollateral} from "./interfaces/ICygnusCollateral.sol";
  *
  *          Each orbiter has the bytecode of the collateral/borrow contracts being deployed, and they may differ
  *          slighlty due to the strategy deployed (for example each masterchef is different, requiring different
- *          harvest strategy, staking mechanism, etc.). The only contract that may differ between core contracts
- *          is the `CygnusCollateralVoid`, where all functions are private or external, meaning no other contract
- *          relies on it and can be left blank.
+ *          harvest strategy, staking mechanism, etc.).
  *
  *          Ideally there should only be 1 orbiter per DEX (1 borrow && 1 collateral orbiter) or 1 per strategy.
  *
  *          This factory contract contains the records of all shuttles deployed by Cygnus. Every collateral/borrow
  *          contract reports back here to:
  *              - Check admin address (to increase debt ratios, update interest rate model, set void, etc.)
- *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol) or to add
- *                DAO liquidation fees if any (in CygnusCollateral.sol)
+ *              - Check reserves manager address when minting new DAO reserves (in CygnusBorrow.sol)
  */
 contract Hangar18 is IHangar18, ReentrancyGuard {
     /*  ═══════════════════════════════════════════════════════════════════════════════════════════════════════ 
@@ -139,7 +136,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
     /**
      *  @inheritdoc IHangar18
      */
-    ICygnusNebulaRegistry public immutable nebulaRegistry;
+    address public immutable nebulaRegistry;
 
     /**
      *  @inheritdoc IHangar18
@@ -181,7 +178,7 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
      *  @param _nativeToken The address of this chain's native token
      *  @param _registry The Cygnus oracle registry which keeps track of all initialized LP oracles
      */
-    constructor(address _usd, address _nativeToken, ICygnusNebulaRegistry _registry) {
+    constructor(address _usd, address _nativeToken, address _registry) {
         // Assign cygnus admin, has access to special functions
         admin = msg.sender;
 
@@ -456,13 +453,13 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
         if (!orbiter.status) revert Hangar18__OrbiterInactive();
 
         //  ─────────────────────────────── Phase 2 ───────────────────────────────
-        // Prepare shuttle for deployment, reverts if lpTokenPair already exists
+        // Prepare shuttle for deployment, reverts if lpTokenPair && orbiterId already exists
         // Load shuttle to storage to store if the call succeeds
         Shuttle storage shuttle = boardShuttlePrivate(lpTokenPair, orbiterId);
 
         //  ─────────────────────────────── Phase 3 ───────────────────────────────
         // Check that oracle has been initialized in the registry and get the nebula address
-        address nebula = nebulaRegistry.getLPTokenNebulaAddress(lpTokenPair);
+        address nebula = ICygnusNebulaRegistry(nebulaRegistry).getLPTokenNebulaAddress(lpTokenPair);
 
         /// @custom:error LiquidityTokenNotSupported
         if (nebula == address(0)) revert Hangar18__LiquidityTokenNotSupported();
@@ -476,10 +473,10 @@ contract Hangar18 is IHangar18, ReentrancyGuard {
             orbiter.collateralInitCodeHash
         );
 
-        // Deploy borrow contract
+        // Deploy borrow contract with calculated collateral address
         borrowable = orbiter.albireoOrbiter.deployAlbireo(usd, create2Collateral, nebula, shuttle.shuttleId);
 
-        // Deploy collateral contract
+        // Deploy collateral contract with deployed borrowable address
         collateral = orbiter.denebOrbiter.deployDeneb(lpTokenPair, borrowable, nebula, shuttle.shuttleId);
 
         /// @custom:error CollateralAddressMismatch
