@@ -21,7 +21,6 @@ pragma solidity >=0.8.17;
 // Orbiters
 import {IDenebOrbiter} from "./IDenebOrbiter.sol";
 import {IAlbireoOrbiter} from "./IAlbireoOrbiter.sol";
-import {ICygnusNebulaRegistry} from "./ICygnusNebulaRegistry.sol";
 
 // Oracles
 
@@ -432,7 +431,7 @@ interface IHangar18 {
     /**
      *  @notice The address of the nebula registry on this chain
      */
-    function nebulaRegistry() external view returns (ICygnusNebulaRegistry);
+    function nebulaRegistry() external view returns (address);
 
     /**
      *  @return admin The address of the Cygnus Admin which grants special permissions in collateral/borrow contracts
