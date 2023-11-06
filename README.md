@@ -1,5 +1,6 @@
 ![photo_2023-08-18_15-35-29](https://github.com/CygnusDAO/core/assets/97303883/08f33a6e-010d-41e6-8902-04c5752e7284)
 
+
 # **Cygnus Protocol**
 
 This repository contains the smart contracts source code and markets configuration for Cygnus. The repository uses Hardhat as the development environment for compilation, testing and deployment tasks.
@@ -12,7 +13,7 @@ Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By 
 <br />
 <br />
 <p align="center">
-<img src="https://user-images.githubusercontent.com/97303883/190871738-29fa7ef3-2090-4478-93ef-279eff1121b3.svg" width=40% />
+<img src="https://github.com/CygnusDAO/core/assets/97303883/dd6dd595-707c-4532-84cf-ad8e0eb886e4" width=40% />
 </p>
 
 <br />
