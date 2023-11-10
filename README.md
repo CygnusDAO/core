@@ -13,8 +13,10 @@ Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By 
 <br />
 <br />
 <p align="center">
-<img src="https://github.com/CygnusDAO/core/assets/97303883/dd6dd595-707c-4532-84cf-ad8e0eb886e4" width=50% />
+<img src="https://github.com/CygnusDAO/core/assets/97303883/b2423e8a-eacf-472e-a8ca-a1dbea4c670a" width="50%" />
 </p>
+
+
 
 <br />
 Cygnus uses its own oracles which returns the price of 1 liquidity token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. This technique is used to price liquidity tokens of protocols such as:
