@@ -13,7 +13,7 @@ Each lending pool is connected to a DEX (UniswapV3, TraderJoe, Sushi, etc.). By 
 <br />
 <br />
 <p align="center">
-<img src="https://github.com/CygnusDAO/core/assets/97303883/dd6dd595-707c-4532-84cf-ad8e0eb886e4" width=40% />
+<img src="https://github.com/CygnusDAO/core/assets/97303883/dd6dd595-707c-4532-84cf-ad8e0eb886e4" width=50% />
 </p>
 
 <br />
