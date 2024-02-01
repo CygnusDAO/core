@@ -9,7 +9,7 @@ This repository contains the smart contracts source code and markets configurati
 
 Cygnus is a decentralized stablecoin lending protocol for liquidity providers. It is a non-custodial liquidity market protocol, where users can participate as lenders by supplying USDC or as borrowers by supplying their liquidity. Lenders are able to provide USDC in individualized lending pools, earning passive income based on the LP's APR, while borrowers are able to supply their liquidity and borrow USDC against it or leverage their positions, increasing their earnings through higher trading fees and/or liquidity mining rewards. As borrowers are borrowing a static value asset (USDC) against their volatile liquidity, they are essentially going long on their liquidity.
 
-Each lending pool is connected to a DEX (UniswapV3, Quickswap, Balancer, etc.). By depositing your LPs in Cygnus, rewards from the rewarder contract or any other liquidity mining program get reinvested automatically, decreasing their debt ratio on every reinvestment.
+Each lending pool is connected to a DEX (UniswapV3, Quickswap, Balancer, etc.). Liquidity Providers are able to collateralize their liquidity in these DEXes to borrow stablecoins or leverage to increase their liquidity positions in the pool to earn higher trading fees.
 <br />
 <br />
 <p align="center">
