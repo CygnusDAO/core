@@ -19,7 +19,7 @@ Each lending pool is connected to a DEX (UniswapV3, Quickswap, Balancer, etc.). 
 
 
 <br />
-Cygnus uses its own oracles which returns the price of 1 liquidity token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each LP token. This technique is used to price liquidity tokens of protocols such as:
+Cygnus uses its own oracles which returns the price of 1 liquidity token in USDC using Chainlink price feeds. By using third party reliable price feeds, the oracle calculates the <a href="https://blog.alphaventuredao.io/fair-lp-token-pricing/">Fair Reserves</a> of each liquidity position. This technique is used to price liquidity tokens of protocols such as:
 
 * Balancer
 * UniswapV2
@@ -33,7 +33,7 @@ Impermanent loss refers to a "situation in which the profit you gain from stakin
 
 # **Who is Cygnus for?**
 
-1) **Liquidity Providers**. Any user who is already providing liquidity in any pair that is supported by Cygnus can benefit from the protocol, as they can now use their LP token to borrow against their liquidity. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit ETH, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, as such we are unlocking liquidity and efficiency in DeFi. For example an LP decides to deposit their liquidity with Cygnus. The smart contracts then deposit the liquidity back in the DEX and any rewarder program the dex is offering. The user leverages 2x to increase their position in the pool. If the LP Token's underlying assets increase in value, this strategy provides maximum profitability as they owe a static debt against appreciating assets, allowing them to borrow more or just keep earning yield from trading fees/liquidity mining rewards with Cygnus.
+1) **Liquidity Providers**. Any user who is already providing liquidity in DeFi can benefit from the protocol, as they can now borrow against their liquidity. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit ETH, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, with the aim to incentivize users to keep providing liquidity in Decentralized Exchanges.
 
 2) **Stablecoin holders.** By lending stablecoins to liquidity providers, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX amd the interest rate paid by borrowers is relative to the pool's APR. This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
 
