@@ -35,7 +35,7 @@ Impermanent loss refers to a "situation in which the profit you gain from stakin
 
 1) **Liquidity Providers**. Any user who is already providing liquidity in DeFi can benefit from the protocol, as they can now borrow against their liquidity. Platforms like Compound Finance or Aave provide a similar service but for tokens only (i.e. deposit ETH, borrow USDc). Cygnus is a protocol designed specifically for Liquidity Providers, with the aim to incentivize users to keep providing liquidity in Decentralized Exchanges.
 
-2) **Stablecoin holders.** By lending stablecoins to liquidity providers, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX amd the interest rate paid by borrowers is relative to the pool's APR. This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
+2) **Stablecoin holders.** By lending stablecoins to liquidity providers, lenders earn an APY in stablecoins that is more akin to the higher APY's found in DeFi across the more volatile assets. Each lending pool in Cygnus is connected to a DEX and the interest rate paid by borrowers is relative to the pool's APR. This is why Cygnus can provide higher stablecoin yields than some other borrowing/lending platforms who are isolated from DEXes with liquidity mining rewards/trading fees.
 
 # **Protocol Features**
 
